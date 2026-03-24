@@ -1,0 +1,43 @@
+apiVersion: nais.io/v1alpha1
+kind: Application
+metadata:
+  name: openinghours
+  namespace: navdig
+  labels:
+    team: navdig
+spec:
+  ingresses:
+    - https://openinghours.nav.no
+  image: {{image}}
+  liveness:
+    path: /actuator/health/liveness
+    initialDelay: 20
+  readiness:
+    path: /actuator/health/readiness
+    initialDelay: 20
+  replicas:
+    min: 1
+    max: 1
+  port: 8081
+  envFrom:
+    - secret: openinghours-app-swagger-secret
+    #- secret: openinghours-secret
+  webproxy: true
+  accessPolicy:
+    inbound:
+      rules:
+        - application: openinghours-frontend
+          namespace: navdig
+          cluster: prod-gcp
+  gcp:
+    sqlInstances:
+        - type: POSTGRES_17
+          tier: db-custom-2-3840
+          databases:
+            - name: openinghours
+              envVarPrefix: DB
+  azure:
+    application:
+      enabled: true
+      allowAllUsers: true
+      tenant: nav.no

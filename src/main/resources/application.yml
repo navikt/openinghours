@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: openinghours
+  main:
+    banner-mode: "off"
+    allow-bean-definition-overriding: true
+  datasource:
+    url: ${DB_JDBC_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+flyway:
+  enabled: true
+  locations: classpath:db/migration
+
+server:
+  port: 8081
+
+api:
+  security:
+    key: ${API_KEY}
+    header-name: X-API-Key
+jira:
+  url: ${JIRA_URL}
+  username: ${JIRA_USERNAME}
+  password: ${JIRA_PASSWORD}
+
+openinghours:
+  api:
+    url: https://api.openinghours.com/   #Openinghours url
+    token: ${OPENINGHOURS_TOKEN}
+  client:
+    id: ${OPENINGHOURS_CLIENT_ID}          #Openinghours client id
+    secret: ${OPENINGHOURS_CLIENT_SECRET}      #openinghours client secret
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+  endpoint:
+    health:
+      show-details: always
+    probes:
+      enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tryItOutEnabled: true
+    operationsSorter: method
+

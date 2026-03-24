@@ -1,0 +1,32 @@
+# ignore build files
+target/
+build/
+
+# ignore ide modeules
+.idea/
+*.iml
+*.ipr
+*.iws
+*.sw?
+
+# ignore Git
+.git/
+.gitignore
+
+# ignore system files
+.DS_Store
+Thumbs.db
+
+# ignore environment files
+.env
+*.log
+
+# ignore tests
+*.test.js
+*.spec.js
+__tests__/
+
+# optional: ignore other files
+*.tmp
+*.bak
+*.old
