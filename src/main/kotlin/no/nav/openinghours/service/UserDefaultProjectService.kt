@@ -20,9 +20,11 @@ class UserDefaultProjectService(
         return try {
             val normalizedUserId = userId.lowercase()
             val entity = repo.findByUserId(normalizedUserId)
-                ?.apply { this.projectKey = projectKey }
-                ?: UserDefaultProject(userId = normalizedUserId, projectKey = projectKey, projectName = projectName)
-
+                ?.apply {
+                    this.projectKey = projectKey
+                    this.projectName = projectName
+                }
+                ?: UserDefaultProject.create(userId = normalizedUserId, projectKey = projectKey, projectName = projectName)
             val saved = repo.save(entity)
             log.info("Upsert default project ok userId={} projectKey={}", userId, projectKey)
             saved

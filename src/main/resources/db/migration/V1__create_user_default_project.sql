@@ -6,3 +6,5 @@ CREATE TABLE user_default_project (
 );
 
 CREATE INDEX idx_user_default_project_updated_at ON user_default_project(updated_at);
+
+

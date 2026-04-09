@@ -21,6 +21,19 @@ open class UserDefaultProject(
 ) {
     protected constructor(): this("", "", "")
 
+    protected constructor(
+        userId: String,
+        projectKey: String,
+        projectName: String
+    ) : this(userId, projectKey, projectName, Instant.now())
+
+    companion object {
+        fun create(userId: String, projectKey: String, projectName: String): UserDefaultProject {
+            return UserDefaultProject(userId, projectKey, projectName)
+        }
+    }
+
+
     @PreUpdate
     fun onUpdate() {
         updatedAt = Instant.now()
