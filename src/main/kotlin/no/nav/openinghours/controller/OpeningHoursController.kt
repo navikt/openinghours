@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.*
 
 @RestController
-@RequestMapping("/api/user/openinghours")
+@RequestMapping("/api/openinghours/rule")
 class OpeningHoursController(
     private val service: OpeningHoursService
 ) {
@@ -23,4 +23,16 @@ class OpeningHoursController(
         @RequestParam name: String,
         @RequestParam rule: String
     ): OpeningHours = service.upsert(name, rule)
+
+    @Operation(summary = "Delete opening hours rule by id")
+    @DeleteMapping("/{id}")
+    fun delete(@PathVariable id: UUID): Boolean {
+        return service.delete(id)
+    }
+
+    @Operation(summary = "Get all opening hours rules")
+    @GetMapping
+    fun getAll(): List<OpeningHours> = service.getAll()
+
+
 }
