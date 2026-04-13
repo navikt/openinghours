@@ -1,10 +1,8 @@
-package no.nav.openinghours.controller
+package no.nav.openinghours.controllers
 
 import io.swagger.v3.oas.annotations.Operation
 import no.nav.openinghours.model.db.OpeningHours
-import no.nav.openinghours.model.db.UserDefaultProject
 import no.nav.openinghours.service.OpeningHoursService
-import no.nav.openinghours.service.UserDefaultProjectService
 import org.springframework.web.bind.annotation.*
 import java.util.*
 
