@@ -56,9 +56,9 @@ class OpeningHoursService(
         return try {
             if (repo.existsById(id)) {
                 repo.deleteById(id)
-                !repo.existsById(id) // Returns true if the entity no longer exists
+                true
             } else {
-                false // Entity does not exist, so deletion is not possible
+                false
             }
         } catch (e: Exception) {
             log.error("Delete opening hours failed id={} msg={}", id, e.message, e)
