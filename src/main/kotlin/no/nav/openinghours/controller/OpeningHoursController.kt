@@ -34,5 +34,13 @@ class OpeningHoursController(
     @GetMapping
     fun getAll(): List<OpeningHours> = service.getAll()
 
+    @Operation(summary = "Update opening hours rule by id")
+    @PatchMapping("/{id}")
+    fun update(
+        @PathVariable id: UUID,
+        @RequestParam name: String,
+        @RequestParam rule: String
+    ): OpeningHours = service.update(id, name, rule)
+
 
 }

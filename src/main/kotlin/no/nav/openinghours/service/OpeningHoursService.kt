@@ -69,4 +69,27 @@ class OpeningHoursService(
         }
     }
 
+    @Transactional
+    fun update(id: UUID, name: String, rule: String): OpeningHours {
+        if (name.isBlank() || rule.isBlank())
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "name and rule must be provided")
+
+        return try {
+            val entity = repo.findById(id)
+                ?.apply {
+                    this.name = name
+                    this.rule = rule
+                }
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found")
+
+            val updated = repo.save(entity)
+            log.info("Update opening hours ok id={} name={} rule={}", id, name, rule)
+            updated
+        } catch (e: Exception) {
+            log.error("Update opening hours failed id={} name={} rule={} msg={}", id, name, rule, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update opening hours: ${e.message}", e)
+        }
+    }
+
+
 }
