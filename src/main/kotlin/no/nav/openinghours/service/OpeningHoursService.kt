@@ -37,7 +37,7 @@ class OpeningHoursService(
 
     fun get(id: UUID): OpeningHours? =
         try {
-            repo.findById(id) // Returns OpeningHours
+            repo.findById(id).orElse(null)
         } catch (e: Exception) {
             log.error("Fetch opening hours failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch opening hours: ${e.message}", e)
@@ -72,7 +72,7 @@ class OpeningHoursService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "name and rule must be provided")
 
         return try {
-            val entity = repo.findById(id)
+            val entity = repo.findById(id).orElse(null)
                 ?.apply {
                     this.name = name
                     this.rule = rule
@@ -82,6 +82,8 @@ class OpeningHoursService(
             val updated = repo.save(entity)
             log.info("Update opening hours ok id={} name={} rule={}", id, name, rule)
             updated
+        } catch (e: ResponseStatusException) {
+            throw e
         } catch (e: Exception) {
             log.error("Update opening hours failed id={} name={} rule={} msg={}", id, name, rule, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update opening hours: ${e.message}", e)
