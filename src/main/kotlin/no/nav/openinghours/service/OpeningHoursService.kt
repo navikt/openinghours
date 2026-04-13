@@ -2,10 +2,7 @@ package no.nav.openinghours.service
 
 import no.nav.openinghours.model.db.OpeningHours
 import no.nav.openinghours.model.db.OpeningHoursRepository
-import no.nav.openinghours.model.db.UserDefaultProject
-import no.nav.openinghours.model.db.UserDefaultProjectRepository
 import org.slf4j.LoggerFactory
-import org.springframework.data.jpa.domain.AbstractPersistable_.id
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
