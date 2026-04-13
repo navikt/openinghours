@@ -12,6 +12,4 @@ interface OpeningHoursRepository : JpaRepository<OpeningHours, String> {
 
     fun existsById(id: UUID): Boolean
 
-    override fun findAll(): List<OpeningHours>
-
 }
