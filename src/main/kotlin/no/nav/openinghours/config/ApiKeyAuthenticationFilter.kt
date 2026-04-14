@@ -21,7 +21,7 @@ class ApiKeyAuthenticationFilter(
 
     private val skipPrefixes = listOf("/swagger-ui", "/v3/api-docs", "/actuator", "/error", "/favicon", "/webjars")
 
-    private val protectedPrefixes = listOf("/api/jira/", "/api/user/")
+    private val protectedPrefixes = listOf("/api/jira/", "/api/user/", "/api/openinghours/")
 
     override fun doFilterInternal(req: HttpServletRequest, res: HttpServletResponse, chain: FilterChain) {
         val path = req.requestURI

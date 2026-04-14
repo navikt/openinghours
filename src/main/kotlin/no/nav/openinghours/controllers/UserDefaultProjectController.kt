@@ -1,4 +1,4 @@
-package no.nav.openinghours.controller
+package no.nav.openinghours.controllers
 
 import io.swagger.v3.oas.annotations.Operation
 import no.nav.openinghours.model.db.UserDefaultProject

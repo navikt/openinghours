@@ -2,12 +2,10 @@ package no.nav.openinghours.service
 
 import no.nav.openinghours.model.db.OpeningHours
 import no.nav.openinghours.model.db.OpeningHoursRepository
-import no.nav.openinghours.model.db.UserDefaultProject
-import no.nav.openinghours.model.db.UserDefaultProjectRepository
 import org.slf4j.LoggerFactory
-import org.springframework.data.jpa.domain.AbstractPersistable_.id
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.util.*
 
@@ -39,9 +37,58 @@ class OpeningHoursService(
 
     fun get(id: UUID): OpeningHours? =
         try {
-            repo.findById(id) // Returns OpeningHours
+            repo.findById(id).orElse(null)
         } catch (e: Exception) {
             log.error("Fetch opening hours failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch opening hours: ${e.message}", e)
         }
+
+    fun getAll(): List<OpeningHours> =
+        try {
+            repo.findAll() // Returns List<OpeningHours>
+        } catch (e: Exception) {
+            log.error("Fetch all opening hours failed msg={}", e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch all opening hours: ${e.message}", e)
+        }
+
+    @Transactional
+    fun delete(id: UUID): Boolean {
+        return try {
+            if (repo.existsById(id)) {
+                repo.deleteById(id)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            log.error("Delete opening hours failed id={} msg={}", id, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Delete opening hours: ${e.message}", e)
+        }
+    }
+
+    @Transactional
+    fun update(id: UUID, name: String, rule: String): OpeningHours {
+        if (name.isBlank() || rule.isBlank())
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "name and rule must be provided")
+
+        return try {
+            val entity = repo.findById(id).orElse(null)
+                ?.apply {
+                    this.name = name
+                    this.rule = rule
+                }
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found")
+
+            val updated = repo.save(entity)
+            log.info("Update opening hours ok id={} name={} rule={}", id, name, rule)
+            updated
+        } catch (e: ResponseStatusException) {
+            throw e
+        } catch (e: Exception) {
+            log.error("Update opening hours failed id={} name={} rule={} msg={}", id, name, rule, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update opening hours: ${e.message}", e)
+        }
+    }
+
+
 }
