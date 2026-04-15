@@ -95,15 +95,20 @@ class OpeningHoursService(
         onlyShowForNavEmployees: Boolean? = null
     ): OpeningHours {
         return try {
-            val entity = repo.findById(id).orElse(null)
-                ?.apply {
-                    if (!name.isNullOrBlank()) this.name = name
-                    if (!rule.isNullOrBlank()) this.rule = rule
-                    this.header = header
-                    this.text = text
-                    this.onlyShowForNavEmployees = onlyShowForNavEmployees ?: this.onlyShowForNavEmployees
+            val entity = repo.findById(id).orElseThrow {
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found")
+            }.apply {
+                if (!name.isNullOrBlank()) this.name = name
+                if (!rule.isNullOrBlank()) {
+                    if (!validator.isAValidRule(rule)) {
+                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid rule format")
+                    }
+                    this.rule = rule
                 }
-                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found")
+                if (header != null) this.header = header
+                if (text != null) this.text = text
+                this.onlyShowForNavEmployees = onlyShowForNavEmployees ?: this.onlyShowForNavEmployees
+            }
 
             repo.save(entity)
         } catch (e: Exception) {
