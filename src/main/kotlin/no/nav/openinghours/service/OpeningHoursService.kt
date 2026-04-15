@@ -18,7 +18,12 @@ class OpeningHoursService(
 ) {
     private val log = LoggerFactory.getLogger(OpeningHoursService::class.java)
 
-    fun upsert(name: String, rule: String, header: String?, text: String?): OpeningHours {
+    fun upsert(name: String,
+               rule: String,
+               header: String?,
+               text: String?,
+               onlyShowForNavEmployees: Boolean? = null
+    ): OpeningHours {
         if (name.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
         }
@@ -34,8 +39,16 @@ class OpeningHoursService(
                 this.rule = rule
                 this.header = header
                 this.text = text
+                this.onlyShowForNavEmployees = onlyShowForNavEmployees ?: false
             }
-            ?: OpeningHours.create(UUID.randomUUID(), name, rule, header, text)
+            ?: OpeningHours.create(
+                UUID.randomUUID(),
+                name,
+                rule,
+                header,
+                text,
+                onlyShowForNavEmployees ?: false
+            )
 
         return repo.save(entity)
     }
@@ -72,30 +85,28 @@ class OpeningHoursService(
     }
 
     @Transactional
-    fun update(id: UUID, name: String, rule: String, header: String?, text: String?): OpeningHours {
-        if (name.isBlank()) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
-        }
-        if (rule.isBlank()) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Rule must not be blank")
-        }
-        if (!validator.isAValidRule(rule)) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid rule format")
-        }
-
+    fun update(
+        id: UUID,
+        name: String?,
+        rule: String?,
+        header: String?,
+        text: String?,
+        onlyShowForNavEmployees: Boolean? = null
+    ): OpeningHours {
         return try {
             val entity = repo.findById(id).orElse(null)
                 ?.apply {
-                    this.name = name
-                    this.rule = rule
+                    if (!name.isNullOrBlank()) this.name = name
+                    if (!rule.isNullOrBlank()) this.rule = rule
                     this.header = header
                     this.text = text
+                    this.onlyShowForNavEmployees = onlyShowForNavEmployees ?: this.onlyShowForNavEmployees
                 }
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found")
 
             repo.save(entity)
         } catch (e: Exception) {
-            log.error("Update opening hours failed id={} name={} rule={} msg={}", id, name, rule, e.message, e)
+            log.error("Update opening hours failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update opening hours: ${e.message}", e)
         }
     }

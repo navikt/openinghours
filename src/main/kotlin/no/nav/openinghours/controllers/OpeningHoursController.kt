@@ -21,7 +21,8 @@ class OpeningHoursController(
         @RequestParam name: String,
         @RequestParam rule: String,
         @RequestParam header: String?,
-        @RequestParam text: String?
+        @RequestParam text: String?,
+        @RequestParam(required = false, defaultValue = "false") onlyShowForNavEmployees: Boolean
     ): OpeningHours = service.upsert(name, rule, header, text)
 
     @Operation(summary = "Delete opening hours rule by id")
@@ -41,8 +42,9 @@ class OpeningHoursController(
         @RequestParam name: String,
         @RequestParam rule: String,
         @RequestParam header: String?,
-        @RequestParam text: String?
-    ): OpeningHours = service.update(id, name, rule, header, text)
+        @RequestParam text: String?,
+        @RequestParam(required = false) onlyShowForNavEmployees: Boolean?
+    ): OpeningHours = service.update(id, name, rule, header, text, onlyShowForNavEmployees)
 
 
 }

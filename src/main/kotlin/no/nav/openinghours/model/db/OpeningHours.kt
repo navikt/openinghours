@@ -55,13 +55,26 @@ open class OpeningHours(
 
     companion object {
         @JvmStatic
-            fun create(id: UUID, name: String, rule: String, header: String?, text: String?): OpeningHours =
-                OpeningHours(id = id, name = name, rule = rule, header = header, text = text,
-                    onlyShowForNavEmployees = false, createdAt = Instant.now(), updatedAt = null)
+        fun create(
+            id: UUID,
+            name: String,
+            rule: String,
+            header: String?,
+            text: String?,
+            onlyShowForNavEmployees : Boolean = false
+        ): OpeningHours = OpeningHours(
+            id = id,
+            name = name,
+            rule = rule,
+            header = header,
+            text = text,
+            onlyShowForNavEmployees = onlyShowForNavEmployees
+        )
     }
 
     @PrePersist
     fun onCreate() {
+        createdAt = Instant.now()
         updatedAt = null
     }
 
