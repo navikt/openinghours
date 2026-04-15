@@ -18,11 +18,12 @@ class OpeningHoursService(
 ) {
     private val log = LoggerFactory.getLogger(OpeningHoursService::class.java)
 
-    fun upsert(name: String,
-               rule: String,
-               header: String?,
-               text: String?,
-               onlyShowForNavEmployees: Boolean? = null
+    fun upsert(
+        name: String,
+        rule: String,
+        header: String?,
+        text: String?,
+        onlyShowForNavEmployees: Boolean = false
     ): OpeningHours {
         if (name.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
@@ -39,7 +40,7 @@ class OpeningHoursService(
                 this.rule = rule
                 this.header = header
                 this.text = text
-                this.onlyShowForNavEmployees = onlyShowForNavEmployees ?: false
+                this.onlyShowForNavEmployees = onlyShowForNavEmployees
             }
             ?: OpeningHours.create(
                 UUID.randomUUID(),
@@ -47,7 +48,7 @@ class OpeningHoursService(
                 rule,
                 header,
                 text,
-                onlyShowForNavEmployees ?: false
+                onlyShowForNavEmployees
             )
 
         return repo.save(entity)

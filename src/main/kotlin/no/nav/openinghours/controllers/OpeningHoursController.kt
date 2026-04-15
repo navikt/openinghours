@@ -22,8 +22,8 @@ class OpeningHoursController(
         @RequestParam rule: String,
         @RequestParam header: String?,
         @RequestParam text: String?,
-        @RequestParam(required = false, defaultValue = "false") onlyShowForNavEmployees: Boolean
-    ): OpeningHours = service.upsert(name, rule, header, text)
+        @RequestParam(required = false, defaultValue = "false") onlyShowForNavEmployees: Boolean?
+    ): OpeningHours = service.upsert(name, rule, header, text, onlyShowForNavEmployees ?: false)
 
     @Operation(summary = "Delete opening hours rule by id")
     @DeleteMapping("/{id}")
@@ -39,8 +39,8 @@ class OpeningHoursController(
     @PatchMapping("/{id}")
     fun update(
         @PathVariable id: UUID,
-        @RequestParam name: String,
-        @RequestParam rule: String,
+        @RequestParam name: String?,
+        @RequestParam rule: String?,
         @RequestParam header: String?,
         @RequestParam text: String?,
         @RequestParam(required = false) onlyShowForNavEmployees: Boolean?
