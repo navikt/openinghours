@@ -15,12 +15,14 @@ class OpeningHoursController(
     @GetMapping("/{id}")
     fun get(@PathVariable id: UUID): OpeningHours? = service.get(id)
 
-    @Operation(summary = "Upsert opening hours rule with id, name and rule")
+    @Operation(summary = "Upsert opening hours rule with id, name, rule, header, and text")
     @PutMapping("/{id}")
     fun upsert(
         @RequestParam name: String,
-        @RequestParam rule: String
-    ): OpeningHours = service.upsert(name, rule)
+        @RequestParam rule: String,
+        @RequestParam header: String?,
+        @RequestParam text: String?
+    ): OpeningHours = service.upsert(name, rule, header, text)
 
     @Operation(summary = "Delete opening hours rule by id")
     @DeleteMapping("/{id}")
@@ -32,13 +34,15 @@ class OpeningHoursController(
     @GetMapping
     fun getAll(): List<OpeningHours> = service.getAll()
 
-    @Operation(summary = "Update opening hours rule by id")
+    @Operation(summary = "Update opening hours rule by id with name, rule, header, and text")
     @PatchMapping("/{id}")
     fun update(
         @PathVariable id: UUID,
         @RequestParam name: String,
-        @RequestParam rule: String
-    ): OpeningHours = service.update(id, name, rule)
+        @RequestParam rule: String,
+        @RequestParam header: String?,
+        @RequestParam text: String?
+    ): OpeningHours = service.update(id, name, rule, header, text)
 
 
 }

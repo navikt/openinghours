@@ -1,6 +1,5 @@
 package no.nav.openinghours.service
 
-import io.swagger.v3.oas.models.headers.Header
 import no.nav.openinghours.model.db.OpeningHours
 import no.nav.openinghours.model.db.OpeningHoursRepository
 import no.nav.openinghours.validator.OpeningHoursValidator
@@ -19,7 +18,7 @@ class OpeningHoursService(
 ) {
     private val log = LoggerFactory.getLogger(OpeningHoursService::class.java)
 
-    fun upsert(name: String, rule: String): OpeningHours {
+    fun upsert(name: String, rule: String, header: String?, text: String?): OpeningHours {
         if (name.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
         }
@@ -31,8 +30,12 @@ class OpeningHoursService(
         }
 
         val entity = repo.findByName(name)
-            ?.apply { this.rule = rule }
-            ?: OpeningHours.create(UUID.randomUUID(), name, rule)
+            ?.apply {
+                this.rule = rule
+                this.header = header
+                this.text = text
+            }
+            ?: OpeningHours.create(UUID.randomUUID(), name, rule, header, text)
 
         return repo.save(entity)
     }
@@ -69,7 +72,7 @@ class OpeningHoursService(
     }
 
     @Transactional
-    fun update(id: UUID, name: String, rule: String): OpeningHours {
+    fun update(id: UUID, name: String, rule: String, header: String?, text: String?): OpeningHours {
         if (name.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
         }
@@ -85,14 +88,12 @@ class OpeningHoursService(
                 ?.apply {
                     this.name = name
                     this.rule = rule
+                    this.header = header
+                    this.text = text
                 }
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found")
 
-            val updated = repo.save(entity)
-            log.info("Update opening hours ok id={} name={} rule={}", id, name, rule)
-            updated
-        } catch (e: ResponseStatusException) {
-            throw e
+            repo.save(entity)
         } catch (e: Exception) {
             log.error("Update opening hours failed id={} name={} rule={} msg={}", id, name, rule, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update opening hours: ${e.message}", e)
