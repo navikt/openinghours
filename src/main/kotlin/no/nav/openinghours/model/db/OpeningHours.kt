@@ -43,16 +43,6 @@ open class OpeningHours(
         updatedAt = null
     )
 
-    protected constructor(name: String, rule: String) : this(
-        name = name,
-        rule = rule,
-        header = "",
-        text = "",
-        onlyShowForNavEmployees = false,
-        createdAt = Instant.now(),
-        updatedAt = null
-    )
-
     companion object {
         @JvmStatic
         fun create(
