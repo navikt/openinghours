@@ -1,7 +1,9 @@
 package no.nav.openinghours.service
 
+import io.swagger.v3.oas.models.headers.Header
 import no.nav.openinghours.model.db.OpeningHours
 import no.nav.openinghours.model.db.OpeningHoursRepository
+import no.nav.openinghours.validator.OpeningHoursValidator
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -11,28 +13,28 @@ import java.util.*
 
 @Service
 class OpeningHoursService(
-    private val repo: OpeningHoursRepository
+    private val repo: OpeningHoursRepository,
+    private val validator: OpeningHoursValidator
+
 ) {
     private val log = LoggerFactory.getLogger(OpeningHoursService::class.java)
 
     fun upsert(name: String, rule: String): OpeningHours {
-        if (name.isBlank() || rule.isBlank())
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "name and rule must be provided")
-
-        return try {
-            val entity = repo.findByName(name)
-                ?.apply {
-                    this.rule = rule
-                }
-                ?: OpeningHours.create(UUID.randomUUID(), name, rule)
-
-            val saved = repo.save(entity)
-            log.info("Upsert opening hours ok name={} rule={}", name, rule)
-            saved
-        } catch (e: Exception) {
-            log.error("Upsert opening hours failed name={} rule={} msg={}", name, rule, e.message, e)
-            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Upsert opening hours: ${e.message}", e)
+        if (name.isBlank()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
         }
+        if (rule.isBlank()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Rule must not be blank")
+        }
+        if (!validator.isAValidRule(rule)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid rule format")
+        }
+
+        val entity = repo.findByName(name)
+            ?.apply { this.rule = rule }
+            ?: OpeningHours.create(UUID.randomUUID(), name, rule)
+
+        return repo.save(entity)
     }
 
     fun get(id: UUID): OpeningHours? =
@@ -68,8 +70,15 @@ class OpeningHoursService(
 
     @Transactional
     fun update(id: UUID, name: String, rule: String): OpeningHours {
-        if (name.isBlank() || rule.isBlank())
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "name and rule must be provided")
+        if (name.isBlank()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
+        }
+        if (rule.isBlank()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Rule must not be blank")
+        }
+        if (!validator.isAValidRule(rule)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid rule format")
+        }
 
         return try {
             val entity = repo.findById(id).orElse(null)
