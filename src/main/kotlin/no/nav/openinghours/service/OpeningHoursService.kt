@@ -25,33 +25,40 @@ class OpeningHoursService(
         text: String?,
         onlyShowForNavEmployees: Boolean = false
     ): OpeningHours {
-        if (name.isBlank()) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
-        }
-        if (rule.isBlank()) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Rule must not be blank")
-        }
-        if (!validator.isAValidRule(rule)) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid rule format")
-        }
-
-        val entity = repo.findByName(name)
-            ?.apply {
-                this.rule = rule
-                this.header = header
-                this.text = text
-                this.onlyShowForNavEmployees = onlyShowForNavEmployees
+        return try {
+            if (name.isBlank()) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
             }
-            ?: OpeningHours.create(
-                UUID.randomUUID(),
-                name,
-                rule,
-                header,
-                text,
-                onlyShowForNavEmployees
-            )
+            if (rule.isBlank()) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Rule must not be blank")
+            }
+            if (!validator.isAValidRule(rule)) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid rule format")
+            }
 
-        return repo.save(entity)
+            val entity = repo.findByName(name)
+                ?.apply {
+                    this.rule = rule
+                    this.header = header
+                    this.text = text
+                    this.onlyShowForNavEmployees = onlyShowForNavEmployees
+                }
+                ?: OpeningHours.create(
+                    UUID.randomUUID(),
+                    name,
+                    rule,
+                    header,
+                    text,
+                    onlyShowForNavEmployees
+                )
+
+            repo.save(entity).also {
+                log.info("Successfully upserted opening hours rule with name={}", name)
+            }
+        } catch (e: Exception) {
+            log.error("Upsert opening hours failed name={} msg={}", name, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Upsert opening hours: ${e.message}", e)
+        }
     }
 
     fun get(id: UUID): OpeningHours? =
