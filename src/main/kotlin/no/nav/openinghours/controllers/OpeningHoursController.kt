@@ -15,8 +15,8 @@ class OpeningHoursController(
     @GetMapping("/{id}")
     fun get(@PathVariable id: UUID): OpeningHours? = service.get(id)
 
-    @Operation(summary = "Upsert opening hours rule with id, name, rule, header, and text")
-    @PutMapping("/{id}")
+    @Operation(summary = "Upsert opening hours rule with name, rule, header, and text")
+    @PutMapping
     fun upsert(
         @RequestParam name: String,
         @RequestParam rule: String,
