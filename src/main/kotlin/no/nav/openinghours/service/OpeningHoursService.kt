@@ -39,16 +39,16 @@ class OpeningHoursService(
             val entity = repo.findByName(name)
                 ?.apply {
                     this.rule = rule
-                    this.header = header
-                    this.text = text
+                    this.header = header ?: " " // Default to a single space
+                    this.text = text ?: " "     // Default to a single space
                     this.onlyShowForNavEmployees = onlyShowForNavEmployees
                 }
                 ?: OpeningHours.create(
                     UUID.randomUUID(),
                     name,
                     rule,
-                    header,
-                    text,
+                    header ?: " ", // Default to a single space
+                    text ?: " ",   // Default to a single space
                     onlyShowForNavEmployees
                 )
 
