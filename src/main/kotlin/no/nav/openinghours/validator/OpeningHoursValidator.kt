@@ -8,7 +8,7 @@ import java.text.SimpleDateFormat
 class OpeningHoursValidator {
 
     fun isAValidRule(rule: String): Boolean {
-        val ruleParts = rule.split("\\s".toRegex())
+        val ruleParts = rule.trim().split(Regex("\\s+"))
         if (ruleParts.size != 4) return false
 
         return isValidDateFormat(ruleParts[0]) &&
