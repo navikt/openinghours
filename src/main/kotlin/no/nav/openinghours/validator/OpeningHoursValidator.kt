@@ -31,11 +31,25 @@ class OpeningHoursValidator {
             return ddmmRule.matches(Regex("^(0?[1-9]|[12][0-9]|3[01])\\.(0?[1-9]|1[0-2])$"))
         }
 
-        return dateRule.matches(Regex("(((0[1-9]|[12][0-9]|3[01])\\.((0[13578]|10|12))\\.(\\d{4}))" +
-                "|((0[1-9]|[12][0-9]|30)\\.(0[469]|11)\\.(\\d{4}))" +
-                "|((0[1-9]|1[0-9]|2[0-8])\\.(02)\\.(\\d{4}))" +
-                "|((29)\\.(02)\\.(\\d{4}))" +
-                ")"))
+        val regexddmmyyyy = Regex("^\\d{2}\\.\\d{2}\\.\\d{4}$") // Matches dd.MM.yyyy format
+        if (!regexddmmyyyy.matches(dateRule)) {
+            println("Date does not match the expected format: $dateRule")
+            return false
+        }
+
+        val regex31Days = Regex("^(0[1-9]|[12][0-9]|3[01])\\.(0[13578]|1[02])\\.(\\d{4})$") // Matches months with 31 days
+        val regex30Days = Regex("^(0[1-9]|[12][0-9]|30)\\.(0[469]|11)\\.(\\d{4})$")         // Matches months with 30 days
+        val regexFebNonLeap = Regex("^(0[1-9]|1[0-9]|2[0-8])\\.02\\.(\\d{4})$")            // Matches February (non-leap years)
+        val regexFebLeap = Regex("^29\\.02\\.(\\d{4})$")                                   // Matches February 29 (leap years)
+
+        return regex31Days.matches(dateRule) ||
+                regex30Days.matches(dateRule) ||
+                regexFebNonLeap.matches(dateRule) ||
+                (regexFebLeap.matches(dateRule) && isLeapYear(dateRule.split(".")[2].toInt()))
+    }
+
+    private fun isLeapYear(year: Int): Boolean {
+        return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
     }
 
     private fun isValidDayInMonthFormat(dayInMonthRule: String): Boolean {
