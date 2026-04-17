@@ -27,7 +27,7 @@ class OpeningHoursValidator {
             if (ruleParts[0] == "??") {
                 return ruleParts[1].matches(Regex("^(0?[1-9]|1[0-2])$"))
             }
-            val ddmmRule = dateRule.substring(0, 5)
+            val ddmmRule = "${ruleParts[0]}.${ruleParts[1]}"
             return ddmmRule.matches(Regex("^(0?[1-9]|[12][0-9]|3[01])\\.(0?[1-9]|1[0-2])$"))
         }
 
