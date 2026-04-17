@@ -118,6 +118,8 @@ class OpeningHoursService(
             }
 
             repo.save(entity)
+        } catch (e: ResponseStatusException) {
+            throw e // Preserve the original HTTP status
         } catch (e: Exception) {
             log.error("Update opening hours failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update opening hours: ${e.message}", e)
