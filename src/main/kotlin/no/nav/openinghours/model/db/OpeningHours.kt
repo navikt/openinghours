@@ -73,7 +73,3 @@ open class OpeningHours(
         updatedAt = Instant.now()
     }
 }
-
-
-
-
