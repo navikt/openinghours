@@ -19,10 +19,10 @@ open class OpeningHours(
     var rule: String,
 
     @Column(name = "header", nullable = true, length = 200)
-    var header: String,
+    var header: String? = null,
 
     @Column(name = "text", nullable = true, length = 200)
-    var text: String,
+    var text: String? = null,
 
     @Column(name = "only_show_for_nav_employees", nullable = false)
     var onlyShowForNavEmployees: Boolean = false,
@@ -43,25 +43,28 @@ open class OpeningHours(
         updatedAt = null
     )
 
-    protected constructor(name: String, rule: String) : this(
-        name = name,
-        rule = rule,
-        header = "",
-        text = "",
-        onlyShowForNavEmployees = false,
-        createdAt = Instant.now(),
-        updatedAt = null
-    )
-
     companion object {
         @JvmStatic
-            fun create(id: UUID, name: String, rule: String): OpeningHours =
-                OpeningHours(id = id, name = name, rule = rule, header = "", text = "",
-                    onlyShowForNavEmployees = false, createdAt = Instant.now(), updatedAt = null)
+        fun create(
+            id: UUID,
+            name: String,
+            rule: String,
+            header: String?,
+            text: String?,
+            onlyShowForNavEmployees : Boolean = false
+        ): OpeningHours = OpeningHours(
+            id = id,
+            name = name,
+            rule = rule,
+            header = header,
+            text = text,
+            onlyShowForNavEmployees = onlyShowForNavEmployees
+        )
     }
 
     @PrePersist
     fun onCreate() {
+        createdAt = Instant.now()
         updatedAt = null
     }
 
@@ -70,5 +73,3 @@ open class OpeningHours(
         updatedAt = Instant.now()
     }
 }
-
-
