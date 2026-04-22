@@ -47,4 +47,6 @@ class OpeningHoursController(
     ): OpeningHours = service.update(id, name, rule, header, text, onlyShowForNavEmployees)
 
 
+
+
 }
