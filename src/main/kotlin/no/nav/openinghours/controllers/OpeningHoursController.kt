@@ -45,8 +45,4 @@ class OpeningHoursController(
         @RequestParam text: String?,
         @RequestParam(required = false) onlyShowForNavEmployees: Boolean?
     ): OpeningHours = service.update(id, name, rule, header, text, onlyShowForNavEmployees)
-
-
-
-
 }
