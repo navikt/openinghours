@@ -43,7 +43,7 @@ data class RuleGroup(
         ): RuleGroup = RuleGroup(
             id = id,
             name = name,
-            ruleGroupIds = emptyList()
+            ruleGroupIds = ruleGroupIds
         )
     }
 
