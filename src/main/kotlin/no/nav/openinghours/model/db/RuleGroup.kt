@@ -6,7 +6,7 @@ import java.util.*
 
 @Entity
 @Table(name = "rule_group")
-data class RuleGroup(
+open class RuleGroup(
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", nullable = false, updatable = false)

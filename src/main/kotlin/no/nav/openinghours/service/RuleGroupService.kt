@@ -45,6 +45,9 @@ class RuleGroupService (private val rulegrouprepo: RuleGroupRepository
                 log.info("Successfully upserted group with name={}", name)
             }
 
+        } catch (e: ResponseStatusException) {
+            log.error("Upsert group failed name={} msg={}", name, e.reason, e)
+            throw e
         } catch (e: Exception) {
             log.error("Upsert group failed name={} msg={}", name, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Upsert group: ${e.message}", e)
