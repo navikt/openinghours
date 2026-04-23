@@ -125,8 +125,4 @@ class OpeningHoursService(
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update opening hours: ${e.message}", e)
         }
     }
-
-
-
-
 }
