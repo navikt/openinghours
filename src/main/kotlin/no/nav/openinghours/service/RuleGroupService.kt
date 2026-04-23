@@ -18,33 +18,28 @@ class RuleGroupService (private val rulegrouprepo: RuleGroupRepository
         name: String,
         ruleGroupId: UUID
     ): RuleGroup {
-        return try {
-            if (name.isBlank()) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
+            if (ruleGroupId == null || ruleGroupId.toString().isBlank()) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "ruleGroupId is invalid")
             }
 
-            // Check for duplicate name
-            if (rulegrouprepo.findByName(name) != null) {
-                throw ResponseStatusException(HttpStatus.CONFLICT, "A group with the name '$name' already exists")
-            }
-
-            // Check for circular dependency
-            val existingRuleGroup = rulegrouprepo.findById(ruleGroupId).orElse(null)
-            if (existingRuleGroup != null && hasCircularDependency(existingRuleGroup, rulegrouprepo)) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Circular dependency detected in ruleGroupId")
-            }
-
-            // Create the RuleGroup
+            val existingRuleGroup = rulegrouprepo.findByName(name)
             val entity = RuleGroup.create(
-                UUID.randomUUID(),
+                existingRuleGroup?.id ?: UUID.randomUUID(),
                 name,
                 listOf(ruleGroupId)
             )
+
+            if (hasCircularDependency(entity, rulegrouprepo)) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Circular dependency detected in ruleGroupId")
+            }
 
             rulegrouprepo.save(entity).also {
                 log.info("Successfully upserted group with name={}", name)
             }
 
+        } catch (e: ResponseStatusException) {
+            log.error("Upsert group failed name={} msg={}", name, e.reason, e)
+            throw e
         } catch (e: ResponseStatusException) {
             log.error("Upsert group failed name={} msg={}", name, e.reason, e)
             throw e
