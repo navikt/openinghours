@@ -66,7 +66,8 @@ class RuleGroupService (private val rulegrouprepo: RuleGroupRepository
 
             visitedGroups.add(currentRuleGroup.id)
 
-            val subGroups = currentRuleGroup.ruleGroupIds?.mapNotNull { rulegrouprepo.findById(it).orElse(null) } ?: emptyList()
+            val subGroupIds = currentRuleGroup.ruleGroupIds ?: emptyList()
+            val subGroups = rulegrouprepo.findAllById(subGroupIds).toList()
             for (subGroup in subGroups) {
                 if (checkCircularDependency(subGroup)) {
                     return true
