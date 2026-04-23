@@ -11,7 +11,7 @@ CREATE TABLE rule
     PRIMARY KEY (id)
 );
 
-CREATE TABLE group
+CREATE TABLE rule_group
 (
     id                      UUID         NOT NULL,
     name                    VARCHAR(100) NOT NULL,

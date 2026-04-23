@@ -5,8 +5,8 @@ import java.time.Instant
 import java.util.*
 
 @Entity
-@Table(name = "group")
-data class Group(
+@Table(name = "rule_group")
+data class RuleGroup(
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", nullable = false, updatable = false)
@@ -18,7 +18,7 @@ data class Group(
     @ElementCollection
     @CollectionTable(name = "rule_group_ids", joinColumns = [JoinColumn(name = "group_id")])
     @Column(name = "rule_group_id")
-    var ruleGroupIds: List<UUID> = emptyList(),
+    var ruleGroupIds: List<UUID>? = null,
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
@@ -40,7 +40,7 @@ data class Group(
             id: UUID,
             name: String,
             ruleGroupIds: List<UUID>
-        ): Group = Group(
+        ): RuleGroup = RuleGroup(
             id = id,
             name = name,
             ruleGroupIds = emptyList()

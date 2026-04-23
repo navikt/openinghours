@@ -4,6 +4,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 import java.util.*
 
 
-interface GroupRepository : JpaRepository<Group, UUID> {
-    fun findByName(name: String): Group?
+interface RuleGroupRepository : JpaRepository<RuleGroup, UUID> {
+    fun findByName(name: String): RuleGroup?
 }
