@@ -16,7 +16,7 @@ class RuleGroupService (private val rulegrouprepo: RuleGroupRepository
 
     fun upsert(
         name: String,
-        ruleGroupId: UUID?
+        ruleGroupId: UUID
     ): RuleGroup {
         return try {
             if (name.isBlank()) {
@@ -26,11 +26,6 @@ class RuleGroupService (private val rulegrouprepo: RuleGroupRepository
             // Check for duplicate name
             if (rulegrouprepo.findByName(name) != null) {
                 throw ResponseStatusException(HttpStatus.CONFLICT, "A group with the name '$name' already exists")
-            }
-
-            // Validate ruleGroupId
-            if (ruleGroupId == null || ruleGroupId.toString().isBlank()) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "ruleGroupId is invalid")
             }
 
             // Check for circular dependency
