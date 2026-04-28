@@ -31,7 +31,7 @@ spec:
           cluster: prod-gcp
   gcp:
     sqlInstances:
-        - name: openingtimes
+        - name: openinghours
           type: POSTGRES_17
           tier: db-custom-2-3840
           databases:
