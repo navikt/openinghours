@@ -11,12 +11,12 @@ import org.springframework.web.server.ResponseStatusException
 import java.util.*
 
 @Service
-class OpeningHoursService(
+class RuleService(
     private val repo: RuleRepository,
     private val validator: RuleValidator
 
 ) {
-    private val log = LoggerFactory.getLogger(OpeningHoursService::class.java)
+    private val log = LoggerFactory.getLogger(RuleService::class.java)
 
     fun upsert(
         name: String,

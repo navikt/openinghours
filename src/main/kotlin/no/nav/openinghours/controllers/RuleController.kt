@@ -2,14 +2,14 @@ package no.nav.openinghours.controllers
 
 import io.swagger.v3.oas.annotations.Operation
 import no.nav.openinghours.model.db.Rule
-import no.nav.openinghours.service.OpeningHoursService
+import no.nav.openinghours.service.RuleService
 import org.springframework.web.bind.annotation.*
 import java.util.*
 
 @RestController
 @RequestMapping("/api/openinghours/rule")
 class RuleController(
-    private val service: OpeningHoursService
+    private val service: RuleService
 ) {
     @Operation(summary = "Get opening hours rule id")
     @GetMapping("/{id}")
