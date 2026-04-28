@@ -1,8 +1,8 @@
 package no.nav.openinghours.service
 
-import no.nav.openinghours.model.db.OpeningHours
-import no.nav.openinghours.model.db.OpeningHoursRepository
-import no.nav.openinghours.validator.OpeningHoursValidator
+import no.nav.openinghours.model.db.Rule
+import no.nav.openinghours.model.db.RuleRepository
+import no.nav.openinghours.validator.RuleValidator
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -12,8 +12,8 @@ import java.util.*
 
 @Service
 class OpeningHoursService(
-    private val repo: OpeningHoursRepository,
-    private val validator: OpeningHoursValidator
+    private val repo: RuleRepository,
+    private val validator: RuleValidator
 
 ) {
     private val log = LoggerFactory.getLogger(OpeningHoursService::class.java)
@@ -24,7 +24,7 @@ class OpeningHoursService(
         header: String?,
         text: String?,
         onlyShowForNavEmployees: Boolean = false
-    ): OpeningHours {
+    ): Rule {
         return try {
             if (name.isBlank()) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
@@ -43,7 +43,7 @@ class OpeningHoursService(
                     this.text = text ?: " "     // Default to a single space
                     this.onlyShowForNavEmployees = onlyShowForNavEmployees
                 }
-                ?: OpeningHours.create(
+                ?: Rule.create(
                     UUID.randomUUID(),
                     name,
                     rule,
@@ -61,7 +61,7 @@ class OpeningHoursService(
         }
     }
 
-    fun get(id: UUID): OpeningHours? =
+    fun get(id: UUID): Rule? =
         try {
             repo.findById(id).orElse(null)
         } catch (e: Exception) {
@@ -69,9 +69,9 @@ class OpeningHoursService(
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch opening hours: ${e.message}", e)
         }
 
-    fun getAll(): List<OpeningHours> =
+    fun getAll(): List<Rule> =
         try {
-            repo.findAll() // Returns List<OpeningHours>
+            repo.findAll() // Returns List<Rule>
         } catch (e: Exception) {
             log.error("Fetch all opening hours failed msg={}", e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch all opening hours: ${e.message}", e)
@@ -100,7 +100,7 @@ class OpeningHoursService(
         header: String?,
         text: String?,
         onlyShowForNavEmployees: Boolean? = null
-    ): OpeningHours {
+    ): Rule {
         return try {
             val entity = repo.findById(id).orElseThrow {
                 ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found")

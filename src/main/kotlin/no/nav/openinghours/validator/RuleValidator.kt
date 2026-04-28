@@ -5,7 +5,7 @@ import java.text.ParseException
 import java.text.SimpleDateFormat
 
 @Component
-class OpeningHoursValidator {
+class RuleValidator {
 
     fun isAValidRule(rule: String): Boolean {
         val ruleParts = rule.trim().split(Regex("\\s+"))
