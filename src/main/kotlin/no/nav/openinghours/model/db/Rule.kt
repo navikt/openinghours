@@ -6,7 +6,7 @@ import java.util.*
 
 @Entity
 @Table(name = "rule")
-open class OpeningHours(
+open class Rule(
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", nullable = false, updatable = false)
@@ -52,7 +52,7 @@ open class OpeningHours(
             header: String?,
             text: String?,
             onlyShowForNavEmployees : Boolean = false
-        ): OpeningHours = OpeningHours(
+        ): Rule = Rule(
             id = id,
             name = name,
             rule = rule,
