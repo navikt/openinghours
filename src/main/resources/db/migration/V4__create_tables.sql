@@ -1,11 +1,16 @@
 CREATE TABLE oh_group
 (
-    id             UUID         NOT NULL,
-    name           VARCHAR(100) NOT NULL,
-    rule_group_ids VARCHAR ARRAY NULL,
-    created_at     timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at     timestamp with time zone NULL,
+    id         UUID         NOT NULL,
+    name       VARCHAR(100) NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT NOW(),
+    updated_at timestamp with time zone NULL,
     PRIMARY KEY (id)
+);
+
+CREATE TABLE oh_group_rule_group_ids
+(
+    oh_group_id   UUID    NOT NULL REFERENCES oh_group (id) ON DELETE CASCADE,
+    rule_group_id VARCHAR NOT NULL
 );
 
 CREATE TABLE service
