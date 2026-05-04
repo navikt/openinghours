@@ -7,12 +7,6 @@ CREATE TABLE oh_group
     PRIMARY KEY (id)
 );
 
-CREATE TABLE oh_group_rule_group_ids
-(
-    oh_group_id   UUID    NOT NULL REFERENCES oh_group (id) ON DELETE CASCADE,
-    rule_group_id VARCHAR NOT NULL
-);
-
 CREATE TABLE service
 (
     id          UUID         NOT NULL,
