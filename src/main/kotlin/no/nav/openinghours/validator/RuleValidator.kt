@@ -65,10 +65,12 @@ class RuleValidator {
         if (containsL && lPosition != dayInMonthRule.length - 1) return false
 
         var lowerRange = ruleParts[0].toIntOrNull() ?: return false
+        if (lowerRange < 1 || lowerRange > 31) return false
         for (i in 1 until ruleParts.size) {
             val part = ruleParts[i]
             if (part == "L") break  // L is valid only at end (already checked above)
             val upperRange = part.toIntOrNull() ?: return false
+            if (upperRange < 1 || upperRange > 31) return false
             if (lowerRange > upperRange) return false
             lowerRange = upperRange
         }
