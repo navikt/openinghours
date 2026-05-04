@@ -66,7 +66,9 @@ class RuleValidator {
 
         var lowerRange = ruleParts[0].toIntOrNull() ?: return false
         for (i in 1 until ruleParts.size) {
-            val upperRange = ruleParts[i].toIntOrNull() ?: return false
+            val part = ruleParts[i]
+            if (part == "L") break  // L is valid only at end (already checked above)
+            val upperRange = part.toIntOrNull() ?: return false
             if (lowerRange > upperRange) return false
             lowerRange = upperRange
         }
@@ -82,8 +84,10 @@ class RuleValidator {
         }
 
         var lowerRange = ruleParts[0].toIntOrNull() ?: return false
+        if (lowerRange < 1 || lowerRange > 7) return false
         for (i in 1 until ruleParts.size) {
             val upperRange = ruleParts[i].toIntOrNull() ?: return false
+            if (upperRange < 1 || upperRange > 7) return false
             if (lowerRange > upperRange) return false
             lowerRange = upperRange
         }
