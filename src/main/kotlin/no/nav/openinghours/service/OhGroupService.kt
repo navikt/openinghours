@@ -22,7 +22,7 @@ class OhGroupService(
         }
         return try {
             val group = OhGroup.create(name = name, ruleGroupIds = ruleGroupIds)
-            repo.save(group).also { log.info("Saved oh_group name={}", name) }
+            repo.saveAndFlush(group).also { log.info("Saved oh_group name={}", name) }
         } catch (e: ResponseStatusException) {
             throw e
         } catch (e: DataIntegrityViolationException) {
