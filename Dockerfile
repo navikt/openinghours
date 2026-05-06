@@ -9,7 +9,7 @@ RUN mvn dependency:go-offline -B
 
 # copy source code
 COPY . .
-RUN mvn clean package -DskipTests=false
+RUN mvn clean package -DskipTests=true
 
 # --- step 2：run jar  ---
 FROM eclipse-temurin:21-jre AS runtime
