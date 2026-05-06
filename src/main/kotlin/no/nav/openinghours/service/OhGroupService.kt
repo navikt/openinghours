@@ -17,11 +17,11 @@ class OhGroupService(
 
     fun save(name: String, ruleGroupIds: List<UUID>): OhGroup {
         if (name.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
+        if (graphHasCycle(ruleGroupIds)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Group contains circular dependency")
+        }
         return try {
             val group = OhGroup.create(name = name, ruleGroupIds = ruleGroupIds)
-            if (hasCircularDependency(group.id, ruleGroupIds)) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Group contains circular dependency")
-            }
             repo.save(group).also { log.info("Saved oh_group name={}", name) }
         } catch (e: ResponseStatusException) {
             throw e
@@ -33,12 +33,23 @@ class OhGroupService(
         }
     }
 
-    private fun hasCircularDependency(groupId: UUID, candidateIds: List<UUID>): Boolean {
-        if (candidateIds.contains(groupId)) return true
-        return candidateIds.any { childId ->
-            repo.findById(childId).map { child ->
-                hasCircularDependency(groupId, child.ruleGroupUuids)
-            }.orElse(false)
+    // DFS over the existing group graph starting from ruleGroupIds.
+    // Returns true if any cycle is reachable (i.e. a node is visited twice on the same DFS path).
+    private fun graphHasCycle(rootIds: List<UUID>): Boolean {
+        val visited = mutableSetOf<UUID>()
+        val onStack = mutableSetOf<UUID>()
+
+        fun dfs(id: UUID): Boolean {
+            if (id in onStack) return true
+            if (id in visited) return false
+            visited += id
+            onStack += id
+            val children = repo.findById(id).map { it.ruleGroupUuids }.orElse(emptyList())
+            if (children.any { dfs(it) }) return true
+            onStack -= id
+            return false
         }
+
+        return rootIds.any { dfs(it) }
     }
 }
