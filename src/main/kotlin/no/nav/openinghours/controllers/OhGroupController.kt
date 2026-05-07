@@ -21,5 +21,12 @@ class OhGroupController(
         @RequestBody(required = false) ruleGroupIds: List<UUID>?
     ): OhGroup = service.save(name, ruleGroupIds ?: emptyList())
 
+    @Operation(summary = "Get an opening hours group by id")
+    @GetMapping("/{id}")
+    fun get(@PathVariable id: UUID): OhGroup = service.get(id)
+
+    @Operation(summary = "Get all opening hours groups")
+    @GetMapping
+    fun getAll(): List<OhGroup> = service.getAll()
 
 }

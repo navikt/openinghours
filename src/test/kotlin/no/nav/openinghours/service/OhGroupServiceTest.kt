@@ -51,4 +51,12 @@ class OhGroupServiceTest {
         assertThat(ex.statusCode).isEqualTo(HttpStatus.CONFLICT)
     }
 
+    @Test
+    fun `get non-existing throws NOT_FOUND`() {
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.get(UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
 }
