@@ -51,4 +51,33 @@ class OhGroupServiceTest {
         assertThat(ex.statusCode).isEqualTo(HttpStatus.CONFLICT)
     }
 
+    @Test
+    fun `get non-existing throws NOT_FOUND`() {
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.get(UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
+    @Test
+    fun `save then get returns same group`() {
+        val saved = service.save("weekend", emptyList())
+
+        val found = service.get(saved.id)
+
+        assertThat(found.id).isEqualTo(saved.id)
+        assertThat(found.name).isEqualTo(saved.name)
+    }
+
+    @Test
+    fun `getAll returns persisted groups`() {
+        val first = service.save("group-one", emptyList())
+        val second = service.save("group-two", emptyList())
+
+        val groups = service.getAll()
+
+        assertThat(groups.map { it.id }).contains(first.id, second.id)
+        assertThat(groups.map { it.name }).contains(first.name, second.name)
+    }
+
 }

@@ -33,6 +33,19 @@ class OhGroupService(
         }
     }
 
+    fun get(id: UUID): OhGroup =
+        repo.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $id")
+        }
+
+    fun getAll(): List<OhGroup> =
+        try {
+            repo.findAll()
+        } catch (e: Exception) {
+            log.error("Fetch all groups failed msg={}", e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to fetch groups", e)
+        }
+
     // DFS over the existing group graph starting from ruleGroupIds.
     // Returns true if any cycle is reachable (i.e. a node is visited twice on the same DFS path).
     private fun graphHasCycle(rootIds: List<UUID>): Boolean {
