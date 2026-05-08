@@ -8,6 +8,8 @@ import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
+data class OhGroupRequest(val name: String?, val ruleGroupIds: List<UUID>?)
+
 @RestController
 @RequestMapping("/api/openinghours/group")
 @Validated
@@ -28,5 +30,16 @@ class OhGroupController(
     @Operation(summary = "Get all opening hours groups")
     @GetMapping
     fun getAll(): List<OhGroup> = service.getAll()
+
+    @Operation(summary = "Update an opening hours group by id")
+    @PutMapping("/{id}")
+    fun update(
+        @PathVariable id: UUID,
+        @RequestBody request: OhGroupRequest
+    ): OhGroup = service.update(id, request.name, request.ruleGroupIds)
+
+    @Operation(summary = "Delete an opening hours group by id")
+    @DeleteMapping("/{id}")
+    fun delete(@PathVariable id: UUID): Boolean = service.delete(id)
 
 }
