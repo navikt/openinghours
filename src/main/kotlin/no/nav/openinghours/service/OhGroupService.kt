@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.util.UUID
 
@@ -45,6 +46,43 @@ class OhGroupService(
             log.error("Fetch all groups failed msg={}", e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to fetch groups", e)
         }
+
+    @Transactional
+    fun update(id: UUID, name: String?, ruleGroupIds: List<UUID>?): OhGroup {
+        val group = repo.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $id")
+        }
+        if (!name.isNullOrBlank()) group.name = name
+        if (ruleGroupIds != null) {
+            if (graphHasCycle(ruleGroupIds)) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Group contains circular dependency")
+            }
+            group.ruleGroupIds = ruleGroupIds.map { it.toString() }.toTypedArray().ifEmpty { null }
+        }
+        return try {
+            repo.saveAndFlush(group).also { log.info("Updated oh_group id={}", id) }
+        } catch (e: DataIntegrityViolationException) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Group with name '${group.name}' already exists")
+        } catch (e: Exception) {
+            log.error("Update oh_group failed id={} msg={}", id, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update group: ${e.message}", e)
+        }
+    }
+
+    @Transactional
+    fun delete(id: UUID): Boolean {
+        return try {
+            if (repo.existsById(id)) {
+                repo.deleteById(id)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            log.error("Delete oh_group failed id={} msg={}", id, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Delete group: ${e.message}", e)
+        }
+    }
 
     // DFS over the existing group graph starting from ruleGroupIds.
     // Returns true if any cycle is reachable (i.e. a node is visited twice on the same DFS path).
