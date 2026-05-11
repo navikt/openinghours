@@ -36,8 +36,8 @@ class OhGroupController(
         @RequestBody request: OhGroupRequest
     ): OhGroup = service.update(
         id,
-        request.name ?: "Default Name", // Provide a default name if null
-        request.ruleGroupIds ?: emptyList() // Use an empty list if null
+        request.name,
+        request.ruleGroupIds
     )
 
     @Operation(summary = "Delete an opening hours group by id")
