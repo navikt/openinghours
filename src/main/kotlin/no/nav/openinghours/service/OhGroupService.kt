@@ -113,12 +113,19 @@ class OhGroupService(
 
     // Mirrors statusplattform's containsCircularGroupDependency:
     // checks if any UUID in ruleGroupIds is the group itself or transitively references it.
-    private fun hasCircularDependency(groupId: UUID, candidateIds: List<UUID>): Boolean {
+    private fun hasCircularDependency(groupId: UUID, candidateIds: List<UUID>): Boolean =
+        hasCircularDependency(groupId, candidateIds, mutableSetOf())
+
+    private fun hasCircularDependency(groupId: UUID, candidateIds: List<UUID>, visited: MutableSet<UUID>): Boolean {
         if (candidateIds.contains(groupId)) return true
         return candidateIds.any { childId ->
-            repo.findById(childId).map { child ->
-                hasCircularDependency(groupId, child.ruleGroupUuids)
-            }.orElse(false)
+            if (!visited.add(childId)) {
+                false
+            } else {
+                repo.findById(childId).map { child ->
+                    hasCircularDependency(groupId, child.ruleGroupUuids, visited)
+                }.orElse(false)
+            }
         }
     }
 }
