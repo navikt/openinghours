@@ -75,14 +75,20 @@ class OhGroupService(
     fun delete(id: UUID): Boolean {
         return try {
             if (!repo.existsById(id)) return false
-            repo.findAll().forEach { parent ->
-                val updated = parent.ruleGroupUuids.filter { it != id }
-                if (updated.size < parent.ruleGroupUuids.size) {
-                    parent.ruleGroupIds = updated.map { it.toString() }.toTypedArray().ifEmpty { null }
-                    repo.save(parent)
-                }
+
+            val idStr = id.toString()
+            val affected = repo.findAllReferencing(idStr)
+
+            affected.forEach { parent ->
+                parent.ruleGroupIds = parent.ruleGroupIds
+                    ?.filter { it != idStr }
+                    ?.toTypedArray()
+                    ?.ifEmpty { null }
             }
+
+            repo.saveAll(affected)
             repo.deleteById(id)
+
             log.info("Deleted oh_group id={}", id)
             true
         } catch (e: Exception) {
