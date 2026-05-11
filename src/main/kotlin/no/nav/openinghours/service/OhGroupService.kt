@@ -75,7 +75,6 @@ class OhGroupService(
     fun delete(id: UUID): Boolean {
         return try {
             if (!repo.existsById(id)) return false
-
             val idStr = id.toString()
             val affected = repo.findAllReferencing(idStr)
 
