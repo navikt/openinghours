@@ -80,4 +80,23 @@ class OhGroupServiceTest {
         assertThat(groups.map { it.name }).contains(first.name, second.name)
     }
 
+    @Test
+    fun `delete removes group and cleans parent references`() {
+        val child = service.save("child", emptyList())
+        val parent = service.save("parent", listOf(child.id))
+        service.delete(child.id)
+        val reloaded = service.get(parent.id)
+        assertThat(reloaded.ruleGroupUuids).doesNotContain(child.id)
+    }
+
+    @Test
+    fun `circular dependency is rejected`() {
+        val a = service.save("a", emptyList())
+        val b = service.save("b", listOf(a.id))
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.update(a.id, null, listOf(b.id))
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+    }
+
 }

@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.util.UUID
 
@@ -46,6 +47,50 @@ class OhGroupService(
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to fetch groups", e)
         }
 
+    @Transactional
+    fun update(id: UUID, name: String?, ruleGroupIds: List<UUID>?): OhGroup {
+        return try {
+            val entity = repo.findById(id).orElseThrow {
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found")
+            }.apply {
+                if (!name.isNullOrBlank()) this.name = name
+                if (ruleGroupIds != null) {
+                    if (hasCircularDependency(id, ruleGroupIds)) {
+                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Group contains circular dependency")
+                    }
+                    this.ruleGroupIds = ruleGroupIds.map { it.toString() }.toTypedArray().ifEmpty { null }
+                }
+            }
+            repo.save(entity).also { log.info("Updated oh_group id={}", id) }
+        } catch (e: ResponseStatusException) {
+            throw e
+        } catch (e: Exception) {
+            log.error("Update oh_group failed id={} msg={}", id, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update group: ${e.message}", e)
+        }
+    }
+
+    @Transactional
+    fun delete(id: UUID): Boolean {
+        return try {
+            if (!repo.existsById(id)) return false
+            // Remove this group's id from rule_group_ids of any parent groups
+            repo.findAll().forEach { parent ->
+                val updated = parent.ruleGroupUuids.filter { it != id }
+                if (updated.size < parent.ruleGroupUuids.size) {
+                    parent.ruleGroupIds = updated.map { it.toString() }.toTypedArray().ifEmpty { null }
+                    repo.save(parent)
+                }
+            }
+            repo.deleteById(id)
+            log.info("Deleted oh_group id={}", id)
+            true
+        } catch (e: Exception) {
+            log.error("Delete oh_group failed id={} msg={}", id, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Delete group: ${e.message}", e)
+        }
+    }
+
     // DFS over the existing group graph starting from ruleGroupIds.
     // Returns true if any cycle is reachable (i.e. a node is visited twice on the same DFS path).
     private fun graphHasCycle(rootIds: List<UUID>): Boolean {
@@ -64,5 +109,16 @@ class OhGroupService(
         }
 
         return rootIds.any { dfs(it) }
+    }
+
+    // Mirrors statusplattform's containsCircularGroupDependency:
+    // checks if any UUID in ruleGroupIds is the group itself or transitively references it.
+    private fun hasCircularDependency(groupId: UUID, candidateIds: List<UUID>): Boolean {
+        if (candidateIds.contains(groupId)) return true
+        return candidateIds.any { childId ->
+            repo.findById(childId).map { child ->
+                hasCircularDependency(groupId, child.ruleGroupUuids)
+            }.orElse(false)
+        }
     }
 }
