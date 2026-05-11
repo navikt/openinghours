@@ -49,21 +49,22 @@ class OhGroupService(
 
     @Transactional
     fun update(id: UUID, name: String?, ruleGroupIds: List<UUID>?): OhGroup {
-        return try {
-            val entity = repo.findById(id).orElseThrow {
-                ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found")
-            }.apply {
-                if (!name.isNullOrBlank()) this.name = name
-                if (ruleGroupIds != null) {
-                    if (hasCircularDependency(id, ruleGroupIds)) {
-                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Group contains circular dependency")
-                    }
-                    this.ruleGroupIds = ruleGroupIds.map { it.toString() }.toTypedArray().ifEmpty { null }
-                }
+        val group = repo.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $id")
+        }
+        if (!name.isNullOrBlank()) group.name = name
+        if (ruleGroupIds != null) {
+            if (graphHasCycle(ruleGroupIds, selfId = id)) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Group contains circular dependency")
             }
-            repo.save(entity).also { log.info("Updated oh_group id={}", id) }
+            group.ruleGroupIds = ruleGroupIds.map { it.toString() }.toTypedArray().ifEmpty { null }
+        }
+        return try {
+            repo.saveAndFlush(group).also { log.info("Updated oh_group id={}", id) }
         } catch (e: ResponseStatusException) {
             throw e
+        } catch (e: DataIntegrityViolationException) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Group with name '${group.name}' already exists")
         } catch (e: Exception) {
             log.error("Update oh_group failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update group: ${e.message}", e)
@@ -74,7 +75,6 @@ class OhGroupService(
     fun delete(id: UUID): Boolean {
         return try {
             if (!repo.existsById(id)) return false
-            // Remove this group's id from rule_group_ids of any parent groups
             repo.findAll().forEach { parent ->
                 val updated = parent.ruleGroupUuids.filter { it != id }
                 if (updated.size < parent.ruleGroupUuids.size) {
@@ -91,11 +91,13 @@ class OhGroupService(
         }
     }
 
-    // DFS over the existing group graph starting from ruleGroupIds.
+    // DFS over the existing group graph starting from rootIds.
+    // selfId is pre-placed on the stack so any path leading back to the group being updated is detected as a cycle.
     // Returns true if any cycle is reachable (i.e. a node is visited twice on the same DFS path).
-    private fun graphHasCycle(rootIds: List<UUID>): Boolean {
+    private fun graphHasCycle(rootIds: List<UUID>, selfId: UUID? = null): Boolean {
         val visited = mutableSetOf<UUID>()
         val onStack = mutableSetOf<UUID>()
+        if (selfId != null) onStack += selfId
 
         fun dfs(id: UUID): Boolean {
             if (id in onStack) return true
@@ -111,21 +113,5 @@ class OhGroupService(
         return rootIds.any { dfs(it) }
     }
 
-    // Mirrors statusplattform's containsCircularGroupDependency:
-    // checks if any UUID in ruleGroupIds is the group itself or transitively references it.
-    private fun hasCircularDependency(groupId: UUID, candidateIds: List<UUID>): Boolean =
-        hasCircularDependency(groupId, candidateIds, mutableSetOf())
-
-    private fun hasCircularDependency(groupId: UUID, candidateIds: List<UUID>, visited: MutableSet<UUID>): Boolean {
-        if (candidateIds.contains(groupId)) return true
-        return candidateIds.any { childId ->
-            if (!visited.add(childId)) {
-                false
-            } else {
-                repo.findById(childId).map { child ->
-                    hasCircularDependency(groupId, child.ruleGroupUuids, visited)
-                }.orElse(false)
-            }
-        }
-    }
 }
+
