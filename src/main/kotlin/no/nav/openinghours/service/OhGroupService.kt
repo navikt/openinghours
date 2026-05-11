@@ -61,6 +61,8 @@ class OhGroupService(
         }
         return try {
             repo.saveAndFlush(group).also { log.info("Updated oh_group id={}", id) }
+        } catch (e: ResponseStatusException) {
+            throw e
         } catch (e: DataIntegrityViolationException) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Group with name '${group.name}' already exists")
         } catch (e: Exception) {
@@ -73,13 +75,20 @@ class OhGroupService(
     fun delete(id: UUID): Boolean {
         return try {
             if (!repo.existsById(id)) return false
-            repo.deleteById(id)
             val idStr = id.toString()
-            val affected = repo.findAll().filter { it.ruleGroupIds?.contains(idStr) == true }
-            affected.forEach { g ->
-                g.ruleGroupIds = g.ruleGroupIds!!.filter { it != idStr }.toTypedArray().ifEmpty { null }
+            val affected = repo.findAllReferencing(idStr)
+
+            affected.forEach { parent ->
+                parent.ruleGroupIds = parent.ruleGroupIds
+                    ?.filter { it != idStr }
+                    ?.toTypedArray()
+                    ?.ifEmpty { null }
             }
+
             repo.saveAll(affected)
+            repo.deleteById(id)
+
+            log.info("Deleted oh_group id={}", id)
             true
         } catch (e: Exception) {
             log.error("Delete oh_group failed id={} msg={}", id, e.message, e)
@@ -108,4 +117,6 @@ class OhGroupService(
 
         return rootIds.any { dfs(it) }
     }
+
 }
+
