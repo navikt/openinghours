@@ -22,6 +22,7 @@ class RuleService(
 ) {
     private val log = LoggerFactory.getLogger(RuleService::class.java)
     private val ruleNameUniqueConstraint = "uq_rule_name"
+    private val uniqueConstraintViolationSqlState = "23505"
 
     fun upsert(
         name: String,
@@ -164,7 +165,7 @@ class RuleService(
                 return true
             }
             if (current is SQLException &&
-                current.sqlState == "23505" &&
+                current.sqlState == uniqueConstraintViolationSqlState &&
                 current.message?.contains(ruleNameUniqueConstraint) == true
             ) {
                 return true

@@ -15,6 +15,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
+import org.springframework.dao.DataIntegrityViolationException
 @SpringBootTest
 @Testcontainers
 @Transactional
@@ -103,5 +104,7 @@ class RuleServiceTest {
             ruleService.upsert("x".repeat(101), VALID_RULE, null, null)
         }
         assertThat(ex.statusCode.value()).isEqualTo(500)
+        assertThat(ex.reason).contains("Upsert opening hours")
+        assertThat(ex.cause).isInstanceOf(DataIntegrityViolationException::class.java)
     }
 }
