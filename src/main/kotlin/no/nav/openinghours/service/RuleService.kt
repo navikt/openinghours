@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.util.*
 import no.nav.openinghours.model.db.OhGroupRepository
+import org.springframework.dao.DataIntegrityViolationException
 
 @Service
 class RuleService(
@@ -53,12 +54,13 @@ class RuleService(
                     onlyShowForNavEmployees
                 )
 
-            repo.save(entity).also {
+            repo.saveAndFlush(entity).also {
                 log.info("Successfully upserted opening hours rule with name={}", name)
             }
-
         } catch (e: ResponseStatusException) {
-            throw e  // preserve 4xx status codes
+            throw e
+        } catch (e: DataIntegrityViolationException) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Rule with name '$name' already exists")
         } catch (e: Exception) {
             log.error("Upsert opening hours failed name={} msg={}", name, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Upsert opening hours: ${e.message}", e)
@@ -131,13 +133,16 @@ class RuleService(
                 this.onlyShowForNavEmployees = onlyShowForNavEmployees ?: this.onlyShowForNavEmployees
             }
 
-            repo.save(entity)
+            repo.saveAndFlush(entity)
         } catch (e: ResponseStatusException) {
             throw e // Preserve the original HTTP status
+        } catch (e: DataIntegrityViolationException) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Rule with name '${name ?: id}' already exists")
         } catch (e: Exception) {
             log.error("Update opening hours failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update opening hours: ${e.message}", e)
         }
+
     }
 
 

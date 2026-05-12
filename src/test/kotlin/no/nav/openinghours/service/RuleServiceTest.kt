@@ -1,7 +1,9 @@
 package no.nav.openinghours.service
 import no.nav.openinghours.model.db.OhGroupRepository
+import no.nav.openinghours.model.db.RuleRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -11,6 +13,8 @@ import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.util.UUID
+import org.springframework.http.HttpStatus
+import org.springframework.web.server.ResponseStatusException
 @SpringBootTest
 @Testcontainers
 @Transactional
@@ -30,6 +34,7 @@ class RuleServiceTest {
     @Autowired lateinit var ruleService: RuleService
     @Autowired lateinit var groupService: OhGroupService
     @Autowired lateinit var groupRepo: OhGroupRepository
+    @Autowired lateinit var ruleRepo: RuleRepository
     @Test
     fun `delete cascades and removes rule id from parent group`() {
         val rule = ruleService.upsert("rule-cascade", VALID_RULE, null, null)
@@ -71,5 +76,24 @@ class RuleServiceTest {
         val rule = ruleService.upsert("rule-orphan", VALID_RULE, null, null)
         val deleted = ruleService.delete(rule.id)
         assertThat(deleted).isTrue()
+    }
+
+    @Test
+    fun `upsert with same name updates existing rule instead of creating duplicate`() {
+        val first = ruleService.upsert("unique-rule", VALID_RULE, null, null)
+        val second = ruleService.upsert("unique-rule", "??.??.???? ? ? 09:00-17:00", null, null)
+        assertThat(second.id).isEqualTo(first.id)  // same entity, updated
+        assertThat(ruleRepo.findAll().count { it.name == "unique-rule" }).isEqualTo(1)
+    }
+
+    @Test
+    fun `update to a name already taken by another rule throws 409`() {
+        ruleService.upsert("taken-name", VALID_RULE, null, null)
+        val other = ruleService.upsert("other-rule", VALID_RULE, null, null)
+
+        val ex = assertThrows<ResponseStatusException> {
+            ruleService.update(other.id, "taken-name", null, null, null)
+        }
+        assertThat(ex.statusCode.value()).isEqualTo(409)
     }
 }
