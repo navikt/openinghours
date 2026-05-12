@@ -12,7 +12,7 @@ open class Rule(
     @Column(name = "id", nullable = false, updatable = false)
     val id: UUID = UUID.randomUUID(),
 
-    @Column(name = "name", nullable = false, length = 100, unique = true)
+    @Column(name = "name", nullable = false, length = 100)
     var name: String,
 
     @Column(name = "rule", nullable = false, length = 100)
