@@ -144,7 +144,7 @@ class RuleService(
             throw e // Preserve the original HTTP status
         } catch (e: DataIntegrityViolationException) {
             if (isRuleNameConflict(e)) {
-                val conflictName = name ?: "ID: $id"
+                val conflictName = name ?: id.toString()
                 throw ResponseStatusException(HttpStatus.CONFLICT, "Rule with name '$conflictName' already exists")
             }
             log.error("Update opening hours integrity violation id={} msg={}", id, e.message, e)
@@ -160,7 +160,7 @@ class RuleService(
         var current: Throwable? = exception
         while (current != null) {
             if (current is ConstraintViolationException &&
-                current.constraintName.equals(ruleNameUniqueConstraint, ignoreCase = true)
+                current.constraintName?.equals(ruleNameUniqueConstraint, ignoreCase = true) == true
             ) {
                 return true
             }
