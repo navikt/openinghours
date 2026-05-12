@@ -96,4 +96,12 @@ class RuleServiceTest {
         }
         assertThat(ex.statusCode.value()).isEqualTo(409)
     }
+
+    @Test
+    fun `upsert with non-unique integrity violation does not return 409`() {
+        val ex = assertThrows<ResponseStatusException> {
+            ruleService.upsert("x".repeat(101), VALID_RULE, null, null)
+        }
+        assertThat(ex.statusCode.value()).isEqualTo(500)
+    }
 }
