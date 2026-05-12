@@ -160,9 +160,7 @@ class RuleService(
     private fun isRuleNameConflict(exception: DataIntegrityViolationException): Boolean {
         var current: Throwable? = exception
         while (current != null) {
-            if (current is ConstraintViolationException &&
-                current.constraintName == ruleNameUniqueConstraint
-            ) {
+            if (current is ConstraintViolationException && current.constraintName == ruleNameUniqueConstraint) {
                 return true
             }
             if (current is SQLException &&

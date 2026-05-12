@@ -98,7 +98,7 @@ class RuleServiceTest {
     }
 
     @Test
-    fun `upsert with non-unique integrity violation does not return 409`() {
+    fun `upsert with non-unique constraint integrity violation returns 500`() {
         val ex = assertThrows<ResponseStatusException> {
             ruleService.upsert("x".repeat(101), VALID_RULE, null, null)
         }
