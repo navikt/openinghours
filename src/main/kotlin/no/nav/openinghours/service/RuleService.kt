@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.sql.SQLException
 import java.util.*
 import no.nav.openinghours.model.db.OhGroupRepository
 import org.springframework.dao.DataIntegrityViolationException
@@ -160,11 +161,14 @@ class RuleService(
         var current: Throwable? = exception
         while (current != null) {
             if (current is ConstraintViolationException &&
-                current.constraintName?.equals(ruleNameUniqueConstraint, ignoreCase = true) == true
+                current.constraintName == ruleNameUniqueConstraint
             ) {
                 return true
             }
-            if (current.message?.contains(ruleNameUniqueConstraint, ignoreCase = true) == true) {
+            if (current is SQLException &&
+                current.sqlState == "23505" &&
+                current.message?.contains(ruleNameUniqueConstraint) == true
+            ) {
                 return true
             }
             current = current.cause
