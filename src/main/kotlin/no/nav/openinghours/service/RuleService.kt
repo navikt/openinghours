@@ -9,12 +9,13 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.util.*
+import no.nav.openinghours.model.db.OhGroupRepository
 
 @Service
 class RuleService(
     private val repo: RuleRepository,
+    private val ohGroupRepo: OhGroupRepository,
     private val validator: RuleValidator
-
 ) {
     private val log = LoggerFactory.getLogger(RuleService::class.java)
 
@@ -55,6 +56,9 @@ class RuleService(
             repo.save(entity).also {
                 log.info("Successfully upserted opening hours rule with name={}", name)
             }
+
+        } catch (e: ResponseStatusException) {
+            throw e  // preserve 4xx status codes
         } catch (e: Exception) {
             log.error("Upsert opening hours failed name={} msg={}", name, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Upsert opening hours: ${e.message}", e)
@@ -80,12 +84,22 @@ class RuleService(
     @Transactional
     fun delete(id: UUID): Boolean {
         return try {
-            if (repo.existsById(id)) {
-                repo.deleteById(id)
-                true
-            } else {
-                false
+            if (!repo.existsById(id)) return false
+            val idStr = id.toString()
+            val affected = ohGroupRepo.findAllReferencing(idStr)
+
+            affected.forEach { parent ->
+                parent.ruleGroupIds = parent.ruleGroupIds
+                    ?.filter { it != idStr }
+                    ?.toTypedArray()
+                    ?.ifEmpty { null }
             }
+
+            ohGroupRepo.saveAll(affected)
+            repo.deleteById(id)
+
+            log.info("Deleted rule id={} and removed from {} parent group(s)", id, affected.size)
+            true
         } catch (e: Exception) {
             log.error("Delete opening hours failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Delete opening hours: ${e.message}", e)
