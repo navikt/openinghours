@@ -157,15 +157,19 @@ class RuleService(
     }
 
     private fun isRuleNameConflict(exception: DataIntegrityViolationException): Boolean {
-        val causes = generateSequence(exception as Throwable?) { it.cause }.toList()
-        val byConstraintName = causes.asSequence()
-            .filterIsInstance<ConstraintViolationException>()
-            .any { it.constraintName.equals(ruleNameUniqueConstraint, ignoreCase = true) }
-        if (byConstraintName) return true
-
-        return causes.asSequence()
-            .mapNotNull { it.message }
-            .any { it.contains(ruleNameUniqueConstraint, ignoreCase = true) }
+        var current: Throwable? = exception
+        while (current != null) {
+            if (current is ConstraintViolationException &&
+                current.constraintName.equals(ruleNameUniqueConstraint, ignoreCase = true)
+            ) {
+                return true
+            }
+            if (current.message?.contains(ruleNameUniqueConstraint, ignoreCase = true) == true) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
     }
 
 
