@@ -3,20 +3,26 @@ package no.nav.openinghours.service
 import no.nav.openinghours.model.db.Rule
 import no.nav.openinghours.model.db.RuleRepository
 import no.nav.openinghours.validator.RuleValidator
+import org.hibernate.exception.ConstraintViolationException
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.sql.SQLException
 import java.util.*
+import no.nav.openinghours.model.db.OhGroupRepository
+import org.springframework.dao.DataIntegrityViolationException
 
 @Service
 class RuleService(
     private val repo: RuleRepository,
+    private val ohGroupRepo: OhGroupRepository,
     private val validator: RuleValidator
-
 ) {
     private val log = LoggerFactory.getLogger(RuleService::class.java)
+    private val ruleNameUniqueConstraint = "uq_rule_name"
+    private val uniqueConstraintViolationSqlState = "23505"
 
     fun upsert(
         name: String,
@@ -52,9 +58,17 @@ class RuleService(
                     onlyShowForNavEmployees
                 )
 
-            repo.save(entity).also {
+            repo.saveAndFlush(entity).also {
                 log.info("Successfully upserted opening hours rule with name={}", name)
             }
+        } catch (e: ResponseStatusException) {
+            throw e
+        } catch (e: DataIntegrityViolationException) {
+            if (isRuleNameConflict(e)) {
+                throw ResponseStatusException(HttpStatus.CONFLICT, "Rule with name '$name' already exists")
+            }
+            log.error("Upsert opening hours integrity violation name={} msg={}", name, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Upsert opening hours: ${e.message}", e)
         } catch (e: Exception) {
             log.error("Upsert opening hours failed name={} msg={}", name, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Upsert opening hours: ${e.message}", e)
@@ -80,12 +94,22 @@ class RuleService(
     @Transactional
     fun delete(id: UUID): Boolean {
         return try {
-            if (repo.existsById(id)) {
-                repo.deleteById(id)
-                true
-            } else {
-                false
+            if (!repo.existsById(id)) return false
+            val idStr = id.toString()
+            val affected = ohGroupRepo.findAllReferencing(idStr)
+
+            affected.forEach { parent ->
+                parent.ruleGroupIds = parent.ruleGroupIds
+                    ?.filter { it != idStr }
+                    ?.toTypedArray()
+                    ?.ifEmpty { null }
             }
+
+            ohGroupRepo.saveAll(affected)
+            repo.deleteById(id)
+
+            log.info("Deleted rule id={} and removed from {} parent group(s)", id, affected.size)
+            true
         } catch (e: Exception) {
             log.error("Delete opening hours failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Delete opening hours: ${e.message}", e)
@@ -117,13 +141,42 @@ class RuleService(
                 this.onlyShowForNavEmployees = onlyShowForNavEmployees ?: this.onlyShowForNavEmployees
             }
 
-            repo.save(entity)
+            repo.saveAndFlush(entity)
         } catch (e: ResponseStatusException) {
             throw e // Preserve the original HTTP status
+        } catch (e: DataIntegrityViolationException) {
+            if (isRuleNameConflict(e)) {
+                val conflictMessage = if (name != null) {
+                    "Rule with name '$name' already exists"
+                } else {
+                    "Rule with id '$id' has a name that conflicts with an existing rule"
+                }
+                throw ResponseStatusException(HttpStatus.CONFLICT, conflictMessage)
+            }
+            log.error("Update opening hours integrity violation id={} msg={}", id, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update opening hours: ${e.message}", e)
         } catch (e: Exception) {
             log.error("Update opening hours failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update opening hours: ${e.message}", e)
         }
+
+    }
+
+    private fun isRuleNameConflict(exception: DataIntegrityViolationException): Boolean {
+        var current: Throwable? = exception
+        while (current != null) {
+            if (current is ConstraintViolationException && current.constraintName == ruleNameUniqueConstraint) {
+                return true
+            }
+            if (current is SQLException &&
+                current.sqlState == uniqueConstraintViolationSqlState &&
+                current.message?.contains(ruleNameUniqueConstraint) == true
+            ) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
     }
 
 
