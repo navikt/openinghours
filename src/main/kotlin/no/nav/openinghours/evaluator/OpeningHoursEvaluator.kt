@@ -121,6 +121,7 @@ class OpeningHoursEvaluator {
         val (ch, cm) = closeStr.split(":").map { it.toInt() }
         val opening = LocalTime.of(oh, om).minusMinutes(1)
         val closing = LocalTime.of(ch, cm).plusMinutes(1)
-        return !time.isBefore(opening) && !time.isAfter(closing)
+        if (opening <= closing) return !time.isBefore(opening) && !time.isAfter(closing)
+        return !time.isBefore(opening) || !time.isAfter(closing)
     }
 }
