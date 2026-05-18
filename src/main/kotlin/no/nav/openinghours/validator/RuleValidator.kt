@@ -66,6 +66,8 @@ class RuleValidator {
 
         val numericParts = if (containsL) ruleParts.dropLast(1) else ruleParts
 
+        if (numericParts.isEmpty()) return containsL
+
         var lowerRange = numericParts[0].toIntOrNull() ?: return false
         for (i in 1 until numericParts.size) {
             val upperRange = numericParts[i].toIntOrNull() ?: return false
