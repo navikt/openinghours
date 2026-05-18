@@ -31,7 +31,7 @@ class OpeningHoursEvaluator {
             EvalResult.NotApplicable -> OpeningHoursDisplayData(
                 rule = "No Rules stated",
                 openingHours = "00:00-00:00",
-                displayText = "Åpen - ingen gjeldende dato regler",
+                displayText = "Stengt - ingen gjeldende dato regler",
             )
         }
 

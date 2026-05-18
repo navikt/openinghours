@@ -41,8 +41,21 @@ class OpeningHoursEvaluatorTest {
 
     @Test
     fun `closing time 23-59 rolls to midnight`() {
+        val date = LocalDate.of(2024, 1, 15)
+        val closesAtMidnight = "??.??.???? ? ? 07:00-23:59"
+        val opensAtMidnight = "??.??.???? ? ? 00:00-07:00"
+
         assertThat(evaluator.getClosingTime("00:00-23:59")).isEqualTo(LocalTime.MIDNIGHT)
         assertThat(evaluator.getClosingTime("07:00-17:00")).isEqualTo(LocalTime.of(17, 0))
+
+        assertThat(evaluator.isOpen(LocalDateTime.of(date, LocalTime.of(6, 59)), closesAtMidnight)).isTrue
+        assertThat(evaluator.isOpen(LocalDateTime.of(date, LocalTime.of(23, 59)), closesAtMidnight)).isTrue
+        assertThat(evaluator.isOpen(LocalDateTime.of(date.plusDays(1), LocalTime.of(0, 0)), closesAtMidnight)).isTrue
+        assertThat(evaluator.isOpen(LocalDateTime.of(date.plusDays(1), LocalTime.of(0, 1)), closesAtMidnight)).isFalse
+
+        assertThat(evaluator.isOpen(LocalDateTime.of(date.minusDays(1), LocalTime.of(23, 59)), opensAtMidnight)).isTrue
+        assertThat(evaluator.isOpen(LocalDateTime.of(date.minusDays(1), LocalTime.of(23, 58)), opensAtMidnight)).isFalse
+        assertThat(evaluator.isOpen(LocalDateTime.of(date, LocalTime.of(0, 0)), opensAtMidnight)).isTrue
     }
 
     @Test

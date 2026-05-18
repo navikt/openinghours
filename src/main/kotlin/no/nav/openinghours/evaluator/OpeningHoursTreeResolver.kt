@@ -45,10 +45,22 @@ class OpeningHoursTreeResolver(
             val groupsById: Map<UUID, OhGroup> =
                 if (missing.isEmpty()) emptyMap()
                 else ohGroupRepository.findAllById(missing).associateBy { it.id }
+            val unresolved = childIds.filterNot { rulesById.containsKey(it) || groupsById.containsKey(it) }
 
-            childIds.mapNotNull { id ->
+            if (unresolved.isNotEmpty()) {
+                throw ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unresolved child references for group ${group.id}: ${unresolved.joinToString(", ")}"
+                )
+            }
+
+            childIds.map { id ->
                 rulesById[id]?.let { ResolvedRule(name = it.name, rule = it.rule) }
                     ?: groupsById[id]?.let { resolveGroup(it, visited) }
+                    ?: throw ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Unresolved child reference $id for group ${group.id}"
+                    )
             }
         }
 
