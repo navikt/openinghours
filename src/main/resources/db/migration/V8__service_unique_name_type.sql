@@ -1,0 +1,1 @@
+ALTER TABLE service ADD CONSTRAINT uq_service_name_type UNIQUE (name, type);

@@ -43,6 +43,10 @@ class OhGroupController(
     @Operation(summary = "Delete an opening hours group by id")
     @DeleteMapping("/{id}")
     fun delete(@PathVariable id: UUID): Boolean = service.delete(id)
+
+    @Operation(summary = "Get the opening hours group assigned to a service")
+    @GetMapping("/service/{serviceId}")
+    fun getForService(@PathVariable serviceId: UUID): OhGroup = service.getOhGroupForService(serviceId)
 }
 
 data class OhGroupRequest(

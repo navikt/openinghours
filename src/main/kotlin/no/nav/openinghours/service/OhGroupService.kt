@@ -2,6 +2,7 @@ package no.nav.openinghours.service
 
 import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.OhGroupRepository
+import no.nav.openinghours.model.db.ServiceOhGroupRepository
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
@@ -12,7 +13,8 @@ import java.util.UUID
 
 @Service
 class OhGroupService(
-    private val repo: OhGroupRepository
+    private val repo: OhGroupRepository,
+    private val serviceRepo: ServiceOhGroupRepository
 ) {
     private val log = LoggerFactory.getLogger(OhGroupService::class.java)
 
@@ -46,6 +48,18 @@ class OhGroupService(
             log.error("Fetch all groups failed msg={}", e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to fetch groups", e)
         }
+
+    @Transactional(readOnly = true)
+    fun getOhGroupForService(serviceId: UUID): OhGroup {
+        val groupRef = serviceRepo.findOhGroupByServiceId(serviceId)
+            ?: throw ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Not found: The Group's Service with id $serviceId"
+            )
+        return repo.findById(groupRef.id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: ${groupRef.id}")
+        }
+    }
 
     @Transactional
     fun update(id: UUID, name: String?, ruleGroupIds: List<UUID>?): OhGroup {
@@ -86,6 +100,10 @@ class OhGroupService(
             }
 
             repo.saveAll(affected)
+
+            val unlinked = serviceRepo.deleteAllLinksByGroup(id)
+            if (unlinked > 0) log.info("Removed {} service_oh_group links for group id={}", unlinked, id)
+
             repo.deleteById(id)
 
             log.info("Deleted oh_group id={}", id)
@@ -96,9 +114,6 @@ class OhGroupService(
         }
     }
 
-    // DFS over the existing group graph starting from rootIds.
-    // selfId is pre-placed on the stack so any path leading back to the group being updated is detected as a cycle.
-    // Returns true if any cycle is reachable (i.e. a node is visited twice on the same DFS path).
     private fun graphHasCycle(rootIds: List<UUID>, selfId: UUID? = null): Boolean {
         val visited = mutableSetOf<UUID>()
         val onStack = mutableSetOf<UUID>()
@@ -117,6 +132,5 @@ class OhGroupService(
 
         return rootIds.any { dfs(it) }
     }
-
 }
 

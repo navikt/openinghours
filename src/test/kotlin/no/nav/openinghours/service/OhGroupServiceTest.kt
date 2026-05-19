@@ -1,6 +1,7 @@
 package no.nav.openinghours.service
 
 import no.nav.openinghours.model.db.OhGroupRepository
+import no.nav.openinghours.model.db.ServiceType
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -34,6 +35,7 @@ class OhGroupServiceTest {
     }
 
     @Autowired lateinit var service: OhGroupService
+    @Autowired lateinit var serviceService: ServiceService
     @Autowired lateinit var repo: OhGroupRepository
 
     @Test
@@ -97,6 +99,41 @@ class OhGroupServiceTest {
             service.update(a.id, null, listOf(b.id))
         }
         assertThat(ex.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+    }
+
+    @Test
+    fun `getOhGroupForService returns linked group`() {
+        val group = service.save("linked-group", emptyList())
+        val svc = serviceService.save(
+            name = "test-service",
+            type = ServiceType.TJENESTE,
+            team = "team-test",
+            ohGroupId = group.id
+        )
+        val result = service.getOhGroupForService(svc.id)
+        assertThat(result.id).isEqualTo(group.id)
+        assertThat(result.name).isEqualTo("linked-group")
+    }
+
+    @Test
+    fun `getOhGroupForService throws NOT_FOUND when service has no group`() {
+        val svc = serviceService.save(
+            name = "no-group-service",
+            type = ServiceType.TJENESTE,
+            team = "team-test"
+        )
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.getOhGroupForService(svc.id)
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
+    @Test
+    fun `getOhGroupForService throws NOT_FOUND for unknown service id`() {
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.getOhGroupForService(UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
     }
 
 }
