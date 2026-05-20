@@ -51,13 +51,13 @@ class OhGroupService(
 
     @Transactional(readOnly = true)
     fun getOhGroupForService(serviceId: UUID): OhGroup {
-        val groupRef = serviceRepo.findOhGroupByServiceId(serviceId)
+        val groupId = serviceRepo.findGroupIdByServiceId(serviceId)
             ?: throw ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "Not found: The Group's Service with id $serviceId"
             )
-        return repo.findById(groupRef.id).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: ${groupRef.id}")
+        return repo.findById(groupId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $groupId")
         }
     }
 
