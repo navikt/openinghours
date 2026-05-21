@@ -57,7 +57,7 @@ class OhGroupService(
                 "No opening-hours group linked to service id $serviceId"
             )
         return repo.findById(groupId).orElseThrow {
-            throw ResponseStatusException(
+            ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "Group not found: $groupId"
             )
