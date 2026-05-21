@@ -9,10 +9,10 @@ import java.util.UUID
 interface ServiceOhGroupRepository : JpaRepository<ServiceOhGroup, ServiceOhGroupId> {
 
     @Query(
-        value = "SELECT group_id FROM service_oh_group WHERE service_id = :serviceId LIMIT 1",
+        value = "SELECT group_id FROM service_oh_group WHERE service_id = :serviceId",
         nativeQuery = true
     )
-    fun findGroupIdByServiceId(@Param("serviceId") serviceId: UUID): UUID?
+    fun findGroupIdsByServiceId(@Param("serviceId") serviceId: UUID): List<UUID>
 
     @Modifying
     @Query("DELETE FROM ServiceOhGroup s WHERE s.id.groupId = :groupId")

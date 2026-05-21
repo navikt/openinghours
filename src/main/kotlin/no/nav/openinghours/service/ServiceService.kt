@@ -47,7 +47,7 @@ class ServiceService(
             log.info("Saved service name={} type={}", name, type)
             saved
         } catch (e: DataIntegrityViolationException) {
-            throw ResponseStatusException(HttpStatus.CONFLICT, "Service '$name' already exists")
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Service with name '$name' and type '$type' already exists")
         } catch (e: ResponseStatusException) {
             throw e
         } catch (e: Exception) {
@@ -136,6 +136,13 @@ class ServiceService(
             repo.deleteById(id)
             log.info("Deleted service id={}", id)
             true
+        } catch (e: DataIntegrityViolationException) {
+            log.warn("Delete service blocked by dependent data id={} msg={}", id, e.message, e)
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Cannot delete service $id because it has dependent data",
+                e
+            )
         } catch (e: Exception) {
             log.error("Delete service failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Delete service: ${e.message}", e)

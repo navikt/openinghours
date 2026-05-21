@@ -1,6 +1,7 @@
 package no.nav.openinghours.controllers
 
 import io.swagger.v3.oas.annotations.Operation
+import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import no.nav.openinghours.model.db.Service
 import no.nav.openinghours.model.db.ServiceType
@@ -26,7 +27,7 @@ class ServiceController(
 
     @Operation(summary = "Create a new service")
     @PostMapping
-    fun newService(@RequestBody request: ServiceRequest): Service =
+    fun newService(@Valid @RequestBody request: ServiceRequest): Service =
         service.save(
             name = request.name,
             type = request.type,
@@ -39,7 +40,7 @@ class ServiceController(
 
     @Operation(summary = "Update a service")
     @PutMapping("/{id}")
-    fun updateService(@PathVariable id: UUID, @RequestBody request: ServiceRequest): Service =
+    fun updateService(@PathVariable id: UUID, @Valid @RequestBody request: ServiceRequest): Service =
         service.update(
             id = id,
             name = request.name,

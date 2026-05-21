@@ -51,13 +51,21 @@ class OhGroupService(
 
     @Transactional(readOnly = true)
     fun getOhGroupForService(serviceId: UUID): OhGroup {
-        val groupId = serviceRepo.findGroupIdByServiceId(serviceId)
-            ?: throw ResponseStatusException(
+        val groupIds = serviceRepo.findGroupIdsByServiceId(serviceId)
+        if (groupIds.isEmpty()) {
+            throw ResponseStatusException(
                 HttpStatus.NOT_FOUND,
-                "Not found: The Group's Service with id $serviceId"
+                "No opening-hours group linked to service id $serviceId"
             )
-        return repo.findById(groupId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $groupId")
+        }
+        if (groupIds.size > 1) {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Multiple opening-hours groups linked to service id $serviceId"
+            )
+        }
+        return repo.findById(groupIds.first()).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: ${groupIds.first()}")
         }
     }
 
