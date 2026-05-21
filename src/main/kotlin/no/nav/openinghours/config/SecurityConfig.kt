@@ -24,6 +24,7 @@ class SecurityConfig(
                 auth
                     .requestMatchers("/actuator/health/**").permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                    .requestMatchers("/error").permitAll()
                     .requestMatchers("/api/**").authenticated()
                     .anyRequest().authenticated()
             }
