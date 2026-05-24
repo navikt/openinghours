@@ -157,4 +157,43 @@ class ServiceServiceTest {
         // re-create with same name should now succeed (no orphan FK rows)
         service.save("svc-oh4", ServiceType.TJENESTE, "team-x")
     }
+
+    @Test
+    fun `setOhGroup on non-existent service throws NOT_FOUND`() {
+        val g = groupService.save("g-404", emptyList())
+        val ex = assertThrows<ResponseStatusException> {
+            service.setOhGroup(UUID.randomUUID(), g.id)
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
+    @Test
+    fun `setOhGroup with non-existent group throws BAD_REQUEST`() {
+        val s = service.save("svc-bad-group", ServiceType.TJENESTE, "team-x")
+        val ex = assertThrows<ResponseStatusException> {
+            service.setOhGroup(s.id, UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+    }
+
+    @Test
+    fun `setOhGroup replaces previous group link`() {
+        val s = service.save("svc-replace", ServiceType.TJENESTE, "team-x")
+        val g1 = groupService.save("g-first", emptyList())
+        val g2 = groupService.save("g-second", emptyList())
+
+        service.setOhGroup(s.id, g1.id)
+        assertThat(service.getOhGroupIdsForService(s.id)).containsExactly(g1.id)
+
+        service.setOhGroup(s.id, g2.id)
+        assertThat(service.getOhGroupIdsForService(s.id)).containsExactly(g2.id)
+    }
+
+    @Test
+    fun `removeOhGroup is idempotent when no group is linked`() {
+        val s = service.save("svc-no-group", ServiceType.TJENESTE, "team-x")
+        // No group linked — should not throw
+        service.removeOhGroup(s.id)
+        assertThat(service.getOhGroupIdsForService(s.id)).isEmpty()
+    }
 }
