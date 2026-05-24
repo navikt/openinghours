@@ -32,4 +32,7 @@ interface ServiceRepository : JpaRepository<Service, UUID> {
         nativeQuery = true
     )
     fun findOhGroupIds(@Param("serviceId") serviceId: UUID): List<UUID>
+
+    @Query("SELECT service_id, group_id FROM service_oh_group", nativeQuery = true)
+    fun findAllServiceGroupLinks(): List<Array<Any>>
 }
