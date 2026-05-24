@@ -196,4 +196,48 @@ class ServiceServiceTest {
         service.removeOhGroup(s.id)
         assertThat(service.getOhGroupIdsForService(s.id)).isEmpty()
     }
+
+    @Test
+    fun `getResolvedOhGroupForService returns null when no group is assigned`() {
+        val s = service.save("svc-no-resolve", ServiceType.TJENESTE, "team-x")
+        assertThat(service.getResolvedOhGroupForService(s.id)).isNull()
+    }
+
+    @Test
+    fun `getResolvedOhGroupForService returns resolved group when assigned`() {
+        val s = service.save("svc-resolve", ServiceType.TJENESTE, "team-x")
+        val g = groupService.save("g-resolve", emptyList())
+        service.setOhGroup(s.id, g.id)
+
+        val resolved = service.getResolvedOhGroupForService(s.id)
+        assertThat(resolved).isNotNull
+        assertThat(resolved!!.name).isEqualTo("g-resolve")
+    }
+
+    @Test
+    fun `getAllServicesWithOpeningHours returns empty map when no assignments`() {
+        // Create services without linking any group
+        service.save("svc-nolink1", ServiceType.TJENESTE, "team-x")
+        service.save("svc-nolink2", ServiceType.KOMPONENT, "team-x")
+
+        assertThat(service.getAllServicesWithOpeningHours()).isEmpty()
+    }
+
+    @Test
+    fun `getAllServicesWithOpeningHours returns correct map for multiple services`() {
+        val s1 = service.save("svc-map1", ServiceType.TJENESTE, "team-x")
+        val s2 = service.save("svc-map2", ServiceType.KOMPONENT, "team-x")
+        val g1 = groupService.save("g-map1", emptyList())
+        val g2 = groupService.save("g-map2", emptyList())
+
+        service.setOhGroup(s1.id, g1.id)
+        service.setOhGroup(s2.id, g2.id)
+
+        val result = service.getAllServicesWithOpeningHours()
+        assertThat(result).hasSize(2)
+        assertThat(result).containsKey(s1.id)
+        assertThat(result).containsKey(s2.id)
+        assertThat(result[s1.id]!!.name).isEqualTo("g-map1")
+        assertThat(result[s2.id]!!.name).isEqualTo("g-map2")
+    }
 }
