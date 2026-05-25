@@ -11,7 +11,7 @@ class OpeningHoursEvaluator {
 
     private sealed interface EvalResult {
         data object NotApplicable : EvalResult
-        data class Matched(val openingHours: String, val ruleName: String, val rule: String) : EvalResult
+        data class Matched(val openingHours: String, val ruleName: String, val rule: String, val displayHeader: String? = null, val displayText: String? = null, val onlyShowForNavEmployees: Boolean = false) : EvalResult
     }
 
     fun getOpeningHours(date: LocalDate, group: ResolvedGroup): String =
@@ -26,12 +26,17 @@ class OpeningHoursEvaluator {
                 ruleName = r.ruleName,
                 rule = r.rule,
                 openingHours = r.openingHours,
-                displayText = r.openingHours,
+                displayHeader = r.displayHeader,
+                displayText = r.displayText,
+                onlyShowForNavEmployees = r.onlyShowForNavEmployees,
             )
             EvalResult.NotApplicable -> OpeningHoursDisplayData(
-                rule = "No Rules stated",
-                openingHours = "00:00-00:00",
-                displayText = "Stengt - ingen gjeldende dato regler",
+                ruleName = "No Rules stated",
+                rule = "??.??.???? ? ? 00:00-23:59",
+                openingHours = "00:00-23:59",
+                displayHeader = "Default regel",
+                displayText = "Åpent - ingen gjeldende dato regler",
+                onlyShowForNavEmployees = false
             )
         }
 
@@ -72,7 +77,7 @@ class OpeningHoursEvaluator {
         if (!matchesDate(date, parts[0])) return EvalResult.NotApplicable
         if (!matchesDayOfMonth(date, parts[1])) return EvalResult.NotApplicable
         if (!matchesWeekday(date, parts[2])) return EvalResult.NotApplicable
-        return EvalResult.Matched(parts[3], rule.name, rule.rule)
+        return EvalResult.Matched(parts[3], rule.name, rule.rule, rule.displayHeader, rule.displayText, rule.onlyShowForNavEmployees)
     }
 
     private fun matchesDate(date: LocalDate, datePart: String): Boolean {

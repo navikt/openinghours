@@ -7,6 +7,9 @@ sealed interface ResolvedEntry {
 data class ResolvedRule(
     override val name: String,
     val rule: String,
+    val displayHeader: String? = null,
+    val displayText: String? = null,
+    val onlyShowForNavEmployees: Boolean = false,
 ) : ResolvedEntry
 
 data class ResolvedGroup(

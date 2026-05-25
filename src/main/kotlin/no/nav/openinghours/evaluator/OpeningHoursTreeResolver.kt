@@ -55,7 +55,7 @@ class OpeningHoursTreeResolver(
             }
 
             childIds.map { id ->
-                rulesById[id]?.let { ResolvedRule(name = it.name, rule = it.rule) }
+                rulesById[id]?.let { ResolvedRule(name = it.name, rule = it.rule, displayHeader = it.header, displayText = it.text, onlyShowForNavEmployees = it.onlyShowForNavEmployees) }
                     ?: groupsById[id]?.let { resolveGroup(it, visited) }
                     ?: throw ResponseStatusException(
                         HttpStatus.INTERNAL_SERVER_ERROR,
