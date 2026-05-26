@@ -113,11 +113,12 @@ class RuleControllerTest {
         val updated = aRule(id = id, name = "Updated")
         `when`(ruleService.update(id, "Updated", null, null, null, null)).thenReturn(updated)
 
-        mockMvc.patch("/api/openinghours/rule/$id?name=Updated")
-            .andExpect {
-                status { isOk() }
-                jsonPath("$.name") { value("Updated") }
-            }
+        mockMvc.patch("/api/openinghours/rule/$id") {
+            param("name", "Updated")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.name") { value("Updated") }
+        }
     }
 
     @Test
@@ -126,8 +127,9 @@ class RuleControllerTest {
         `when`(ruleService.update(id, "X", null, null, null, null))
             .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found"))
 
-        mockMvc.patch("/api/openinghours/rule/$id?name=X")
-            .andExpect { status { isNotFound() } }
+        mockMvc.patch("/api/openinghours/rule/$id") {
+            param("name", "X")
+        }.andExpect { status { isNotFound() } }
     }
 
     @Test

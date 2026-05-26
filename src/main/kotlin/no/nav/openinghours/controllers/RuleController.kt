@@ -39,10 +39,10 @@ class RuleController(
     @PatchMapping("/{id}")
     fun update(
         @PathVariable id: UUID,
-        @RequestParam name: String?,
-        @RequestParam rule: String?,
-        @RequestParam header: String?,
-        @RequestParam text: String?,
+        @RequestParam(required = false) name: String?,
+        @RequestParam(required = false) rule: String?,
+        @RequestParam(required = false) header: String?,
+        @RequestParam(required = false) text: String?,
         @RequestParam(required = false) onlyShowForNavEmployees: Boolean?
     ): Rule = service.update(id, name, rule, header, text, onlyShowForNavEmployees)
 
