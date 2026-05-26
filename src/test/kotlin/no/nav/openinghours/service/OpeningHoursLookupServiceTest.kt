@@ -67,7 +67,7 @@ class OpeningHoursLookupServiceTest {
     }
 
     @Test
-    fun `getOpeningHours returns 00-00-23-59 when no rule matches (open all day)`() {
+    fun `getOpeningHours returns open all day when no rule matches`() {
         // Rule only matches weekdays
         val rule = createRule("Weekdays", "??.??.???? ? 1-5 08:00-16:00")
         val group = createGroup("Office hours", listOf(rule.id))
