@@ -34,7 +34,7 @@ class ServiceControllerTest {
     private lateinit var serviceService: ServiceService
 
     private fun aService(id: UUID = UUID.randomUUID(), name: String = "Gosys", type: ServiceType = ServiceType.TJENESTE, team: String = "Team X") =
-        Service.create(name = name, type = type, team = team)
+        Service.create(id = id, name = name, type = type, team = team)
 
     @Test
     fun `POST create service`() {
