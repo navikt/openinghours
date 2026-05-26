@@ -12,7 +12,7 @@ COPY . .
 RUN mvn clean package -DskipTests=true
 
 # --- step 2：run jar  ---
-FROM cgr.dev/chainguard/jre:openjdk-21 AS runtime
+FROM eclipse-temurin:21-jre AS runtime
 
 WORKDIR /app
 EXPOSE 8081
