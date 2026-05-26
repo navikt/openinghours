@@ -177,12 +177,15 @@ class ServiceService(
         }
     }
 
-    fun getAllServicesWithOpeningHours(): Map<UUID, ResolvedGroup> =
-        repo.findAllServiceGroupLinks().associate { row ->
+    @Transactional(readOnly = true)
+    fun getAllServicesWithOpeningHours(): Map<UUID, ResolvedGroup> {
+        val resolvedGroupsById = mutableMapOf<UUID, ResolvedGroup>()
+        return repo.findAllServiceGroupLinks().associate { row ->
             val serviceId = row[0] as UUID
             val groupId = row[1] as UUID
-            serviceId to resolver.resolve(groupId)
+            serviceId to resolvedGroupsById.getOrPut(groupId) { resolver.resolve(groupId) }
         }
+    }
 
     fun getResolvedOhGroupForService(serviceId: UUID): ResolvedGroup? {
         val groupIds = repo.findOhGroupIds(serviceId)
