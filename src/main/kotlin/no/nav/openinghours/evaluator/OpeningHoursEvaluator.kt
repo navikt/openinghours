@@ -8,6 +8,10 @@ import java.time.YearMonth
 
 @Component
 class OpeningHoursEvaluator {
+    companion object {
+        private const val NO_RULES_MESSAGE = "No Rules stated"
+        private const val CLOSED_SENTINEL_HOURS = "00:00-00:00"
+    }
 
     private sealed interface EvalResult {
         data object NotApplicable : EvalResult
@@ -17,7 +21,7 @@ class OpeningHoursEvaluator {
     fun getOpeningHours(date: LocalDate, group: ResolvedGroup): String =
         when (val r = evaluate(date, group.entries, isSubGroup = false)) {
             is EvalResult.Matched -> r.openingHours
-            EvalResult.NotApplicable -> "00:00-00:00"
+            EvalResult.NotApplicable -> CLOSED_SENTINEL_HOURS
         }
 
     fun getDisplayData(date: LocalDate, group: ResolvedGroup): OpeningHoursDisplayData =
@@ -29,8 +33,8 @@ class OpeningHoursEvaluator {
                 displayText = r.openingHours,
             )
             EvalResult.NotApplicable -> OpeningHoursDisplayData(
-                rule = "No Rules stated",
-                openingHours = "00:00-00:00",
+                rule = NO_RULES_MESSAGE,
+                openingHours = CLOSED_SENTINEL_HOURS,
                 displayText = "Stengt - ingen gjeldende dato regler",
             )
         }
