@@ -17,7 +17,7 @@ class OpeningHoursEvaluator {
     fun getOpeningHours(date: LocalDate, group: ResolvedGroup): String =
         when (val r = evaluate(date, group.entries, isSubGroup = false)) {
             is EvalResult.Matched -> r.openingHours
-            EvalResult.NotApplicable -> "00:00-00:00"
+            EvalResult.NotApplicable -> "00:00-23:59"
         }
 
     fun getDisplayData(date: LocalDate, group: ResolvedGroup): OpeningHoursDisplayData =
