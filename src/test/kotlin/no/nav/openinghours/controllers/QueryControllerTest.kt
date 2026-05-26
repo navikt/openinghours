@@ -66,14 +66,15 @@ class QueryControllerTest {
         val date = LocalDate.of(2023, 7, 22)
 
         `when`(lookupService.getDisplayData(groupId, date)).thenReturn(
-            OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = null, rule = null)
+            OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = "weekend-closed", rule = "??.??.???? ? 6-7 00:00-00:00")
         )
 
         mockMvc.get("/api/openinghours/query/group/$groupId?date=2023-07-22")
             .andExpect {
                 status { isOk() }
                 jsonPath("$.isOpen") { value(false) }
-                jsonPath("$.matchedRule") { doesNotExist() }
+                jsonPath("$.matchedRule.name") { value("weekend-closed") }
+                jsonPath("$.matchedRule.rule") { value("??.??.???? ? 6-7 00:00-00:00") }
             }
     }
 
@@ -87,7 +88,7 @@ class QueryControllerTest {
             OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekdays", rule = "??.??.???? ? 1-5 07:00-21:00")
         )
         `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
-            OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = null, rule = null)
+            OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = "weekend-closed", rule = "??.??.???? ? 6-7 00:00-00:00")
         )
 
         mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-15&to=2024-03-16")
