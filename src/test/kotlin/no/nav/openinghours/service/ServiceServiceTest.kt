@@ -240,4 +240,90 @@ class ServiceServiceTest {
         assertThat(result[s1.id]!!.name).isEqualTo("g-map1")
         assertThat(result[s2.id]!!.name).isEqualTo("g-map2")
     }
+
+    @Test
+    fun `save with valid ohGroupId links group at creation time`() {
+        val g = groupService.save("g-at-create", emptyList())
+        val s = service.save("svc-with-group", ServiceType.TJENESTE, "team-x", ohGroupId = g.id)
+        assertThat(service.getOhGroupIdsForService(s.id)).containsExactly(g.id)
+    }
+
+    @Test
+    fun `save with non-existent ohGroupId throws BAD_REQUEST`() {
+        val ex = assertThrows<ResponseStatusException> {
+            service.save("svc-bad-oh", ServiceType.TJENESTE, "team-x", ohGroupId = UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+    }
+
+    @Test
+    fun `update with ohGroupId sets group link`() {
+        val s = service.save("svc-upd-grp", ServiceType.TJENESTE, "team-x")
+        val g = groupService.save("g-upd", emptyList())
+        service.update(s.id, null, null, null, null, null, null, g.id)
+        assertThat(service.getOhGroupIdsForService(s.id)).containsExactly(g.id)
+    }
+
+    @Test
+    fun `update with ohGroupId replaces existing group link`() {
+        val g1 = groupService.save("g-upd1", emptyList())
+        val g2 = groupService.save("g-upd2", emptyList())
+        val s = service.save("svc-upd-replace", ServiceType.TJENESTE, "team-x", ohGroupId = g1.id)
+
+        service.update(s.id, null, null, null, null, null, null, g2.id)
+        assertThat(service.getOhGroupIdsForService(s.id)).containsExactly(g2.id)
+    }
+
+    @Test
+    fun `update with non-existent ohGroupId throws BAD_REQUEST`() {
+        val s = service.save("svc-upd-bad", ServiceType.TJENESTE, "team-x")
+        val ex = assertThrows<ResponseStatusException> {
+            service.update(s.id, null, null, null, null, null, null, UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+    }
+
+    @Test
+    fun `update preserves existing group link when ohGroupId is null`() {
+        val g = groupService.save("g-preserve", emptyList())
+        val s = service.save("svc-preserve", ServiceType.TJENESTE, "team-x", ohGroupId = g.id)
+
+        service.update(s.id, "renamed-preserve", null, null, null, null, null, null)
+        assertThat(service.getOhGroupIdsForService(s.id)).containsExactly(g.id)
+    }
+
+    @Test
+    fun `deleting group unlinks all services`() {
+        val g = groupService.save("g-del-cascade", emptyList())
+        val s1 = service.save("svc-cascade1", ServiceType.TJENESTE, "team-x", ohGroupId = g.id)
+        val s2 = service.save("svc-cascade2", ServiceType.KOMPONENT, "team-x", ohGroupId = g.id)
+
+        groupService.delete(g.id)
+
+        assertThat(service.getOhGroupIdsForService(s1.id)).isEmpty()
+        assertThat(service.getOhGroupIdsForService(s2.id)).isEmpty()
+    }
+
+    @Test
+    fun `getOhGroupIdsForService returns empty for non-existent service`() {
+        assertThat(service.getOhGroupIdsForService(UUID.randomUUID())).isEmpty()
+    }
+
+    @Test
+    fun `removeOhGroup on non-existent service throws NOT_FOUND`() {
+        val ex = assertThrows<ResponseStatusException> {
+            service.removeOhGroup(UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
+    @Test
+    fun `multiple services can link to the same group`() {
+        val g = groupService.save("g-shared", emptyList())
+        val s1 = service.save("svc-shared1", ServiceType.TJENESTE, "team-x", ohGroupId = g.id)
+        val s2 = service.save("svc-shared2", ServiceType.KOMPONENT, "team-x", ohGroupId = g.id)
+
+        assertThat(service.getOhGroupIdsForService(s1.id)).containsExactly(g.id)
+        assertThat(service.getOhGroupIdsForService(s2.id)).containsExactly(g.id)
+    }
 }
