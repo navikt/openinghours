@@ -98,7 +98,10 @@ class OpeningHoursEvaluatorTest {
 
     @Test
     fun `empty top-level group returns sentinel hours`() {
-        val data = evaluator.getDisplayData(LocalDate.of(2023, 11, 16), group("empty"))
+        val date = LocalDate.of(2023, 11, 16)
+        val emptyGroup = group("empty")
+        val data = evaluator.getDisplayData(date, emptyGroup)
+        assertThat(evaluator.getOpeningHours(date, emptyGroup)).isEqualTo("00:00-00:00")
         assertThat(data.openingHours).isEqualTo("00:00-00:00")
         assertThat(data.rule).isEqualTo("No Rules stated")
     }
