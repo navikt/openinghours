@@ -71,6 +71,9 @@ class QueryController(
             isOpen = isOpen,
             openingTime = openTime,
             closingTime = closeTime,
+            displayHeader = displayData.displayHeader,
+            displayText = displayData.displayText,
+            onlyShowForNavEmployees = displayData.onlyShowForNavEmployees,
             matchedRule = if (displayData.ruleName != null) MatchedRule(displayData.ruleName, displayData.rule!!) else null,
         )
     }
@@ -82,6 +85,9 @@ data class QueryResponse(
     val isOpen: Boolean,
     val openingTime: String,
     val closingTime: String,
+    val displayHeader: String?,
+    val displayText: String?,
+    val onlyShowForNavEmployees: Boolean,
     val matchedRule: MatchedRule?,
 )
 
