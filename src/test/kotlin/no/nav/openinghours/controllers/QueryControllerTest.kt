@@ -123,6 +123,9 @@ class QueryControllerTest {
                 jsonPath("$.isOpen") { value(true) }
                 jsonPath("$.openingTime") { value("09:00") }
                 jsonPath("$.closingTime") { value("15:00") }
+                jsonPath("$.displayHeader") { value("Intern åpningstid") }
+                jsonPath("$.displayText") { value("Kun for ansatte") }
+                jsonPath("$.onlyShowForNavEmployees") { value(true) }
                 jsonPath("$.matchedRule.name") { value("Internal") }
             }
     }
