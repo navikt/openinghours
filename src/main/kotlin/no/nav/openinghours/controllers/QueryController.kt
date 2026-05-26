@@ -74,7 +74,7 @@ class QueryController(
             displayHeader = displayData.displayHeader,
             displayText = displayData.displayText,
             onlyShowForNavEmployees = displayData.onlyShowForNavEmployees,
-            matchedRule = if (displayData.ruleName != null) MatchedRule(displayData.ruleName, displayData.rule!!) else null,
+            matchedRule = if (displayData.ruleName != null && displayData.rule != null) MatchedRule(displayData.ruleName, displayData.rule) else null,
         )
     }
 }
