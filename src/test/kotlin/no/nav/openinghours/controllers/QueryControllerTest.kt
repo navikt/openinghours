@@ -98,4 +98,100 @@ class QueryControllerTest {
                 jsonPath("$[1].isOpen") { value(false) }
             }
     }
+
+    @Test
+    fun `query by service returns displayHeader and onlyShowForNavEmployees`() {
+        val serviceId = UUID.randomUUID()
+        val groupId = UUID.randomUUID()
+        val date = LocalDate.of(2024, 3, 15)
+
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(lookupService.getDisplayData(groupId, date)).thenReturn(
+            OpeningHoursDisplayData(
+                openingHours = "09:00-15:00",
+                ruleName = "Internal",
+                rule = "??.??.???? ? 1-5 09:00-15:00",
+                displayHeader = "Intern åpningstid",
+                displayText = "Kun for ansatte",
+                onlyShowForNavEmployees = true
+            )
+        )
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId?date=2024-03-15")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.isOpen") { value(true) }
+                jsonPath("$.openingTime") { value("09:00") }
+                jsonPath("$.closingTime") { value("15:00") }
+                jsonPath("$.matchedRule.name") { value("Internal") }
+            }
+    }
+
+    @Test
+    fun `query by group returns default display data when no rule matches`() {
+        val groupId = UUID.randomUUID()
+        val date = LocalDate.of(2024, 3, 16)
+
+        `when`(lookupService.getDisplayData(groupId, date)).thenReturn(
+            OpeningHoursDisplayData(
+                ruleName = "No Rules stated",
+                rule = "??.??.???? ? ? 00:00-23:59",
+                openingHours = "00:00-23:59",
+                displayHeader = "Default regel",
+                displayText = "Åpent - ingen gjeldende dato regler",
+                onlyShowForNavEmployees = false
+            )
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.isOpen") { value(true) }
+                jsonPath("$.matchedRule.name") { value("No Rules stated") }
+            }
+    }
+
+    @Test
+    fun `query range returns 404 when no group assigned`() {
+        val serviceId = UUID.randomUUID()
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(emptyList())
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-15&to=2024-03-16")
+            .andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `query range with from after to returns error`() {
+        val serviceId = UUID.randomUUID()
+        val groupId = UUID.randomUUID()
+
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-20&to=2024-03-15")
+            .andExpect {
+                status { isBadRequest() }
+            }
+    }
+
+    @Test
+    fun `query missing date parameter returns 400`() {
+        val serviceId = UUID.randomUUID()
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId")
+            .andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `query range missing from parameter returns 400`() {
+        val serviceId = UUID.randomUUID()
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?to=2024-03-16")
+            .andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `query with invalid UUID returns 400`() {
+        mockMvc.get("/api/openinghours/query/service/not-a-uuid?date=2024-03-15")
+            .andExpect { status { isBadRequest() } }
+    }
 }

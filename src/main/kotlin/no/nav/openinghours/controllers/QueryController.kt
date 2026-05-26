@@ -44,6 +44,9 @@ class QueryController(
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "No opening-hours group assigned to service $serviceId")
         }
         val groupId = groupIds.first()
+        if (from.isAfter(to)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "'from' date must not be after 'to' date")
+        }
         return from.datesUntil(to.plusDays(1)).map { buildResponse(groupId, serviceId, it) }.toList()
     }
 
