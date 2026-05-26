@@ -47,12 +47,11 @@ class OhGroupControllerTest {
     }
 
     @Test
-    fun `POST create group with blank name throws ConstraintViolationException`() {
-        // @Validated + @NotBlank on @RequestParam causes ConstraintViolationException
-        assertThrows<jakarta.servlet.ServletException> {
-            mockMvc.post("/api/openinghours/group?name=") {
-                contentType = MediaType.APPLICATION_JSON
-            }
+    fun `POST create group with blank name returns 400`() {
+        mockMvc.post("/api/openinghours/group?name=") {
+            contentType = MediaType.APPLICATION_JSON
+        }.andExpect {
+            status { isBadRequest() }
         }
     }
 
