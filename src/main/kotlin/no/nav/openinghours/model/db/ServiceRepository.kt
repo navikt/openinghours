@@ -6,6 +6,11 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.util.UUID
 
+interface ServiceOhGroupLink {
+    fun getServiceId(): UUID
+    fun getGroupId(): UUID
+}
+
 interface ServiceRepository : JpaRepository<Service, UUID> {
     fun findByNameAndType(name: String, type: ServiceType): Service?
     fun findAllByType(type: ServiceType): List<Service>
@@ -33,6 +38,9 @@ interface ServiceRepository : JpaRepository<Service, UUID> {
     )
     fun findOhGroupIds(@Param("serviceId") serviceId: UUID): List<UUID>
 
-    @Query("SELECT service_id, group_id FROM service_oh_group", nativeQuery = true)
-    fun findAllServiceGroupLinks(): List<Array<Any>>
+    @Query(
+        value = "SELECT service_id AS serviceId, group_id AS groupId FROM service_oh_group",
+        nativeQuery = true
+    )
+    fun findAllServiceGroupLinks(): List<ServiceOhGroupLink>
 }
