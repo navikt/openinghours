@@ -151,7 +151,13 @@ class QueryControllerTest {
             .andExpect {
                 status { isOk() }
                 jsonPath("$.isOpen") { value(true) }
+                jsonPath("$.openingTime") { value("00:00") }
+                jsonPath("$.closingTime") { value("23:59") }
+                jsonPath("$.displayHeader") { value("Default regel") }
+                jsonPath("$.displayText") { value("Åpent - ingen gjeldende dato regler") }
+                jsonPath("$.onlyShowForNavEmployees") { value(false) }
                 jsonPath("$.matchedRule.name") { value("No Rules stated") }
+                jsonPath("$.matchedRule.rule") { value("??.??.???? ? ? 00:00-23:59") }
             }
     }
 
