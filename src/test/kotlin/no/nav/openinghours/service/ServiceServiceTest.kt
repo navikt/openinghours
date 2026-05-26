@@ -210,7 +210,7 @@ class ServiceServiceTest {
         service.setOhGroup(s.id, g.id)
 
         val resolved = service.getResolvedOhGroupForService(s.id)
-        assertThat(resolved).isNotNull
+        assertThat(resolved).isNotNull()
         assertThat(resolved!!.name).isEqualTo("g-resolve")
     }
 
