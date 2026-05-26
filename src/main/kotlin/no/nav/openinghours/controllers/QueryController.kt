@@ -59,10 +59,10 @@ class QueryController(
 
     private fun buildResponse(groupId: UUID, serviceId: UUID?, date: LocalDate): QueryResponse {
         val displayData = lookupService.getDisplayData(groupId, date)
-        val hours = displayData.openingHours ?: "00:00-00:00"
+        val hours = displayData.openingHours ?: "00:00-23:59"
         val parts = hours.split("-")
-        val openTime = parts[0]
-        val closeTime = parts[1]
+        val openTime = if (parts.size >= 2) parts[0] else "00:00"
+        val closeTime = if (parts.size >= 2) parts[1] else "23:59"
         val isOpen = hours != "00:00-00:00"
 
         return QueryResponse(
