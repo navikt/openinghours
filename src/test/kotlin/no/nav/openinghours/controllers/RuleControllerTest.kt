@@ -73,11 +73,16 @@ class RuleControllerTest {
         val rule = aRule()
         `when`(ruleService.upsert("Weekdays", "??.??.???? ? 1-5 08:00-16:00", "H", "T", false)).thenReturn(rule)
 
-        mockMvc.put("/api/openinghours/rule?name=Weekdays&rule=??.??.???? ? 1-5 08:00-16:00&header=H&text=T&onlyShowForNavEmployees=false")
-            .andExpect {
-                status { isOk() }
-                jsonPath("$.name") { value("Weekdays") }
-            }
+        mockMvc.put("/api/openinghours/rule") {
+            param("name", "Weekdays")
+            param("rule", "??.??.???? ? 1-5 08:00-16:00")
+            param("header", "H")
+            param("text", "T")
+            param("onlyShowForNavEmployees", "false")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.name") { value("Weekdays") }
+        }
     }
 
     @Test
@@ -85,8 +90,10 @@ class RuleControllerTest {
         `when`(ruleService.upsert("", "??.??.???? ? 1-5 08:00-16:00", null, null, false))
             .thenThrow(ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank"))
 
-        mockMvc.put("/api/openinghours/rule?name=&rule=??.??.???? ? 1-5 08:00-16:00&header&text")
-            .andExpect { status { isBadRequest() } }
+        mockMvc.put("/api/openinghours/rule") {
+            param("name", "")
+            param("rule", "??.??.???? ? 1-5 08:00-16:00")
+        }.andExpect { status { isBadRequest() } }
     }
 
     @Test
@@ -94,8 +101,10 @@ class RuleControllerTest {
         `when`(ruleService.upsert("Test", "invalid", null, null, false))
             .thenThrow(ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid rule format"))
 
-        mockMvc.put("/api/openinghours/rule?name=Test&rule=invalid&header&text")
-            .andExpect { status { isBadRequest() } }
+        mockMvc.put("/api/openinghours/rule") {
+            param("name", "Test")
+            param("rule", "invalid")
+        }.andExpect { status { isBadRequest() } }
     }
 
     @Test

@@ -20,8 +20,8 @@ class RuleController(
     fun upsert(
         @RequestParam name: String,
         @RequestParam rule: String,
-        @RequestParam header: String?,
-        @RequestParam text: String?,
+        @RequestParam(required = false) header: String?,
+        @RequestParam(required = false) text: String?,
         @RequestParam(required = false, defaultValue = "false") onlyShowForNavEmployees: Boolean?
     ): Rule = service.upsert(name, rule, header, text, onlyShowForNavEmployees ?: false)
 
