@@ -67,14 +67,14 @@ class OpeningHoursLookupServiceTest {
     }
 
     @Test
-    fun `getOpeningHours returns 00-00-00-00 when no rule matches`() {
+    fun `getOpeningHours returns 00-00-23-59 when no rule matches (open all day)`() {
         // Rule only matches weekdays
         val rule = createRule("Weekdays", "??.??.???? ? 1-5 08:00-16:00")
         val group = createGroup("Office hours", listOf(rule.id))
 
-        // 2024-03-16 is a Saturday — no match
+        // 2024-03-16 is a Saturday — no match → open all day
         val result = lookupService.getOpeningHours(group.id, LocalDate.of(2024, 3, 16))
-        assertThat(result).isEqualTo("00:00-00:00")
+        assertThat(result).isEqualTo("00:00-23:59")
     }
 
     @Test

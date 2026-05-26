@@ -76,13 +76,13 @@ class OpeningHoursEvaluatorTest {
         val g2 = group("g2", g3, r9, g4)
         val g1 = group("g1", r1, g2, r6, r7)
 
-        assertThat(evaluator.getOpeningHours(LocalDate.of(2023, 12, 24), g1)).isEqualTo("00:00-00:00")
+        assertThat(evaluator.getOpeningHours(LocalDate.of(2023, 12, 24), g1)).isEqualTo("00:00-23:59")
         assertThat(evaluator.getOpeningHours(LocalDate.of(2024, 12, 24), g1)).isEqualTo("09:00-15:00")
         assertThat(evaluator.getOpeningHours(LocalDate.of(2023, 5, 17), g1)).isEqualTo("00:00-00:00")
         assertThat(evaluator.getOpeningHours(LocalDate.of(2023, 4, 24), g1)).isEqualTo("10:00-16:00")
         assertThat(evaluator.getOpeningHours(LocalDate.of(2023, 6, 6), g1)).isEqualTo("12:00-18:30")
         assertThat(evaluator.getOpeningHours(LocalDate.of(2023, 5, 25), g1)).isEqualTo("07:00-21:00")
-        assertThat(evaluator.getOpeningHours(LocalDate.of(2023, 7, 22), g1)).isEqualTo("00:00-00:00")
+        assertThat(evaluator.getOpeningHours(LocalDate.of(2023, 7, 22), g1)).isEqualTo("00:00-23:59")
         assertThat(evaluator.getOpeningHours(LocalDate.of(2023, 9, 30), g1)).isEqualTo("07:00-18:00")
         assertThat(evaluator.getOpeningHours(LocalDate.of(2023, 5, 1), g1)).isEqualTo("00:00-23:59")
     }
@@ -97,9 +97,9 @@ class OpeningHoursEvaluatorTest {
     }
 
     @Test
-    fun `empty top-level group returns sentinel hours`() {
+    fun `empty top-level group returns open all day`() {
         val data = evaluator.getDisplayData(LocalDate.of(2023, 11, 16), group("empty"))
-        assertThat(data.openingHours).isEqualTo("00:00-00:00")
-        assertThat(data.rule).isEqualTo("No Rules stated")
+        assertThat(data.openingHours).isEqualTo("00:00-23:59")
+        assertThat(data.ruleName).isEqualTo("No Rules stated")
     }
 }

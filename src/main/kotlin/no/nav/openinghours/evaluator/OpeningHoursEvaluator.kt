@@ -31,8 +31,11 @@ class OpeningHoursEvaluator {
                 onlyShowForNavEmployees = r.onlyShowForNavEmployees,
             )
             EvalResult.NotApplicable -> OpeningHoursDisplayData(
-                rule = "No Rules stated",
-                openingHours = "00:00-00:00",
+                ruleName = "No Rules stated",
+                rule = "??.??.???? ? ? 00:00-23:59",
+                openingHours = "00:00-23:59",
+                displayHeader = "Default regel",
+                displayText = "Åpent - ingen gjeldende dato regler",
                 onlyShowForNavEmployees = false
             )
         }
