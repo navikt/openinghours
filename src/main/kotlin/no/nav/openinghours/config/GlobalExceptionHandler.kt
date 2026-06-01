@@ -63,7 +63,7 @@ class GlobalExceptionHandler(
         val body = mutableMapOf<String, Any>(
             "status" to statusCode.value(),
             "error" to statusCode.toString(),
-            "message" to messages.firstOrNull().orEmpty(),
+            "message" to (messages.firstOrNull() ?: "Validation failed"),
             "errorMessages" to messages
         )
         return ResponseEntity.status(statusCode).body(body)
