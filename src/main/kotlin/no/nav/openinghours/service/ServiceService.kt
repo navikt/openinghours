@@ -1,5 +1,7 @@
 package no.nav.openinghours.service
 
+import no.nav.openinghours.evaluator.OpeningHoursTreeResolver
+import no.nav.openinghours.evaluator.ResolvedGroup
 import no.nav.openinghours.model.db.OhGroupRepository
 import no.nav.openinghours.model.db.Service
 import no.nav.openinghours.model.db.ServiceRepository
@@ -15,8 +17,9 @@ import org.springframework.dao.IncorrectResultSizeDataAccessException
 
 @SpringService
 class ServiceService(
-        private val repo: ServiceRepository,
-        private val ohGroupRepo: OhGroupRepository
+    private val repo: ServiceRepository,
+    private val ohGroupRepo: OhGroupRepository,
+    private val resolver: OpeningHoursTreeResolver
 ) {
     private val log = LoggerFactory.getLogger(ServiceService::class.java)
 
@@ -172,5 +175,20 @@ class ServiceService(
         if (id != null && !ohGroupRepo.existsById(id)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Opening hours group not found: $id")
         }
+    }
+
+    @Transactional(readOnly = true)
+    fun getAllServicesWithOpeningHours(): Map<UUID, ResolvedGroup> {
+        val resolvedGroupsById = mutableMapOf<UUID, ResolvedGroup>()
+        return repo.findAllServiceGroupLinks().associate { link ->
+            val serviceId = link.getServiceId()
+            val groupId = link.getGroupId()
+            serviceId to resolvedGroupsById.getOrPut(groupId) { resolver.resolve(groupId) }
+        }
+    }
+
+    fun getResolvedOhGroupForService(serviceId: UUID): ResolvedGroup? {
+        val groupIds = repo.findOhGroupIds(serviceId)
+        return groupIds.firstOrNull()?.let { resolver.resolve(it) }
     }
 }

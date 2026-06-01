@@ -45,16 +45,16 @@ class RuleService(
             val entity = repo.findByName(name)
                 ?.apply {
                     this.rule = rule
-                    this.header = header ?: " " // Default to a single space
-                    this.text = text ?: " "     // Default to a single space
+                    this.header = header
+                    this.text = text
                     this.onlyShowForNavEmployees = onlyShowForNavEmployees
                 }
                 ?: Rule.create(
                     UUID.randomUUID(),
                     name,
                     rule,
-                    header ?: " ", // Default to a single space
-                    text ?: " ",   // Default to a single space
+                    header,
+                    text,
                     onlyShowForNavEmployees
                 )
 
