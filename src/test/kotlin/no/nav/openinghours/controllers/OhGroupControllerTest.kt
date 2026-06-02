@@ -52,6 +52,8 @@ class OhGroupControllerTest {
             contentType = MediaType.APPLICATION_JSON
         }.andExpect {
             status { isBadRequest() }
+            jsonPath("$.message") { value("save.name: must not be blank") }
+            jsonPath("$.errorMessages[0]") { value("save.name: must not be blank") }
         }
     }
 
@@ -175,4 +177,3 @@ class OhGroupControllerTest {
             .andExpect { status { isNotFound() } }
     }
 }
-
