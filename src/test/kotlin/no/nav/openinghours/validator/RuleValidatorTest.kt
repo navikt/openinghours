@@ -87,17 +87,19 @@ class RuleValidatorTest {
 
     @Test
     fun `validate numeric bounds for day-in-month rejects zero`() {
-        // 0 as day-of-month — the regex allows it via [0-2]?[0-9]
-        assertThat(validator.isAValidRule("??.??.???? 0 ? 07:00-21:00")).isTrue // Bug: validator accepts 0
+        // 0 as day-of-month — now correctly rejected
+        assertThat(validator.isAValidRule("??.??.???? 0 ? 07:00-21:00")).isFalse
         // 0 in multi-value path
-        assertThat(validator.isAValidRule("??.??.???? 0,5,10 ? 07:00-21:00")).isTrue // Bug: 0 accepted in multi-value
-        // 00 is also accepted by the regex
-        assertThat(validator.isAValidRule("??.??.???? 00 ? 07:00-21:00")).isTrue // Bug: 00 accepted
+        assertThat(validator.isAValidRule("??.??.???? 0,5,10 ? 07:00-21:00")).isFalse
+        // 00 is also rejected
+        assertThat(validator.isAValidRule("??.??.???? 00 ? 07:00-21:00")).isFalse
         // Negative values don't match
         assertThat(validator.isAValidRule("??.??.???? -1 ? 07:00-21:00")).isFalse
         // 31 is the max valid day
         assertThat(validator.isAValidRule("??.??.???? 31 ? 07:00-21:00")).isTrue
         assertThat(validator.isAValidRule("??.??.???? 32 ? 07:00-21:00")).isFalse
+        // Values above 31 in multi-value are also rejected
+        assertThat(validator.isAValidRule("??.??.???? 5,45 ? 07:00-21:00")).isFalse
     }
 
     @Test
