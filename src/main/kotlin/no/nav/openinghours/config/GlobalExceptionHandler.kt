@@ -1,6 +1,8 @@
 package no.nav.openinghours.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import jakarta.validation.ConstraintViolationException
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -49,6 +51,17 @@ class GlobalExceptionHandler(
         if (body["message"].toString().isBlank() && body["errorMessages"] is List<*>) {
             body["message"] = (body["errorMessages"] as List<*>).first().toString()
         }
+        return ResponseEntity.status(statusCode).body(body)
+    }
+
+    @ExceptionHandler(ConstraintViolationException::class)
+    fun handleConstraintViolation(ex: ConstraintViolationException): ResponseEntity<Map<String, Any>> {
+        val statusCode = HttpStatus.BAD_REQUEST
+        val body = mapOf(
+            "status" to statusCode.value(),
+            "error" to statusCode.toString(),
+            "message" to (ex.message ?: "")
+        )
         return ResponseEntity.status(statusCode).body(body)
     }
 
