@@ -57,9 +57,9 @@ class GlobalExceptionHandler(
     @ExceptionHandler(ConstraintViolationException::class)
     fun handleConstraintViolation(ex: ConstraintViolationException): ResponseEntity<Map<String, Any>> {
         val statusCode = HttpStatus.BAD_REQUEST
-        val messages = ex.constraintViolations.map { violation ->
-            "${violation.propertyPath}: ${violation.message}"
-        }
+        val messages = ex.constraintViolations
+            .map { "${it.propertyPath}: ${it.message}" }
+            .sorted()
         val body = mutableMapOf<String, Any>(
             "status" to statusCode.value(),
             "error" to statusCode.toString(),
