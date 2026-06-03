@@ -63,9 +63,9 @@ class RuleValidatorTest {
 
     @Test
     fun `validate range ending in L for day-in-month`() {
-        // "1-5,10-L" — range with L at end; validator splits on [,-] so L is the last token
+        // "1-5,10-L" — range with L at end; validator splits on commas, so "10-L" is validated as the last token
         assertThat(validator.isAValidRule("??.??.???? 1-5,10-L ? 07:00-21:00")).isTrue
-        // Simple range-like "5-L" — L at end, numeric parts = ["5"], ascending → valid
+        // Range-like "5-L" — upper bound uses L (last day of month) and must be the last token
         assertThat(validator.isAValidRule("??.??.???? 5-L ? 07:00-21:00")).isTrue
         // L must be at end after comma separation
         assertThat(validator.isAValidRule("??.??.???? 1,5,L ? 07:00-21:00")).isTrue
