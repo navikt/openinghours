@@ -8,7 +8,6 @@ import java.util.*
 @Table(name = "rule")
 open class Rule(
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", nullable = false, updatable = false)
     val id: UUID = UUID.randomUUID(),
 
@@ -51,7 +50,7 @@ open class Rule(
             rule: String,
             header: String?,
             text: String?,
-            onlyShowForNavEmployees : Boolean = false
+            onlyShowForNavEmployees: Boolean = false
         ): Rule = Rule(
             id = id,
             name = name,

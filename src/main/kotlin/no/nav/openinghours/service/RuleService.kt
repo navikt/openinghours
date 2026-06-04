@@ -24,6 +24,7 @@ class RuleService(
     private val ruleNameUniqueConstraint = "uq_rule_name"
     private val uniqueConstraintViolationSqlState = "23505"
 
+    @Transactional
     fun upsert(
         name: String,
         rule: String,
