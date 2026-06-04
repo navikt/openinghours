@@ -20,6 +20,7 @@
         <kotlin.version>1.9.25</kotlin.version>
         <tomcat.version>10.1.55</tomcat.version>
         <spring-security.version>6.5.10</spring-security.version>
+        <postgresql.version>42.7.11</postgresql.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
