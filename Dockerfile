@@ -1,24 +1,29 @@
-# --- step 1：build jar ---
+# --- Stage 1: Build ---
 FROM maven:3.9-eclipse-temurin-21 AS builder
-
 WORKDIR /app
-
-# copy pom.xml
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
-
-# copy source code
-COPY . .
+COPY src ./src
 RUN mvn clean package -DskipTests=true
 
-# --- step 2：run jar  ---
-FROM eclipse-temurin:21-jre AS runtime
+# --- Stage 2: Extract Spring Boot layers ---
+FROM eclipse-temurin:21-jre AS extractor
+WORKDIR /app
+COPY --from=builder /app/target/openinghours-*.jar app.jar
+RUN java -Djarmode=layertools -jar app.jar extract
 
+# --- Stage 3: Chainguard minimal runtime ---
+FROM cgr.dev/chainguard/jre:latest
 WORKDIR /app
 EXPOSE 8081
 
-# copy jar
-COPY --from=builder /app/target/openinghours-*.jar app.jar
+COPY --from=extractor /app/dependencies/ ./
+COPY --from=extractor /app/spring-boot-loader/ ./
+COPY --from=extractor /app/snapshot-dependencies/ ./
+COPY --from=extractor /app/application/ ./
 
-# start application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:InitialRAMPercentage=50.0", \
+  "org.springframework.boot.loader.launch.JarLauncher"]
