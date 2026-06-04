@@ -102,4 +102,104 @@ class OpeningHoursEvaluatorTest {
         assertThat(data.openingHours).isEqualTo("00:00-23:59")
         assertThat(data.ruleName).isEqualTo("No Rules stated")
     }
+
+    @Test
+    fun `month-only wildcard matches any weekday in that month`() {
+        val aprilRule = "??.04.???? ? 1-5 10:00-16:00"
+
+        // April weekday (Wed 2024-04-03) → matches
+        assertThat(evaluator.isOpen(LocalDateTime.of(2024, 4, 3, 12, 0), aprilRule)).isTrue
+        // April weekend (Sat 2024-04-06) → weekday constraint fails
+        assertThat(evaluator.isOpen(LocalDateTime.of(2024, 4, 6, 12, 0), aprilRule)).isFalse
+        // March weekday (Mon 2024-03-04) → month doesn't match
+        assertThat(evaluator.isOpen(LocalDateTime.of(2024, 3, 4, 12, 0), aprilRule)).isFalse
+        // April weekday outside hours → time constraint fails
+        assertThat(evaluator.isOpen(LocalDateTime.of(2024, 4, 3, 9, 58), aprilRule)).isFalse
+
+        // Standalone group evaluation
+        val r = rule("april-hours", aprilRule)
+        val g = group("root", r)
+        assertThat(evaluator.getOpeningHours(LocalDate.of(2024, 4, 3), g)).isEqualTo("10:00-16:00")
+        // Weekend → no match → open all day
+        assertThat(evaluator.getOpeningHours(LocalDate.of(2024, 4, 6), g)).isEqualTo("00:00-23:59")
+        // Wrong month → no match → open all day
+        assertThat(evaluator.getOpeningHours(LocalDate.of(2024, 5, 3), g)).isEqualTo("00:00-23:59")
+    }
+
+    @Test
+    fun `year-specific rule takes priority over year-wildcard when ordered first`() {
+        // 2024-12-24 is a Tuesday (weekday)
+        val specific2024 = rule("xmas-2024", "24.12.2024 ? 1-5 09:00-14:00")
+        val wildcardYear = rule("xmas-general", "24.12.???? ? 1-5 09:00-15:00")
+        val g = group("root", specific2024, wildcardYear)
+
+        // Specific year matches first
+        assertThat(evaluator.getOpeningHours(LocalDate.of(2024, 12, 24), g)).isEqualTo("09:00-14:00")
+        // 2025-12-24 is a Wednesday — specific doesn't match, wildcard does
+        assertThat(evaluator.getOpeningHours(LocalDate.of(2025, 12, 24), g)).isEqualTo("09:00-15:00")
+    }
+
+    @Test
+    fun `year-wildcard matches across arbitrary years`() {
+        val wildcardYear = rule("xmas-general", "24.12.???? ? ? 09:00-15:00")
+        val g = group("root", wildcardYear)
+
+        assertThat(evaluator.getOpeningHours(LocalDate.of(2030, 12, 24), g)).isEqualTo("09:00-15:00")
+        assertThat(evaluator.getOpeningHours(LocalDate.of(2020, 12, 24), g)).isEqualTo("09:00-15:00")
+        // Different date → no match
+        assertThat(evaluator.getOpeningHours(LocalDate.of(2030, 12, 25), g)).isEqualTo("00:00-23:59")
+    }
+
+    @Test
+    fun `getOpeningTime returns parsed opening time`() {
+        assertThat(evaluator.getOpeningTime("07:00-21:00")).isEqualTo(LocalTime.of(7, 0))
+        assertThat(evaluator.getOpeningTime("09:30-17:00")).isEqualTo(LocalTime.of(9, 30))
+        assertThat(evaluator.getOpeningTime("00:00-23:59")).isEqualTo(LocalTime.MIDNIGHT)
+        assertThat(evaluator.getOpeningTime("12:00-18:30")).isEqualTo(LocalTime.of(12, 0))
+        assertThat(evaluator.getOpeningTime("00:00-00:00")).isEqualTo(LocalTime.MIDNIGHT)
+    }
+
+    @Test
+    fun `getDisplayData propagates displayHeader displayText and onlyShowForNavEmployees`() {
+        val r = ResolvedRule(
+            name = "internal",
+            rule = "??.??.???? ? 1-5 09:00-15:00",
+            displayHeader = "Intern åpningstid",
+            displayText = "Kun for NAV-ansatte",
+            onlyShowForNavEmployees = true
+        )
+        val g = group("root", r)
+
+        val data = evaluator.getDisplayData(LocalDate.of(2024, 3, 15), g) // Friday
+        assertThat(data.ruleName).isEqualTo("internal")
+        assertThat(data.openingHours).isEqualTo("09:00-15:00")
+        assertThat(data.displayHeader).isEqualTo("Intern åpningstid")
+        assertThat(data.displayText).isEqualTo("Kun for NAV-ansatte")
+        assertThat(data.onlyShowForNavEmployees).isTrue()
+    }
+
+    @Test
+    fun `getDisplayData returns null displayHeader and displayText when not set`() {
+        val r = ResolvedRule(name = "basic", rule = "??.??.???? ? 1-5 08:00-16:00")
+        val g = group("root", r)
+
+        val data = evaluator.getDisplayData(LocalDate.of(2024, 3, 15), g) // Friday
+        assertThat(data.displayHeader).isNull()
+        assertThat(data.displayText).isNull()
+        assertThat(data.onlyShowForNavEmployees).isFalse()
+    }
+
+    @Test
+    fun `getDisplayData NotApplicable returns default display fields`() {
+        val r = ResolvedRule(name = "weekday-only", rule = "??.??.???? ? 1-5 08:00-16:00")
+        val g = group("root", r)
+
+        // Saturday — no rule matches
+        val data = evaluator.getDisplayData(LocalDate.of(2024, 3, 16), g)
+        assertThat(data.openingHours).isEqualTo("00:00-23:59")
+        assertThat(data.ruleName).isEqualTo("No Rules stated")
+        assertThat(data.displayHeader).isEqualTo("Default regel")
+        assertThat(data.displayText).isEqualTo("Åpent - ingen gjeldende dato regler")
+        assertThat(data.onlyShowForNavEmployees).isFalse()
+    }
 }

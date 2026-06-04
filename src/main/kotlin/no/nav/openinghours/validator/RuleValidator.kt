@@ -54,25 +54,48 @@ class RuleValidator {
 
     private fun isValidDayInMonthFormat(dayInMonthRule: String): Boolean {
         if (dayInMonthRule == "?") return true
+        if (dayInMonthRule == "L") return true
 
-        val ruleParts = dayInMonthRule.split("[,-]".toRegex())
-        if (ruleParts.size == 1) {
-            return dayInMonthRule.matches(Regex("^([0-2]?[0-9]|3[01]|L)$"))
-        }
+        // Split by comma into tokens; each token is either a single value, a range (e.g. "5-12"), or "L"
+        val tokens = dayInMonthRule.split(",")
+        if (tokens.isEmpty()) return false
 
-        val containsL = dayInMonthRule.contains("L")
-        val lPosition = dayInMonthRule.indexOf("L")
-        if (containsL && lPosition != dayInMonthRule.length - 1) return false
+        var previousMax = 0 // track ascending order across tokens
 
-        val numericParts = if (containsL) ruleParts.dropLast(1) else ruleParts
+        for ((index, token) in tokens.withIndex()) {
+            if (token == "L") {
+                // L must be the last token
+                if (index != tokens.size - 1) return false
+                continue
+            }
 
-        if (numericParts.isEmpty()) return containsL
+            val rangeParts = token.split("-")
+            when (rangeParts.size) {
+                1 -> {
+                    val value = rangeParts[0].toIntOrNull() ?: return false
+                    if (value < 1 || value > 31) return false
+                    if (value <= previousMax) return false
+                    previousMax = value
+                }
+                2 -> {
+                    // Range: lower-upper, upper can be "L"
+                    val lower = rangeParts[0].toIntOrNull() ?: return false
+                    if (lower < 1 || lower > 31) return false
+                    if (lower <= previousMax) return false
 
-        var lowerRange = numericParts[0].toIntOrNull() ?: return false
-        for (i in 1 until numericParts.size) {
-            val upperRange = numericParts[i].toIntOrNull() ?: return false
-            if (lowerRange > upperRange) return false
-            lowerRange = upperRange
+                    if (rangeParts[1] == "L") {
+                        // "N-L" must be the last token
+                        if (index != tokens.size - 1) return false
+                        previousMax = 31 // L represents end-of-month
+                    } else {
+                        val upper = rangeParts[1].toIntOrNull() ?: return false
+                        if (upper < 1 || upper > 31) return false
+                        if (lower > upper) return false
+                        previousMax = upper
+                    }
+                }
+                else -> return false
+            }
         }
         return true
     }
