@@ -91,14 +91,14 @@ class OpeningHoursEvaluatorTest {
     fun `displayData carries ruleName for matched leaf`() {
         val r = rule("weekday", "??.??.???? ? 1-5 07:30-17:00")
         val g = group("root", r)
-        val data = evaluator.getDisplayData(LocalDate.of(2023, 11, 16), g)
+        val data = evaluator.getDisplayData(LocalDate.of(2023, 11, 16), g)!!
         assertThat(data.ruleName).isEqualTo("weekday")
         assertThat(data.openingHours).isEqualTo("07:30-17:00")
     }
 
     @Test
     fun `empty top-level group returns open all day`() {
-        val data = evaluator.getDisplayData(LocalDate.of(2023, 11, 16), group("empty"))
+        val data = evaluator.getDisplayData(LocalDate.of(2023, 11, 16), group("empty"))!!
         assertThat(data.openingHours).isEqualTo("00:00-23:59")
         assertThat(data.ruleName).isEqualTo("No Rules stated")
     }
@@ -171,7 +171,7 @@ class OpeningHoursEvaluatorTest {
         val g = group("root", r)
 
         val data = evaluator.getDisplayData(LocalDate.of(2024, 3, 15), g) // Friday
-        assertThat(data.ruleName).isEqualTo("internal")
+        assertThat(data!!.ruleName).isEqualTo("internal")
         assertThat(data.openingHours).isEqualTo("09:00-15:00")
         assertThat(data.displayHeader).isEqualTo("Intern åpningstid")
         assertThat(data.displayText).isEqualTo("Kun for NAV-ansatte")
@@ -184,22 +184,18 @@ class OpeningHoursEvaluatorTest {
         val g = group("root", r)
 
         val data = evaluator.getDisplayData(LocalDate.of(2024, 3, 15), g) // Friday
-        assertThat(data.displayHeader).isNull()
+        assertThat(data!!.displayHeader).isNull()
         assertThat(data.displayText).isNull()
         assertThat(data.onlyShowForNavEmployees).isFalse()
     }
 
     @Test
-    fun `getDisplayData NotApplicable returns default display fields`() {
+    fun `getDisplayData returns null when rules exist but none match the date`() {
         val r = ResolvedRule(name = "weekday-only", rule = "??.??.???? ? 1-5 08:00-16:00")
         val g = group("root", r)
 
-        // Saturday — no rule matches
+        // Saturday — rules exist but none match → null
         val data = evaluator.getDisplayData(LocalDate.of(2024, 3, 16), g)
-        assertThat(data.openingHours).isEqualTo("00:00-23:59")
-        assertThat(data.ruleName).isEqualTo("No Rules stated")
-        assertThat(data.displayHeader).isEqualTo("Default regel")
-        assertThat(data.displayText).isEqualTo("Åpent - ingen gjeldende dato regler")
-        assertThat(data.onlyShowForNavEmployees).isFalse()
+        assertThat(data).isNull()
     }
 }

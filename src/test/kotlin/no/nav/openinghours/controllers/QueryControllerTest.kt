@@ -8,10 +8,12 @@ import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.http.HttpStatus
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDate
 import java.util.UUID
 
@@ -23,10 +25,10 @@ class QueryControllerTest {
     @Autowired
     private lateinit var mockMvc: MockMvc
 
-    @MockBean
+    @MockitoBean
     private lateinit var lookupService: OpeningHoursLookupService
 
-    @MockBean
+    @MockitoBean
     private lateinit var serviceService: ServiceService
 
 
@@ -132,7 +134,23 @@ class QueryControllerTest {
     }
 
     @Test
-    fun `query by group returns default display data when no rule matches`() {
+    fun `query by group returns 404 when rules exist but none match the date`() {
+        val groupId = UUID.randomUUID()
+        val date = LocalDate.of(2024, 3, 16)
+
+        `when`(lookupService.getDisplayData(groupId, date)).thenThrow(
+            ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Group '$groupId' has rules defined, but none match the requested date: $date"
+            )
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-16")
+            .andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `query by group returns open all day when group has no rules at all`() {
         val groupId = UUID.randomUUID()
         val date = LocalDate.of(2024, 3, 16)
 

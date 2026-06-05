@@ -10,17 +10,18 @@ import java.time.YearMonth
 class OpeningHoursEvaluator {
 
     private sealed interface EvalResult {
-        data object NotApplicable : EvalResult
+        data object NoRules : EvalResult
+        data object NoMatch : EvalResult
         data class Matched(val openingHours: String, val ruleName: String, val rule: String, val displayHeader: String? = null, val displayText: String? = null, val onlyShowForNavEmployees: Boolean = false) : EvalResult
     }
 
     fun getOpeningHours(date: LocalDate, group: ResolvedGroup): String =
         when (val r = evaluate(date, group.entries, isSubGroup = false)) {
             is EvalResult.Matched -> r.openingHours
-            EvalResult.NotApplicable -> "00:00-23:59"
+            EvalResult.NoRules, EvalResult.NoMatch -> "00:00-23:59"
         }
 
-    fun getDisplayData(date: LocalDate, group: ResolvedGroup): OpeningHoursDisplayData =
+    fun getDisplayData(date: LocalDate, group: ResolvedGroup): OpeningHoursDisplayData? =
         when (val r = evaluate(date, group.entries, isSubGroup = false)) {
             is EvalResult.Matched -> OpeningHoursDisplayData(
                 ruleName = r.ruleName,
@@ -30,7 +31,7 @@ class OpeningHoursEvaluator {
                 displayText = r.displayText,
                 onlyShowForNavEmployees = r.onlyShowForNavEmployees,
             )
-            EvalResult.NotApplicable -> OpeningHoursDisplayData(
+            EvalResult.NoRules -> OpeningHoursDisplayData(
                 ruleName = "No Rules stated",
                 rule = "??.??.???? ? ? 00:00-23:59",
                 openingHours = "00:00-23:59",
@@ -38,6 +39,7 @@ class OpeningHoursEvaluator {
                 displayText = "Åpent - ingen gjeldende dato regler",
                 onlyShowForNavEmployees = false
             )
+            EvalResult.NoMatch -> null
         }
 
     fun isOpen(dateTime: LocalDateTime, ruleDsl: String): Boolean {
@@ -61,6 +63,7 @@ class OpeningHoursEvaluator {
     }
 
     private fun evaluate(date: LocalDate, entries: List<ResolvedEntry>, isSubGroup: Boolean): EvalResult {
+        if (entries.isEmpty()) return EvalResult.NoRules
         for (entry in entries) {
             val result = when (entry) {
                 is ResolvedRule -> evaluateRule(date, entry)
@@ -68,15 +71,15 @@ class OpeningHoursEvaluator {
             }
             if (result is EvalResult.Matched) return result
         }
-        return EvalResult.NotApplicable
+        return EvalResult.NoMatch
     }
 
     private fun evaluateRule(date: LocalDate, rule: ResolvedRule): EvalResult {
         val parts = rule.rule.split(Regex("\\s+"))
-        if (parts.size != 4) return EvalResult.NotApplicable
-        if (!matchesDate(date, parts[0])) return EvalResult.NotApplicable
-        if (!matchesDayOfMonth(date, parts[1])) return EvalResult.NotApplicable
-        if (!matchesWeekday(date, parts[2])) return EvalResult.NotApplicable
+        if (parts.size != 4) return EvalResult.NoMatch
+        if (!matchesDate(date, parts[0])) return EvalResult.NoMatch
+        if (!matchesDayOfMonth(date, parts[1])) return EvalResult.NoMatch
+        if (!matchesWeekday(date, parts[2])) return EvalResult.NoMatch
         return EvalResult.Matched(parts[3], rule.name, rule.rule, rule.displayHeader, rule.displayText, rule.onlyShowForNavEmployees)
     }
 
