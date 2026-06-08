@@ -7,7 +7,7 @@ import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
@@ -26,7 +26,7 @@ class RuleControllerTest {
     @Autowired
     private lateinit var mockMvc: MockMvc
 
-    @MockBean
+    @MockitoBean
     private lateinit var ruleService: RuleService
 
     private fun aRule(id: UUID = UUID.randomUUID(), name: String = "Weekdays", rule: String = "??.??.???? ? 1-5 08:00-16:00") =

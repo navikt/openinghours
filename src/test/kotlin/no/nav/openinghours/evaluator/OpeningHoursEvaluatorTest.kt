@@ -4,6 +4,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 class OpeningHoursEvaluatorTest {
@@ -91,14 +92,14 @@ class OpeningHoursEvaluatorTest {
     fun `displayData carries ruleName for matched leaf`() {
         val r = rule("weekday", "??.??.???? ? 1-5 07:30-17:00")
         val g = group("root", r)
-        val data = evaluator.getDisplayData(LocalDate.of(2023, 11, 16), g)
+        val data = evaluator.getDisplayData(LocalDate.of(2023, 11, 16), g)!!
         assertThat(data.ruleName).isEqualTo("weekday")
         assertThat(data.openingHours).isEqualTo("07:30-17:00")
     }
 
     @Test
     fun `empty top-level group returns open all day`() {
-        val data = evaluator.getDisplayData(LocalDate.of(2023, 11, 16), group("empty"))
+        val data = evaluator.getDisplayData(LocalDate.of(2023, 11, 16), group("empty"))!!
         assertThat(data.openingHours).isEqualTo("00:00-23:59")
         assertThat(data.ruleName).isEqualTo("No Rules stated")
     }
@@ -171,7 +172,7 @@ class OpeningHoursEvaluatorTest {
         val g = group("root", r)
 
         val data = evaluator.getDisplayData(LocalDate.of(2024, 3, 15), g) // Friday
-        assertThat(data.ruleName).isEqualTo("internal")
+        assertThat(data!!.ruleName).isEqualTo("internal")
         assertThat(data.openingHours).isEqualTo("09:00-15:00")
         assertThat(data.displayHeader).isEqualTo("Intern åpningstid")
         assertThat(data.displayText).isEqualTo("Kun for NAV-ansatte")
@@ -184,22 +185,71 @@ class OpeningHoursEvaluatorTest {
         val g = group("root", r)
 
         val data = evaluator.getDisplayData(LocalDate.of(2024, 3, 15), g) // Friday
-        assertThat(data.displayHeader).isNull()
+        assertThat(data!!.displayHeader).isNull()
         assertThat(data.displayText).isNull()
         assertThat(data.onlyShowForNavEmployees).isFalse()
     }
 
     @Test
-    fun `getDisplayData NotApplicable returns default display fields`() {
+    fun `getDisplayData returns NoRules default when group contains only empty sub-groups`() {
+        // A group whose only entries are empty sub-groups has no rules anywhere in the tree.
+        // It must return the NoRules default (open all day), NOT null (which would cause a 404).
+        val emptyChild1 = group("empty-child-1")
+        val emptyChild2 = group("empty-child-2")
+        val parent = group("parent-of-empties", emptyChild1, emptyChild2)
+
+        val data = evaluator.getDisplayData(LocalDate.of(2024, 6, 10), parent)!!
+        assertThat(data.openingHours).isEqualTo("00:00-23:59")
+        assertThat(data.ruleName).isEqualTo("No Rules stated")
+    }
+
+    @Test
+    fun `getDisplayData returns null only when rules exist but none match - mixed empty and real sub-groups`() {
+        // The real sub-group has a weekday-only rule; Saturday should yield null (NoMatch), not NoRules default.
+        val emptyChild = group("empty-child")
+        val realChild = group("real-child", rule("weekday", "??.??.???? ? 1-5 08:00-16:00"))
+        val parent = group("parent", emptyChild, realChild)
+
+        // Saturday — the real rule exists but does not match → null
+        assertThat(evaluator.getDisplayData(LocalDate.of(2024, 3, 16), parent)).isNull()
+        // Monday — the real rule matches → non-null
+        assertThat(evaluator.getDisplayData(LocalDate.of(2024, 3, 18), parent)).isNotNull()
+    }
+
+    @Test
+    fun `getDisplayData returns NoRules default when group contains only deeply nested empty sub-groups`() {
+        val level3 = group("level3")
+        val level2 = group("level2", level3)
+        val level1 = group("level1", level2)
+
+        val data = evaluator.getDisplayData(LocalDate.of(2024, 6, 10), level1)!!
+        assertThat(data.openingHours).isEqualTo("00:00-23:59")
+        assertThat(data.ruleName).isEqualTo("No Rules stated")
+    }
+
+    @Test
+    fun `evaluateRule throws IllegalStateException for malformed rule DSL`() {
+        // A malformed rule must fail fast with a 500-worthy exception, not silently
+        // return NoMatch (which would produce a misleading 404 from getDisplayData).
+        val badRule = rule("broken", "??.??.???? ? 1-5") // only 3 parts
+        val g = group("root", badRule)
+
+        assertThatThrownBy { evaluator.getDisplayData(LocalDate.of(2024, 3, 18), g) }
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContaining("broken")
+            .hasMessageContaining("3")
+
+        assertThatThrownBy { evaluator.getOpeningHours(LocalDate.of(2024, 3, 18), g) }
+            .isInstanceOf(IllegalStateException::class.java)
+    }
+
+    @Test
+    fun `getDisplayData returns null when rules exist but none match the date`() {
         val r = ResolvedRule(name = "weekday-only", rule = "??.??.???? ? 1-5 08:00-16:00")
         val g = group("root", r)
 
-        // Saturday — no rule matches
+        // Saturday — rules exist but none match → null
         val data = evaluator.getDisplayData(LocalDate.of(2024, 3, 16), g)
-        assertThat(data.openingHours).isEqualTo("00:00-23:59")
-        assertThat(data.ruleName).isEqualTo("No Rules stated")
-        assertThat(data.displayHeader).isEqualTo("Default regel")
-        assertThat(data.displayText).isEqualTo("Åpent - ingen gjeldende dato regler")
-        assertThat(data.onlyShowForNavEmployees).isFalse()
+        assertThat(data).isNull()
     }
 }

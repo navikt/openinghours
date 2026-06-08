@@ -105,5 +105,31 @@ class OpeningHoursLookupServiceTest {
         }
         assertThat(ex.statusCode.value()).isEqualTo(404)
     }
+
+    @Test
+    fun `getDisplayData throws NOT_FOUND when group has rules but none match the date`() {
+        // Rule only matches weekdays (Mon-Fri)
+        val rule = createRule("Weekdays only", "??.??.???? ? 1-5 08:00-16:00")
+        val group = createGroup("Office hours", listOf(rule.id))
+
+        // 2024-03-16 is a Saturday — rule exists but does NOT match
+        val ex = assertThrows<ResponseStatusException> {
+            lookupService.getDisplayData(group.id, LocalDate.of(2024, 3, 16))
+        }
+        assertThat(ex.statusCode.value()).isEqualTo(404)
+        assertThat(ex.reason).contains("has rules defined")
+        assertThat(ex.reason).contains("none match")
+    }
+
+    @Test
+    fun `getDisplayData returns default open-all-day when group has no rules at all`() {
+        val group = createGroup("Empty group", emptyList())
+
+        val result = lookupService.getDisplayData(group.id, LocalDate.of(2024, 3, 16))
+
+        assertThat(result.ruleName).isEqualTo("No Rules stated")
+        assertThat(result.openingHours).isEqualTo("00:00-23:59")
+        assertThat(result.displayHeader).isEqualTo("Default regel")
+    }
 }
 

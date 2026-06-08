@@ -10,18 +10,19 @@ import java.time.YearMonth
 class OpeningHoursEvaluator {
 
     private sealed interface EvalResult {
-        data object NotApplicable : EvalResult
+        data object NoRules : EvalResult
+        data object NoMatch : EvalResult
         data class Matched(val openingHours: String, val ruleName: String, val rule: String, val displayHeader: String? = null, val displayText: String? = null, val onlyShowForNavEmployees: Boolean = false) : EvalResult
     }
 
     fun getOpeningHours(date: LocalDate, group: ResolvedGroup): String =
-        when (val r = evaluate(date, group.entries, isSubGroup = false)) {
+        when (val r = evaluate(date, group.entries)) {
             is EvalResult.Matched -> r.openingHours
-            EvalResult.NotApplicable -> "00:00-23:59"
+            EvalResult.NoRules, EvalResult.NoMatch -> "00:00-23:59"
         }
 
-    fun getDisplayData(date: LocalDate, group: ResolvedGroup): OpeningHoursDisplayData =
-        when (val r = evaluate(date, group.entries, isSubGroup = false)) {
+    fun getDisplayData(date: LocalDate, group: ResolvedGroup): OpeningHoursDisplayData? =
+        when (val r = evaluate(date, group.entries)) {
             is EvalResult.Matched -> OpeningHoursDisplayData(
                 ruleName = r.ruleName,
                 rule = r.rule,
@@ -30,7 +31,7 @@ class OpeningHoursEvaluator {
                 displayText = r.displayText,
                 onlyShowForNavEmployees = r.onlyShowForNavEmployees,
             )
-            EvalResult.NotApplicable -> OpeningHoursDisplayData(
+            EvalResult.NoRules -> OpeningHoursDisplayData(
                 ruleName = "No Rules stated",
                 rule = "??.??.???? ? ? 00:00-23:59",
                 openingHours = "00:00-23:59",
@@ -38,6 +39,7 @@ class OpeningHoursEvaluator {
                 displayText = "Åpent - ingen gjeldende dato regler",
                 onlyShowForNavEmployees = false
             )
+            EvalResult.NoMatch -> null
         }
 
     fun isOpen(dateTime: LocalDateTime, ruleDsl: String): Boolean {
@@ -60,23 +62,34 @@ class OpeningHoursEvaluator {
         return if (h == 23 && m == 59) LocalTime.MIDNIGHT else LocalTime.of(h, m)
     }
 
-    private fun evaluate(date: LocalDate, entries: List<ResolvedEntry>, isSubGroup: Boolean): EvalResult {
+    private fun evaluate(date: LocalDate, entries: List<ResolvedEntry>): EvalResult {
+        if (entries.isEmpty()) return EvalResult.NoRules
+        // Track whether any rule was encountered anywhere in the tree.
+        // Without this, a group containing only empty sub-groups would return NoMatch
+        // instead of NoRules, incorrectly triggering a 404 in getDisplayData().
+        var anyRulesFound = false
         for (entry in entries) {
             val result = when (entry) {
-                is ResolvedRule -> evaluateRule(date, entry)
-                is ResolvedGroup -> evaluate(date, entry.entries, isSubGroup = true)
+                is ResolvedRule -> evaluateRule(date, entry).also { anyRulesFound = true }
+                is ResolvedGroup -> evaluate(date, entry.entries)
             }
-            if (result is EvalResult.Matched) return result
+            when (result) {
+                is EvalResult.Matched -> return result
+                is EvalResult.NoMatch -> anyRulesFound = true   // sub-group had rules, none matched
+                EvalResult.NoRules -> { /* empty sub-group — no rules to count */ }
+            }
         }
-        return EvalResult.NotApplicable
+        return if (anyRulesFound) EvalResult.NoMatch else EvalResult.NoRules
     }
 
     private fun evaluateRule(date: LocalDate, rule: ResolvedRule): EvalResult {
         val parts = rule.rule.split(Regex("\\s+"))
-        if (parts.size != 4) return EvalResult.NotApplicable
-        if (!matchesDate(date, parts[0])) return EvalResult.NotApplicable
-        if (!matchesDayOfMonth(date, parts[1])) return EvalResult.NotApplicable
-        if (!matchesWeekday(date, parts[2])) return EvalResult.NotApplicable
+        if (parts.size != 4) throw IllegalStateException(
+            "Malformed rule DSL for rule '${rule.name}': expected 4 parts but got ${parts.size} in \"${rule.rule}\""
+        )
+        if (!matchesDate(date, parts[0])) return EvalResult.NoMatch
+        if (!matchesDayOfMonth(date, parts[1])) return EvalResult.NoMatch
+        if (!matchesWeekday(date, parts[2])) return EvalResult.NoMatch
         return EvalResult.Matched(parts[3], rule.name, rule.rule, rule.displayHeader, rule.displayText, rule.onlyShowForNavEmployees)
     }
 

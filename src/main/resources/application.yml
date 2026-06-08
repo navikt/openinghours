@@ -26,18 +26,6 @@ api:
   security:
     key: ${API_KEY}
     header-name: X-API-Key
-jira:
-  url: ${JIRA_URL}
-  username: ${JIRA_USERNAME}
-  password: ${JIRA_PASSWORD}
-
-openinghours:
-  api:
-    url: https://api.openinghours.com/   #Openinghours url
-    token: ${OPENINGHOURS_TOKEN}
-  client:
-    id: ${OPENINGHOURS_CLIENT_ID}          #Openinghours client id
-    secret: ${OPENINGHOURS_CLIENT_SECRET}      #openinghours client secret
 
 management:
   endpoints:
