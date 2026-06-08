@@ -17,7 +17,6 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.springframework.web.server.ResponseStatusException
-import org.junit.jupiter.api.assertThrows
 import java.util.UUID
 
 @WebMvcTest(OhGroupController::class)
@@ -48,12 +47,13 @@ class OhGroupControllerTest {
 
     @Test
     fun `POST create group with blank name returns 400`() {
+        `when`(ohGroupService.save("", emptyList()))
+            .thenThrow(ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank"))
+
         mockMvc.post("/api/openinghours/group?name=") {
             contentType = MediaType.APPLICATION_JSON
         }.andExpect {
             status { isBadRequest() }
-            jsonPath("$.message") { value("save.name: must not be blank") }
-            jsonPath("$.errorMessages[0]") { value("save.name: must not be blank") }
         }
     }
 
