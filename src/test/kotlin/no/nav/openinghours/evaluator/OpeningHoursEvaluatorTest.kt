@@ -4,6 +4,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 class OpeningHoursEvaluatorTest {
@@ -224,6 +225,22 @@ class OpeningHoursEvaluatorTest {
         val data = evaluator.getDisplayData(LocalDate.of(2024, 6, 10), level1)!!
         assertThat(data.openingHours).isEqualTo("00:00-23:59")
         assertThat(data.ruleName).isEqualTo("No Rules stated")
+    }
+
+    @Test
+    fun `evaluateRule throws IllegalStateException for malformed rule DSL`() {
+        // A malformed rule must fail fast with a 500-worthy exception, not silently
+        // return NoMatch (which would produce a misleading 404 from getDisplayData).
+        val badRule = rule("broken", "??.??.???? ? 1-5") // only 3 parts
+        val g = group("root", badRule)
+
+        assertThatThrownBy { evaluator.getDisplayData(LocalDate.of(2024, 3, 18), g) }
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContaining("broken")
+            .hasMessageContaining("3")
+
+        assertThatThrownBy { evaluator.getOpeningHours(LocalDate.of(2024, 3, 18), g) }
+            .isInstanceOf(IllegalStateException::class.java)
     }
 
     @Test

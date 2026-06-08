@@ -83,8 +83,10 @@ class OpeningHoursEvaluator {
     }
 
     private fun evaluateRule(date: LocalDate, rule: ResolvedRule): EvalResult {
-        val parts = rule.rule.trim().split(Regex("\\s+"))
-        if (parts.size != 4) return EvalResult.NoMatch
+        val parts = rule.rule.split(Regex("\\s+"))
+        if (parts.size != 4) throw IllegalStateException(
+            "Malformed rule DSL for rule '${rule.name}': expected 4 parts but got ${parts.size} in \"${rule.rule}\""
+        )
         if (!matchesDate(date, parts[0])) return EvalResult.NoMatch
         if (!matchesDayOfMonth(date, parts[1])) return EvalResult.NoMatch
         if (!matchesWeekday(date, parts[2])) return EvalResult.NoMatch
