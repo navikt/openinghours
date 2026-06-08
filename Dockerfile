@@ -10,7 +10,7 @@ RUN mvn clean package -DskipTests=true
 FROM eclipse-temurin:21-jre AS extractor
 WORKDIR /app
 COPY --from=builder /app/target/openinghours-*.jar app.jar
-RUN java -Djarmode=tools -jar app.jar extract --layers --launcher
+RUN java -Djarmode=layertools -jar app.jar extract
 
 # --- Stage 3: Runtime ---
 FROM eclipse-temurin:21-jre
