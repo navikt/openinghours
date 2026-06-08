@@ -10,10 +10,10 @@ RUN mvn clean package -DskipTests=true
 FROM eclipse-temurin:21-jre AS extractor
 WORKDIR /app
 COPY --from=builder /app/target/openinghours-*.jar app.jar
-RUN java -Djarmode=layertools -jar app.jar extract
+RUN java -Djarmode=tools extract --layers --launcher
 
-# --- Stage 3: Chainguard minimal runtime ---
-FROM cgr.dev/chainguard/jre:latest
+# --- Stage 3: Runtime ---
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 EXPOSE 8081
 
