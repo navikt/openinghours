@@ -13,7 +13,7 @@ COPY --from=builder /app/target/openinghours-*.jar app.jar
 RUN java -Djarmode=layertools -jar app.jar extract
 
 # --- Stage 3: Runtime ---
-FROM eclipse-temurin:21-jre
+FROM cgr.dev/chainguard/jre:latest
 WORKDIR /app
 EXPOSE 8081
 

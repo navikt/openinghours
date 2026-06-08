@@ -83,7 +83,7 @@ class OpeningHoursEvaluator {
     }
 
     private fun evaluateRule(date: LocalDate, rule: ResolvedRule): EvalResult {
-        val parts = rule.rule.split(Regex("\\s+"))
+        val parts = rule.rule.trim().split(Regex("\\s+"))
         if (parts.size != 4) return EvalResult.NoMatch
         if (!matchesDate(date, parts[0])) return EvalResult.NoMatch
         if (!matchesDayOfMonth(date, parts[1])) return EvalResult.NoMatch
