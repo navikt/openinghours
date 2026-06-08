@@ -16,13 +16,13 @@ class OpeningHoursEvaluator {
     }
 
     fun getOpeningHours(date: LocalDate, group: ResolvedGroup): String =
-        when (val r = evaluate(date, group.entries, isSubGroup = false)) {
+        when (val r = evaluate(date, group.entries)) {
             is EvalResult.Matched -> r.openingHours
             EvalResult.NoRules, EvalResult.NoMatch -> "00:00-23:59"
         }
 
     fun getDisplayData(date: LocalDate, group: ResolvedGroup): OpeningHoursDisplayData? =
-        when (val r = evaluate(date, group.entries, isSubGroup = false)) {
+        when (val r = evaluate(date, group.entries)) {
             is EvalResult.Matched -> OpeningHoursDisplayData(
                 ruleName = r.ruleName,
                 rule = r.rule,
@@ -62,7 +62,7 @@ class OpeningHoursEvaluator {
         return if (h == 23 && m == 59) LocalTime.MIDNIGHT else LocalTime.of(h, m)
     }
 
-    private fun evaluate(date: LocalDate, entries: List<ResolvedEntry>, isSubGroup: Boolean): EvalResult {
+    private fun evaluate(date: LocalDate, entries: List<ResolvedEntry>): EvalResult {
         if (entries.isEmpty()) return EvalResult.NoRules
         // Track whether any rule was encountered anywhere in the tree.
         // Without this, a group containing only empty sub-groups would return NoMatch
@@ -71,7 +71,7 @@ class OpeningHoursEvaluator {
         for (entry in entries) {
             val result = when (entry) {
                 is ResolvedRule -> evaluateRule(date, entry).also { anyRulesFound = true }
-                is ResolvedGroup -> evaluate(date, entry.entries, isSubGroup = true)
+                is ResolvedGroup -> evaluate(date, entry.entries)
             }
             when (result) {
                 is EvalResult.Matched -> return result
