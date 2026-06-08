@@ -64,14 +64,22 @@ class OpeningHoursEvaluator {
 
     private fun evaluate(date: LocalDate, entries: List<ResolvedEntry>, isSubGroup: Boolean): EvalResult {
         if (entries.isEmpty()) return EvalResult.NoRules
+        // Track whether any rule was encountered anywhere in the tree.
+        // Without this, a group containing only empty sub-groups would return NoMatch
+        // instead of NoRules, incorrectly triggering a 404 in getDisplayData().
+        var anyRulesFound = false
         for (entry in entries) {
             val result = when (entry) {
-                is ResolvedRule -> evaluateRule(date, entry)
+                is ResolvedRule -> evaluateRule(date, entry).also { anyRulesFound = true }
                 is ResolvedGroup -> evaluate(date, entry.entries, isSubGroup = true)
             }
-            if (result is EvalResult.Matched) return result
+            when (result) {
+                is EvalResult.Matched -> return result
+                is EvalResult.NoMatch -> anyRulesFound = true   // sub-group had rules, none matched
+                EvalResult.NoRules -> { /* empty sub-group — no rules to count */ }
+            }
         }
-        return EvalResult.NoMatch
+        return if (anyRulesFound) EvalResult.NoMatch else EvalResult.NoRules
     }
 
     private fun evaluateRule(date: LocalDate, rule: ResolvedRule): EvalResult {

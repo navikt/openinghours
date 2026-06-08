@@ -190,6 +190,43 @@ class OpeningHoursEvaluatorTest {
     }
 
     @Test
+    fun `getDisplayData returns NoRules default when group contains only empty sub-groups`() {
+        // A group whose only entries are empty sub-groups has no rules anywhere in the tree.
+        // It must return the NoRules default (open all day), NOT null (which would cause a 404).
+        val emptyChild1 = group("empty-child-1")
+        val emptyChild2 = group("empty-child-2")
+        val parent = group("parent-of-empties", emptyChild1, emptyChild2)
+
+        val data = evaluator.getDisplayData(LocalDate.of(2024, 6, 10), parent)!!
+        assertThat(data.openingHours).isEqualTo("00:00-23:59")
+        assertThat(data.ruleName).isEqualTo("No Rules stated")
+    }
+
+    @Test
+    fun `getDisplayData returns null only when rules exist but none match - mixed empty and real sub-groups`() {
+        // The real sub-group has a weekday-only rule; Saturday should yield null (NoMatch), not NoRules default.
+        val emptyChild = group("empty-child")
+        val realChild = group("real-child", rule("weekday", "??.??.???? ? 1-5 08:00-16:00"))
+        val parent = group("parent", emptyChild, realChild)
+
+        // Saturday — the real rule exists but does not match → null
+        assertThat(evaluator.getDisplayData(LocalDate.of(2024, 3, 16), parent)).isNull()
+        // Monday — the real rule matches → non-null
+        assertThat(evaluator.getDisplayData(LocalDate.of(2024, 3, 18), parent)).isNotNull()
+    }
+
+    @Test
+    fun `getDisplayData returns NoRules default when group contains only deeply nested empty sub-groups`() {
+        val level3 = group("level3")
+        val level2 = group("level2", level3)
+        val level1 = group("level1", level2)
+
+        val data = evaluator.getDisplayData(LocalDate.of(2024, 6, 10), level1)!!
+        assertThat(data.openingHours).isEqualTo("00:00-23:59")
+        assertThat(data.ruleName).isEqualTo("No Rules stated")
+    }
+
+    @Test
     fun `getDisplayData returns null when rules exist but none match the date`() {
         val r = ResolvedRule(name = "weekday-only", rule = "??.??.???? ? 1-5 08:00-16:00")
         val g = group("root", r)
