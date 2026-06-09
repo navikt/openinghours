@@ -48,10 +48,10 @@ class DailyCacheControllerTest {
         mockMvc.get("/api/openinghours/daily")
             .andExpect {
                 status { isOk() }
-                jsonPath("$.$id1.ruleName") { value("Weekday rule") }
-                jsonPath("$.$id1.openingHours") { value("08:00-16:00") }
-                jsonPath("$.$id2.ruleName") { value("Weekend closed") }
-                jsonPath("$.$id2.openingHours") { value("00:00-00:00") }
+                jsonPath("$['$id1'].ruleName") { value("Weekday rule") }
+                jsonPath("$['$id1'].openingHours") { value("08:00-16:00") }
+                jsonPath("$['$id2'].ruleName") { value("Weekend closed") }
+                jsonPath("$['$id2'].openingHours") { value("00:00-00:00") }
             }
     }
 
@@ -85,11 +85,11 @@ class DailyCacheControllerTest {
         mockMvc.get("/api/openinghours/daily")
             .andExpect {
                 status { isOk() }
-                jsonPath("$.$id.ruleName") { value("Nav employees only") }
-                jsonPath("$.$id.openingHours") { value("09:00-15:00") }
-                jsonPath("$.$id.displayHeader") { value("Intern åpningstid") }
-                jsonPath("$.$id.displayText") { value("Kun for ansatte") }
-                jsonPath("$.$id.onlyShowForNavEmployees") { value(true) }
+                jsonPath("$['$id'].ruleName") { value("Nav employees only") }
+                jsonPath("$['$id'].openingHours") { value("09:00-15:00") }
+                jsonPath("$['$id'].displayHeader") { value("Intern åpningstid") }
+                jsonPath("$['$id'].displayText") { value("Kun for ansatte") }
+                jsonPath("$['$id'].onlyShowForNavEmployees") { value(true) }
             }
     }
 
