@@ -141,7 +141,7 @@ class OpeningHoursDailyCacheTest {
             .willReturn(mapOf(serviceId1 to group1))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(displayData1)
         cache.populate()
-        assertThat(cache.getForService(serviceId1)).isNotNull
+        assertThat(cache.getForService(serviceId1)).isNotNull()
 
         // Repopulate with empty service list – cache should be wiped
         given(serviceService.getAllServicesWithOpeningHours())
@@ -164,7 +164,7 @@ class OpeningHoursDailyCacheTest {
         cache.populate()
 
         val result = cache.getForService(serviceId1)
-        assertThat(result).isNotNull
+        assertThat(result).isNotNull()
         assertThat(result?.ruleName).isEqualTo("No match")
         assertThat(result?.openingHours).isEqualTo("00:00-23:59")
     }

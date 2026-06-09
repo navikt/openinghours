@@ -47,7 +47,7 @@ class OpeningHoursDailyCacheSchedulerUnitTest {
 
         assertThat(annotation)
             .`as`("@EventListener must be present on refresh()")
-            .isNotNull
+            .isNotNull()
 
         assertThat(annotation.value)
             .`as`("@EventListener value must include ApplicationReadyEvent")
@@ -63,7 +63,7 @@ class OpeningHoursDailyCacheSchedulerUnitTest {
 
         assertThat(annotation)
             .`as`("@Scheduled must be present on refresh()")
-            .isNotNull
+            .isNotNull()
 
         assertThat(annotation.cron)
             .`as`("Cron expression must fire at midnight every day")
