@@ -6,14 +6,17 @@ import no.nav.openinghours.service.ServiceService
 import org.springframework.stereotype.Component
 import java.time.LocalDate
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 
 @Component
 class OpeningHoursDailyCache(
     private val serviceService: ServiceService,
     private val evaluator: OpeningHoursEvaluator,
 ) {
-    private val cache = ConcurrentHashMap<UUID, OpeningHoursDisplayData>()
+    // Holds an immutable snapshot. Reads always see a fully-consistent map;
+    // populate() builds a brand-new map off-thread, then swaps the reference
+    // in a single atomic write — no window where the cache is empty or partial.
+    private val cacheRef = AtomicReference<Map<UUID, OpeningHoursDisplayData>>(emptyMap())
 
     fun populate() {
         val today = LocalDate.now()
@@ -25,11 +28,10 @@ class OpeningHoursDailyCache(
                     openingHours = "00:00-23:59",
                 )
         }
-        cache.clear()
-        cache.putAll(newMap)
+        cacheRef.set(newMap) // atomic swap — readers never observe a partial state
     }
 
-    fun getAll(): Map<UUID, OpeningHoursDisplayData> = cache
+    fun getAll(): Map<UUID, OpeningHoursDisplayData> = cacheRef.get()
 
-    fun getForService(serviceId: UUID): OpeningHoursDisplayData? = cache[serviceId]
+    fun getForService(serviceId: UUID): OpeningHoursDisplayData? = cacheRef.get()[serviceId]
 }

@@ -6,11 +6,15 @@ import no.nav.openinghours.evaluator.ResolvedGroup
 import no.nav.openinghours.service.ServiceService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 
 // ── Kotlin-safe Mockito argument matcher helpers ──────────────────────────────
 // ArgumentMatchers methods return null at runtime to register the matcher;
@@ -178,5 +182,60 @@ class OpeningHoursDailyCacheTest {
         val fallback = cache.getForService(serviceId2)
         assertThat(fallback?.ruleName).isEqualTo("No match")
         assertThat(fallback?.openingHours).isEqualTo("00:00-23:59")
+    }
+
+    // ------------------------------------------------------------------ //
+    // Atomic swap — readers never see an empty / partially-populated map  //
+    // ------------------------------------------------------------------ //
+
+    @RepeatedTest(5)
+    fun `concurrent reads during populate never observe an empty map`() {
+        // Pre-populate so there is always an "old" snapshot for readers to see.
+        given(serviceService.getAllServicesWithOpeningHours())
+            .willReturn(mapOf(serviceId1 to group1))
+        given(evaluator.getDisplayData(any(), eq(group1))).willReturn(displayData1)
+        cache.populate()
+
+        // Prepare a richer "new" snapshot that populate() will swap in.
+        val newData = OpeningHoursDisplayData(ruleName = "New rule", openingHours = "09:00-17:00")
+        given(serviceService.getAllServicesWithOpeningHours())
+            .willReturn(mapOf(serviceId1 to group1, serviceId2 to group2))
+        given(evaluator.getDisplayData(any(), eq(group1))).willReturn(displayData1)
+        given(evaluator.getDisplayData(any(), eq(group2))).willReturn(newData)
+
+        val readerCount = 20
+        val errors = CopyOnWriteArrayList<String>()
+        val startLatch = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(readerCount + 1)
+
+        // Writer thread
+        executor.submit {
+            startLatch.await()
+            cache.populate()
+        }
+
+        // Reader threads — each snapshot must be non-empty and internally consistent
+        repeat(readerCount) {
+            executor.submit {
+                startLatch.await()
+                val snapshot = cache.getAll()
+                if (snapshot.isEmpty()) {
+                    errors += "Reader saw an empty map during populate()"
+                }
+                // Either the old map (1 entry) or the new map (2 entries) — never a mix
+                val sizes = setOf(1, 2)
+                if (snapshot.size !in sizes) {
+                    errors += "Reader saw unexpected map size ${snapshot.size}"
+                }
+            }
+        }
+
+        startLatch.countDown()
+        executor.shutdown()
+        executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)
+
+        assertThat(errors)
+            .`as`("No reader should ever observe an empty or partially-populated cache")
+            .isEmpty()
     }
 }
