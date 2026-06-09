@@ -20,13 +20,11 @@ class OpeningHoursDailyCache(
 
     fun populate() {
         val today = LocalDate.now()
-        val serviceGroups = serviceService.getAllServicesWithOpeningHours()
+        val serviceGroups = serviceService.getAllServicesForCache()
         val newMap = serviceGroups.mapValues { (_, group) ->
-            evaluator.getDisplayData(today, group)
-                ?: OpeningHoursDisplayData(
-                    ruleName = "No match",
-                    openingHours = "00:00-23:59",
-                )
+            // null  → service has no linked OH group   → use default
+            // non-null but no rule matches today       → evaluator returns null → use default
+            group?.let { evaluator.getDisplayData(today, it) } ?: OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA
         }
         cacheRef.set(newMap) // atomic swap — readers never observe a partial state
     }
