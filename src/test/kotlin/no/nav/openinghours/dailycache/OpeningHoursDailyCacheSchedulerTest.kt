@@ -4,9 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.kotlin.clearInvocations
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.verify
+import org.mockito.Mockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.ApplicationEventPublisher
@@ -27,7 +25,8 @@ import org.springframework.boot.test.context.TestConfiguration
 
 class OpeningHoursDailyCacheSchedulerUnitTest {
 
-    private val cache: OpeningHoursDailyCache = mock()
+    private val cache: OpeningHoursDailyCache =
+        Mockito.mock(OpeningHoursDailyCache::class.java)
     private val scheduler = OpeningHoursDailyCacheScheduler(cache)
 
     // ── populate() is called when refresh() is invoked ────────────────────
@@ -36,7 +35,7 @@ class OpeningHoursDailyCacheSchedulerUnitTest {
     fun `refresh() delegates to cache populate exactly once`() {
         scheduler.refresh()
 
-        verify(cache).populate()
+        Mockito.verify(cache).populate()
     }
 
     // ── @EventListener annotation metadata ────────────────────────────────
@@ -86,7 +85,8 @@ class OpeningHoursDailyCacheSchedulerSpringTest {
     @Import(OpeningHoursDailyCacheScheduler::class)
     class Config {
         @Bean
-        fun openingHoursDailyCache(): OpeningHoursDailyCache = mock()
+        fun openingHoursDailyCache(): OpeningHoursDailyCache =
+            Mockito.mock(OpeningHoursDailyCache::class.java)
     }
 
     @Autowired lateinit var scheduler: OpeningHoursDailyCacheScheduler
@@ -96,7 +96,7 @@ class OpeningHoursDailyCacheSchedulerSpringTest {
 
     @BeforeEach
     fun resetMock() {
-        clearInvocations(cache)
+        Mockito.clearInvocations(cache)
     }
 
     // ── ApplicationReadyEvent causes populate() ────────────────────────────
@@ -105,16 +105,16 @@ class OpeningHoursDailyCacheSchedulerSpringTest {
     fun `ApplicationReadyEvent triggers cache populate`() {
         // Publish a mock event — the @EventListener type-check passes because
         // Mockito creates a subclass of ApplicationReadyEvent.
-        eventPublisher.publishEvent(mock<ApplicationReadyEvent>())
+        eventPublisher.publishEvent(Mockito.mock(ApplicationReadyEvent::class.java))
 
-        verify(cache).populate()
+        Mockito.verify(cache).populate()
     }
 
     @Test
     fun `calling refresh() directly still invokes populate`() {
         scheduler.refresh()
 
-        verify(cache).populate()
+        Mockito.verify(cache).populate()
     }
 
     // ── Scheduled cron is registered in the Spring task infrastructure ─────
