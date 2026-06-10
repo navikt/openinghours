@@ -1,5 +1,6 @@
 package no.nav.openinghours.controllers
 
+import io.swagger.v3.oas.annotations.Operation
 import no.nav.openinghours.dailycache.OpeningHoursDailyCache
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import org.springframework.http.HttpStatus
@@ -15,9 +16,11 @@ import java.util.UUID
 class DailyCacheController(
     private val cache: OpeningHoursDailyCache,
 ) {
+    @Operation(summary = "Get today's cached opening hours for all services")
     @GetMapping
     fun getAll(): Map<UUID, OpeningHoursDisplayData> = cache.getAll()
 
+    @Operation(summary = "Get today's cached opening hours for a service")
     @GetMapping("/{serviceId}")
     fun getForService(@PathVariable serviceId: UUID): OpeningHoursDisplayData =
         cache.getForService(serviceId)

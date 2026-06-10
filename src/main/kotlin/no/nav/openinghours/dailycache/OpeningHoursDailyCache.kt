@@ -14,7 +14,7 @@ class OpeningHoursDailyCache(
     private val evaluator: OpeningHoursEvaluator,
 ) {
     // Holds an immutable snapshot. Reads always see a fully-consistent map;
-    // populate() builds a brand-new map off-thread, then swaps the reference
+    // populate() builds a brand-new map on the calling thread, then swaps the reference
     // in a single atomic write — no window where the cache is empty or partial.
     private val cacheRef = AtomicReference<Map<UUID, OpeningHoursDisplayData>>(emptyMap())
 
