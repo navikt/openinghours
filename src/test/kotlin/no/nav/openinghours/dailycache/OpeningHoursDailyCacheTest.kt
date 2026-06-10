@@ -285,7 +285,8 @@ class OpeningHoursDailyCacheTest {
 
         startLatch.countDown()
         executor.shutdown()
-        executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)
+        val terminated = executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)
+        assertThat(terminated).`as`("Executor should terminate within timeout").isTrue()
 
         assertThat(errors)
             .`as`("No reader should ever observe an empty or partially-populated cache")

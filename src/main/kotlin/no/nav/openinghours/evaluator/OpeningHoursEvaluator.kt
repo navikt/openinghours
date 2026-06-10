@@ -10,7 +10,7 @@ import java.time.YearMonth
 class OpeningHoursEvaluator {
 
     companion object {
-        /** Returned whenever a group has no rules, or no rule matches the requested date. */
+        /** Returned whenever a group has no rules. Callers may also use this as a fallback when no rule matches. */
         val DEFAULT_DISPLAY_DATA = OpeningHoursDisplayData(
             ruleName = "No Rules stated",
             rule = "??.??.???? ? ? 00:00-23:59",
