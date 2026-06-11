@@ -1,9 +1,11 @@
 package no.nav.openinghours.controllers
 
 import no.nav.openinghours.dailycache.OpeningHoursDailyCache
+import no.nav.openinghours.dailycache.OpeningHoursDailyCacheScheduler
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
+import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
@@ -11,6 +13,9 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
+import org.springframework.http.HttpStatus
+import org.springframework.web.server.ResponseStatusException
 import java.util.UUID
 
 @WebMvcTest(DailyCacheController::class)
@@ -23,6 +28,9 @@ class DailyCacheControllerTest {
 
     @MockitoBean
     private lateinit var cache: OpeningHoursDailyCache
+
+    @MockitoBean
+    private lateinit var scheduler: OpeningHoursDailyCacheScheduler
 
     // ── GET /api/openinghours/daily ────────────────────────────────────────
 
@@ -159,5 +167,12 @@ class DailyCacheControllerTest {
         mockMvc.get("/api/openinghours/daily/not-a-uuid")
             .andExpect { status { isBadRequest() } }
     }
-}
 
+    @Test
+    fun `POST refresh triggers scheduler refresh and returns 200`() {
+        mockMvc.post("/api/openinghours/daily/refresh")
+            .andExpect { status { isOk() } }
+
+        verify(scheduler).refresh()
+    }
+}
