@@ -15,7 +15,7 @@ class RuleController(
     @GetMapping("/{id}")
     fun get(@PathVariable id: UUID): Rule? = service.get(id)
 
-    @Operation(summary = "Upsert opening hours rule with name, rule, header, and text")
+    @Operation(summary = "Upsert opening hours rule with name, rule, header, text, onlyShowForNavEmployees, and redDay")
     @PutMapping
     fun upsert(
         @RequestParam name: String,
@@ -36,7 +36,7 @@ class RuleController(
     @GetMapping
     fun getAll(): List<Rule> = service.getAll()
 
-    @Operation(summary = "Update opening hours rule by id with name, rule, header, and text")
+    @Operation(summary = "Update opening hours rule by id with name, rule, header, text, onlyShowForNavEmployees, and redDay")
     @PatchMapping("/{id}")
     fun update(
         @PathVariable id: UUID,
