@@ -326,4 +326,55 @@ class ServiceServiceTest {
         assertThat(service.getOhGroupIdsForService(s1.id)).containsExactly(g.id)
         assertThat(service.getOhGroupIdsForService(s2.id)).containsExactly(g.id)
     }
+
+    // ── getAllServicesForCache ─────────────────────────────────────────────
+
+    @Test
+    fun `getAllServicesForCache includes services without a group as null`() {
+        val s = service.save("cache-no-group", ServiceType.TJENESTE, "team-x")
+
+        val result = service.getAllServicesForCache()
+
+        assertThat(result).containsKey(s.id)
+        assertThat(result[s.id]).isNull()
+    }
+
+    @Test
+    fun `getAllServicesForCache includes services with a group as resolved group`() {
+        val g = groupService.save("cache-group", emptyList())
+        val s = service.save("cache-with-group", ServiceType.TJENESTE, "team-x", ohGroupId = g.id)
+
+        val result = service.getAllServicesForCache()
+
+        assertThat(result).containsKey(s.id)
+        assertThat(result[s.id]).isNotNull()
+        assertThat(result[s.id]!!.name).isEqualTo("cache-group")
+    }
+
+    @Test
+    fun `getAllServicesForCache returns null for all services when none have a group`() {
+        val s1 = service.save("cache-ng1", ServiceType.TJENESTE, "team-x")
+        val s2 = service.save("cache-ng2", ServiceType.KOMPONENT, "team-x")
+
+        val result = service.getAllServicesForCache()
+
+        assertThat(result).containsKey(s1.id)
+        assertThat(result).containsKey(s2.id)
+        assertThat(result[s1.id]).isNull()
+        assertThat(result[s2.id]).isNull()
+    }
+
+    @Test
+    fun `getAllServicesForCache handles mixed services correctly`() {
+        val g = groupService.save("cache-mixed-group", emptyList())
+        val withGroup = service.save("cache-mixed-with", ServiceType.TJENESTE, "team-x", ohGroupId = g.id)
+        val withoutGroup = service.save("cache-mixed-without", ServiceType.KOMPONENT, "team-x")
+
+        val result = service.getAllServicesForCache()
+
+        assertThat(result).containsKey(withGroup.id)
+        assertThat(result).containsKey(withoutGroup.id)
+        assertThat(result[withGroup.id]?.name).isEqualTo("cache-mixed-group")
+        assertThat(result[withoutGroup.id]).isNull()
+    }
 }

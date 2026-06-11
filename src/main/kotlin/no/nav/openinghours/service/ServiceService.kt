@@ -187,6 +187,20 @@ class ServiceService(
         }
     }
 
+    /**
+     * Returns every service in the system paired with its resolved opening-hours group.
+     * Services that have no linked group are mapped to null; callers should fall back
+     * to the default display data for those entries.
+     */
+    @Transactional(readOnly = true)
+    fun getAllServicesForCache(): Map<UUID, ResolvedGroup?> {
+        val resolvedGroupsById = mutableMapOf<UUID, ResolvedGroup>()
+        val serviceToGroup = repo.findAllServiceGroupLinks().associate { link ->
+            link.getServiceId() to resolvedGroupsById.getOrPut(link.getGroupId()) { resolver.resolve(link.getGroupId()) }
+        }
+        return repo.findAll().associate { it.id to serviceToGroup[it.id] }
+    }
+
     fun getResolvedOhGroupForService(serviceId: UUID): ResolvedGroup? {
         val groupIds = repo.findOhGroupIds(serviceId)
         return groupIds.firstOrNull()?.let { resolver.resolve(it) }

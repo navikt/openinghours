@@ -9,6 +9,18 @@ import java.time.YearMonth
 @Component
 class OpeningHoursEvaluator {
 
+    companion object {
+        /** Returned whenever a group has no rules. Callers may also use this as a fallback when no rule matches. */
+        val DEFAULT_DISPLAY_DATA = OpeningHoursDisplayData(
+            ruleName = "No Rules stated",
+            rule = "??.??.???? ? ? 00:00-23:59",
+            openingHours = "00:00-23:59",
+            displayHeader = "Default regel",
+            displayText = "Åpent - ingen gjeldende dato regler",
+            onlyShowForNavEmployees = false,
+        )
+    }
+
     private sealed interface EvalResult {
         data object NoRules : EvalResult
         data object NoMatch : EvalResult
@@ -31,14 +43,7 @@ class OpeningHoursEvaluator {
                 displayText = r.displayText,
                 onlyShowForNavEmployees = r.onlyShowForNavEmployees,
             )
-            EvalResult.NoRules -> OpeningHoursDisplayData(
-                ruleName = "No Rules stated",
-                rule = "??.??.???? ? ? 00:00-23:59",
-                openingHours = "00:00-23:59",
-                displayHeader = "Default regel",
-                displayText = "Åpent - ingen gjeldende dato regler",
-                onlyShowForNavEmployees = false
-            )
+            EvalResult.NoRules -> DEFAULT_DISPLAY_DATA
             EvalResult.NoMatch -> null
         }
 
