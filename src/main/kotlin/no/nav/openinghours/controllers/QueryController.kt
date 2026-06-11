@@ -1,7 +1,6 @@
 package no.nav.openinghours.controllers
 
 import io.swagger.v3.oas.annotations.Operation
-import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import no.nav.openinghours.service.OpeningHoursLookupService
 import no.nav.openinghours.service.ServiceService
 import org.springframework.format.annotation.DateTimeFormat
@@ -74,6 +73,7 @@ class QueryController(
             displayHeader = displayData.displayHeader,
             displayText = displayData.displayText,
             onlyShowForNavEmployees = displayData.onlyShowForNavEmployees,
+            redDay = displayData.redDay,
             matchedRule = if (displayData.ruleName != null && displayData.rule != null) MatchedRule(displayData.ruleName, displayData.rule) else null,
         )
     }
@@ -88,6 +88,7 @@ data class QueryResponse(
     val displayHeader: String?,
     val displayText: String?,
     val onlyShowForNavEmployees: Boolean,
+    val redDay: Boolean,
     val matchedRule: MatchedRule?,
 )
 

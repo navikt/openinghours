@@ -116,7 +116,8 @@ class QueryControllerTest {
                 rule = "??.??.???? ? 1-5 09:00-15:00",
                 displayHeader = "Intern åpningstid",
                 displayText = "Kun for ansatte",
-                onlyShowForNavEmployees = true
+                onlyShowForNavEmployees = true,
+                redDay = false,
             )
         )
 
@@ -129,7 +130,31 @@ class QueryControllerTest {
                 jsonPath("$.displayHeader") { value("Intern åpningstid") }
                 jsonPath("$.displayText") { value("Kun for ansatte") }
                 jsonPath("$.onlyShowForNavEmployees") { value(true) }
+                jsonPath("$.redDay") { value(false) }
                 jsonPath("$.matchedRule.name") { value("Internal") }
+            }
+    }
+
+    @Test
+    fun `query by group returns redDay true for a public holiday rule`() {
+        val groupId = UUID.randomUUID()
+        val date = LocalDate.of(2024, 12, 25)
+
+        `when`(lookupService.getDisplayData(groupId, date)).thenReturn(
+            OpeningHoursDisplayData(
+                openingHours = "00:00-00:00",
+                ruleName = "Christmas",
+                rule = "25.12.???? ? ? 00:00-00:00",
+                redDay = true,
+            )
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-12-25")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.isOpen") { value(false) }
+                jsonPath("$.redDay") { value(true) }
+                jsonPath("$.matchedRule.name") { value("Christmas") }
             }
     }
 

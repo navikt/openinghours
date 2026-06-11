@@ -161,13 +161,14 @@ class OpeningHoursEvaluatorTest {
     }
 
     @Test
-    fun `getDisplayData propagates displayHeader displayText and onlyShowForNavEmployees`() {
+    fun `getDisplayData propagates displayHeader displayText onlyShowForNavEmployees and redDay`() {
         val r = ResolvedRule(
             name = "internal",
             rule = "??.??.???? ? 1-5 09:00-15:00",
             displayHeader = "Intern åpningstid",
             displayText = "Kun for NAV-ansatte",
-            onlyShowForNavEmployees = true
+            onlyShowForNavEmployees = true,
+            redDay = true,
         )
         val g = group("root", r)
 
@@ -177,6 +178,7 @@ class OpeningHoursEvaluatorTest {
         assertThat(data.displayHeader).isEqualTo("Intern åpningstid")
         assertThat(data.displayText).isEqualTo("Kun for NAV-ansatte")
         assertThat(data.onlyShowForNavEmployees).isTrue()
+        assertThat(data.redDay).isTrue()
     }
 
     @Test
@@ -188,6 +190,7 @@ class OpeningHoursEvaluatorTest {
         assertThat(data!!.displayHeader).isNull()
         assertThat(data.displayText).isNull()
         assertThat(data.onlyShowForNavEmployees).isFalse()
+        assertThat(data.redDay).isFalse()
     }
 
     @Test
