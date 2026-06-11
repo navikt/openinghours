@@ -8,13 +8,17 @@ permissions:
   packages: write
   security-events: write
 
+  concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
 jobs:
   build:
     name: Build and push image
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17
+        image: postgres:17-alpine
         env:
           POSTGRES_DB: openinghours
           POSTGRES_USER: openinghours
