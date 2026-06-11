@@ -44,10 +44,11 @@ class OpeningHoursTreeResolverTest {
         rule: String,
         header: String? = null,
         text: String? = null,
-        onlyShowForNavEmployees: Boolean = false
+        onlyShowForNavEmployees: Boolean = false,
+        redDay: Boolean = false,
     ): Rule {
         val id = UUID.randomUUID()
-        return ruleRepo.saveAndFlush(Rule.create(id, name, rule, header, text, onlyShowForNavEmployees))
+        return ruleRepo.saveAndFlush(Rule.create(id, name, rule, header, text, onlyShowForNavEmployees, redDay))
     }
 
     private fun createGroup(name: String, childIds: List<UUID> = emptyList()): OhGroup =
@@ -181,6 +182,21 @@ class OpeningHoursTreeResolverTest {
         assertThat(entry.displayHeader).isEqualTo("Kun for NAV-ansatte")
         assertThat(entry.displayText).isEqualTo("Begrenset åpningstid")
         assertThat(entry.onlyShowForNavEmployees).isTrue()
+    }
+
+    @Test
+    fun `redDay field is carried through resolver`() {
+        val rule = createRule(
+            name = "christmas",
+            rule = "25.12.???? ? ? 00:00-00:00",
+            redDay = true,
+        )
+        val group = createGroup("with-red-day", listOf(rule.id))
+
+        val resolved = resolver.resolve(group.id)
+        val entry = resolved.entries[0] as ResolvedRule
+
+        assertThat(entry.redDay).isTrue()
     }
 
     @Test

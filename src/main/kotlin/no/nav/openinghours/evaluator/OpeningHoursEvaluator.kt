@@ -24,7 +24,7 @@ class OpeningHoursEvaluator {
     private sealed interface EvalResult {
         data object NoRules : EvalResult
         data object NoMatch : EvalResult
-        data class Matched(val openingHours: String, val ruleName: String, val rule: String, val displayHeader: String? = null, val displayText: String? = null, val onlyShowForNavEmployees: Boolean = false) : EvalResult
+        data class Matched(val openingHours: String, val ruleName: String, val rule: String, val displayHeader: String? = null, val displayText: String? = null, val onlyShowForNavEmployees: Boolean = false, val redDay: Boolean = false) : EvalResult
     }
 
     fun getOpeningHours(date: LocalDate, group: ResolvedGroup): String =
@@ -42,6 +42,7 @@ class OpeningHoursEvaluator {
                 displayHeader = r.displayHeader,
                 displayText = r.displayText,
                 onlyShowForNavEmployees = r.onlyShowForNavEmployees,
+                redDay = r.redDay,
             )
             EvalResult.NoRules -> DEFAULT_DISPLAY_DATA
             EvalResult.NoMatch -> null
@@ -95,7 +96,7 @@ class OpeningHoursEvaluator {
         if (!matchesDate(date, parts[0])) return EvalResult.NoMatch
         if (!matchesDayOfMonth(date, parts[1])) return EvalResult.NoMatch
         if (!matchesWeekday(date, parts[2])) return EvalResult.NoMatch
-        return EvalResult.Matched(parts[3], rule.name, rule.rule, rule.displayHeader, rule.displayText, rule.onlyShowForNavEmployees)
+        return EvalResult.Matched(parts[3], rule.name, rule.rule, rule.displayHeader, rule.displayText, rule.onlyShowForNavEmployees, rule.redDay)
     }
 
     private fun matchesDate(date: LocalDate, datePart: String): Boolean {

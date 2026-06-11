@@ -7,4 +7,5 @@ data class OpeningHoursDisplayData(
     val displayHeader: String? = null,
     val displayText: String? = null,
     val onlyShowForNavEmployees: Boolean = false,
+    val redDay: Boolean = false,
 )

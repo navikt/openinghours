@@ -78,6 +78,7 @@ class DailyCacheControllerTest {
                     displayHeader = "Intern åpningstid",
                     displayText = "Kun for ansatte",
                     onlyShowForNavEmployees = true,
+                    redDay = false,
                 )
             )
         )
@@ -90,6 +91,7 @@ class DailyCacheControllerTest {
                 jsonPath("$['$id'].displayHeader") { value("Intern åpningstid") }
                 jsonPath("$['$id'].displayText") { value("Kun for ansatte") }
                 jsonPath("$['$id'].onlyShowForNavEmployees") { value(true) }
+                jsonPath("$['$id'].redDay") { value(false) }
             }
     }
 
@@ -125,6 +127,7 @@ class DailyCacheControllerTest {
                 displayHeader = "Intern åpningstid",
                 displayText = "Kun for ansatte",
                 onlyShowForNavEmployees = true,
+                redDay = false,
             )
         )
 
@@ -136,6 +139,7 @@ class DailyCacheControllerTest {
                 jsonPath("$.displayHeader") { value("Intern åpningstid") }
                 jsonPath("$.displayText") { value("Kun for ansatte") }
                 jsonPath("$.onlyShowForNavEmployees") { value(true) }
+                jsonPath("$.redDay") { value(false) }
             }
     }
 
