@@ -26,6 +26,9 @@ open class Rule(
     @Column(name = "only_show_for_nav_employees", nullable = false)
     var onlyShowForNavEmployees: Boolean = false,
 
+    @Column(name = "red_day", nullable = false)
+    var redDay: Boolean = false,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 
@@ -38,6 +41,7 @@ open class Rule(
         header = "",
         text = "",
         onlyShowForNavEmployees = false,
+        redDay = false,
         createdAt = Instant.now(),
         updatedAt = null
     )
@@ -50,14 +54,16 @@ open class Rule(
             rule: String,
             header: String?,
             text: String?,
-            onlyShowForNavEmployees: Boolean = false
+            onlyShowForNavEmployees: Boolean = false,
+            redDay: Boolean = false
         ): Rule = Rule(
             id = id,
             name = name,
             rule = rule,
             header = header,
             text = text,
-            onlyShowForNavEmployees = onlyShowForNavEmployees
+            onlyShowForNavEmployees = onlyShowForNavEmployees,
+            redDay = redDay
         )
     }
 

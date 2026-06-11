@@ -30,7 +30,7 @@ class RuleControllerTest {
     private lateinit var ruleService: RuleService
 
     private fun aRule(id: UUID = UUID.randomUUID(), name: String = "Weekdays", rule: String = "??.??.???? ? 1-5 08:00-16:00") =
-        Rule.create(id = id, name = name, rule = rule, header = "Header", text = "Text", onlyShowForNavEmployees = false)
+        Rule.create(id = id, name = name, rule = rule, header = "Header", text = "Text", onlyShowForNavEmployees = false, redDay = false)
 
     @Test
     fun `GET rule by id returns rule`() {
@@ -71,7 +71,7 @@ class RuleControllerTest {
     @Test
     fun `PUT upsert creates new rule`() {
         val rule = aRule()
-        `when`(ruleService.upsert("Weekdays", "??.??.???? ? 1-5 08:00-16:00", "H", "T", false)).thenReturn(rule)
+        `when`(ruleService.upsert("Weekdays", "??.??.???? ? 1-5 08:00-16:00", "H", "T", false, false)).thenReturn(rule)
 
         mockMvc.put("/api/openinghours/rule") {
             param("name", "Weekdays")
@@ -87,7 +87,7 @@ class RuleControllerTest {
 
     @Test
     fun `PUT upsert with blank name returns 400`() {
-        `when`(ruleService.upsert("", "??.??.???? ? 1-5 08:00-16:00", null, null, false))
+        `when`(ruleService.upsert("", "??.??.???? ? 1-5 08:00-16:00", null, null, false, false))
             .thenThrow(ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank"))
 
         mockMvc.put("/api/openinghours/rule") {
@@ -98,7 +98,7 @@ class RuleControllerTest {
 
     @Test
     fun `PUT upsert with invalid rule format returns 400`() {
-        `when`(ruleService.upsert("Test", "invalid", null, null, false))
+        `when`(ruleService.upsert("Test", "invalid", null, null, false, false))
             .thenThrow(ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid rule format"))
 
         mockMvc.put("/api/openinghours/rule") {
@@ -111,7 +111,7 @@ class RuleControllerTest {
     fun `PATCH update partial fields`() {
         val id = UUID.randomUUID()
         val updated = aRule(id = id, name = "Updated")
-        `when`(ruleService.update(id, "Updated", null, null, null, null)).thenReturn(updated)
+        `when`(ruleService.update(id, "Updated", null, null, null, null, null)).thenReturn(updated)
 
         mockMvc.patch("/api/openinghours/rule/$id") {
             param("name", "Updated")
@@ -124,7 +124,7 @@ class RuleControllerTest {
     @Test
     fun `PATCH update non-existent id returns 404`() {
         val id = UUID.randomUUID()
-        `when`(ruleService.update(id, "X", null, null, null, null))
+        `when`(ruleService.update(id, "X", null, null, null, null, null))
             .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found"))
 
         mockMvc.patch("/api/openinghours/rule/$id") {
