@@ -3,6 +3,7 @@ package no.nav.openinghours.controllers
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import no.nav.openinghours.service.OpeningHoursLookupService
 import no.nav.openinghours.service.ServiceService
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,7 +15,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.web.server.ResponseStatusException
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 
 @WebMvcTest(QueryController::class)
@@ -30,6 +34,17 @@ class QueryControllerTest {
 
     @MockitoBean
     private lateinit var serviceService: ServiceService
+
+    @MockitoBean
+    private lateinit var clock: Clock
+
+    @BeforeEach
+    fun setupClock() {
+        // Fix the clock at 10:00 UTC so time-dependent isOpen assertions are deterministic
+        val fixed = Clock.fixed(Instant.parse("2024-03-15T10:00:00Z"), ZoneOffset.UTC)
+        `when`(clock.instant()).thenReturn(fixed.instant())
+        `when`(clock.zone).thenReturn(fixed.zone)
+    }
 
 
     @Test
