@@ -19,6 +19,23 @@ class OpeningHoursEvaluator {
             displayText = "Åpent - ingen gjeldende dato regler",
             onlyShowForNavEmployees = false,
         )
+
+        /**
+         * Determines whether a service is currently open based on its opening hours string and the given time.
+         *
+         * - "00:00-23:59" → always open (true)
+         * - "00:00-00:00" → always closed (false)
+         * - Otherwise: open if [now] is >= the opening time and <= the closing time
+         */
+        fun computeIsOpen(hours: String, now: LocalTime): Boolean {
+            if (hours == "00:00-23:59") return true
+            if (hours == "00:00-00:00") return false
+            val parts = hours.split("-")
+            if (parts.size != 2) return false
+            val openTime = LocalTime.parse(parts[0])
+            val closeTime = LocalTime.parse(parts[1])
+            return !now.isBefore(openTime) && !now.isAfter(closeTime)
+        }
     }
 
     private sealed interface EvalResult {

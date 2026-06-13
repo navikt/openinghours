@@ -1,13 +1,16 @@
 package no.nav.openinghours.controllers
 
 import io.swagger.v3.oas.annotations.Operation
+import no.nav.openinghours.evaluator.OpeningHoursEvaluator
 import no.nav.openinghours.service.OpeningHoursLookupService
 import no.nav.openinghours.service.ServiceService
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
+import java.time.Clock
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 
 @RestController
@@ -15,6 +18,7 @@ import java.util.UUID
 class QueryController(
     private val lookupService: OpeningHoursLookupService,
     private val serviceService: ServiceService,
+    private val clock: Clock,
 ) {
 
     @Operation(summary = "Get opening hours for a service on a date")
@@ -62,7 +66,7 @@ class QueryController(
         val parts = hours.split("-")
         val openTime = if (parts.size >= 2) parts[0] else "00:00"
         val closeTime = if (parts.size >= 2) parts[1] else "23:59"
-        val isOpen = hours != "00:00-00:00"
+        val isOpen = OpeningHoursEvaluator.computeIsOpen(hours, LocalTime.now(clock))
 
         return QueryResponse(
             resourceId = serviceId ?: groupId,
