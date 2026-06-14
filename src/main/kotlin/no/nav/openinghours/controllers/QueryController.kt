@@ -63,8 +63,14 @@ class QueryController(
         val displayData = lookupService.getDisplayData(groupId, date)
         val hours = displayData.openingHours ?: "00:00-23:59"
         val parts = hours.split("-")
-        val openTime = if (parts.size >= 2) parts[0] else "00:00"
-        val closeTime = if (parts.size >= 2) parts[1] else "23:59"
+        val (openTime, closeTime) =
+            if (parts.size == 2) {
+                val open = runCatching { java.time.LocalTime.parse(parts[0]) }.getOrNull()?.toString() ?: "00:00"
+                val close = runCatching { java.time.LocalTime.parse(parts[1]) }.getOrNull()?.toString() ?: "23:59"
+                open to close
+            } else {
+                "00:00" to "23:59"
+            }
         val isOpen = OpeningHoursEvaluator.computeIsOpenOnDate(hours, date, clock)
 
         return QueryResponse(

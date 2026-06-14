@@ -313,7 +313,8 @@ class QueryControllerTest {
     }
 
     @Test
-    fun `query range with from after to returns error`() {        val serviceId = UUID.randomUUID()
+    fun `query range with from after to returns error`() {
+        val serviceId = UUID.randomUUID()
         val groupId = UUID.randomUUID()
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
