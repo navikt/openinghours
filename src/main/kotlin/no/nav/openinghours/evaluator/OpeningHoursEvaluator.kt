@@ -1,6 +1,7 @@
 package no.nav.openinghours.evaluator
 
 import org.springframework.stereotype.Component
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -36,6 +37,20 @@ class OpeningHoursEvaluator {
             val closeTime = LocalTime.parse(parts[1])
             return !now.isBefore(openTime) && !now.isAfter(closeTime)
         }
+
+        /**
+         * Determines the `isOpen` value for a given [date] and [hours] string, using [clock] for the current time.
+         *
+         * Two distinct semantics are applied depending on whether [date] is today:
+         * - **Today** (`date == LocalDate.now(clock)`): "open right now" — delegates to [computeIsOpen] with
+         *   the current wall-clock time so callers get a live open/closed status.
+         * - **Any other date** (past or future): "open at all" — returns `true` unless the hours are the
+         *   sentinel "00:00-00:00" (always-closed), preserving the original contract for range/future queries
+         *   where a real-time check would be meaningless.
+         */
+        fun computeIsOpenOnDate(hours: String, date: LocalDate, clock: Clock): Boolean =
+            if (date == LocalDate.now(clock)) computeIsOpen(hours, LocalTime.now(clock))
+            else hours != "00:00-00:00"
     }
 
     private sealed interface EvalResult {

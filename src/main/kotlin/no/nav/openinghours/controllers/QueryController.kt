@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
 import java.time.Clock
 import java.time.LocalDate
-import java.time.LocalTime
 import java.util.UUID
 
 @RestController
@@ -66,7 +65,7 @@ class QueryController(
         val parts = hours.split("-")
         val openTime = if (parts.size >= 2) parts[0] else "00:00"
         val closeTime = if (parts.size >= 2) parts[1] else "23:59"
-        val isOpen = OpeningHoursEvaluator.computeIsOpen(hours, LocalTime.now(clock))
+        val isOpen = OpeningHoursEvaluator.computeIsOpenOnDate(hours, date, clock)
 
         return QueryResponse(
             resourceId = serviceId ?: groupId,

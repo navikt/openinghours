@@ -228,9 +228,92 @@ class QueryControllerTest {
             .andExpect { status { isNotFound() } }
     }
 
+    // ── isOpen semantics: today vs non-today ──────────────────────────────
+
     @Test
-    fun `query range with from after to returns error`() {
+    fun `isOpen uses real-time check for today - before opening returns false`() {
+        // Clock is at 10:00; hours 11:00-17:00 → not yet open
+        val groupId = UUID.randomUUID()
+        val today = LocalDate.of(2024, 3, 15)
+
+        `when`(lookupService.getDisplayData(groupId, today)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "11:00-17:00", ruleName = "Late open", rule = "??.??.???? ? ? 11:00-17:00")
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-15")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.isOpen") { value(false) }
+            }
+    }
+
+    @Test
+    fun `isOpen uses open-at-all semantics for non-today date - partial hours yield true`() {
+        // 2024-03-16 is not today (clock = 2024-03-15); hours 11:00-17:00 → open at some point
+        val groupId = UUID.randomUUID()
+        val future = LocalDate.of(2024, 3, 16)
+
+        `when`(lookupService.getDisplayData(groupId, future)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "11:00-17:00", ruleName = "Standard", rule = "??.??.???? ? 1-5 11:00-17:00")
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.isOpen") { value(true) }
+            }
+    }
+
+    @Test
+    fun `isOpen uses open-at-all semantics for non-today date - closed all day yields false`() {
+        // 2024-03-16 is not today; hours 00:00-00:00 → closed all day
+        val groupId = UUID.randomUUID()
+        val future = LocalDate.of(2024, 3, 16)
+
+        `when`(lookupService.getDisplayData(groupId, future)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = "Closed", rule = "??.??.???? ? 6-7 00:00-00:00")
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.isOpen") { value(false) }
+            }
+    }
+
+    @Test
+    fun `query range isOpen reflects open-at-all for non-today entries`() {
+        // Clock = 2024-03-15T10:00. Range 2024-03-14 (past) to 2024-03-16 (future).
+        // Past/future entries use open-at-all semantics; today uses real-time.
         val serviceId = UUID.randomUUID()
+        val groupId = UUID.randomUUID()
+
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 14))).thenReturn(
+            OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 07:00-21:00")
+        )
+        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
+            OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 07:00-21:00")
+        )
+        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
+            OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = "Weekend", rule = "??.??.???? ? 6-7 00:00-00:00")
+        )
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-14&to=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(3) }
+                // 2024-03-14 (past, not today): open at all → true
+                jsonPath("$[0].isOpen") { value(true) }
+                // 2024-03-15 (today, clock=10:00, hours 07:00-21:00): open right now → true
+                jsonPath("$[1].isOpen") { value(true) }
+                // 2024-03-16 (future, not today): 00:00-00:00 → false
+                jsonPath("$[2].isOpen") { value(false) }
+            }
+    }
+
+    @Test
+    fun `query range with from after to returns error`() {        val serviceId = UUID.randomUUID()
         val groupId = UUID.randomUUID()
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))

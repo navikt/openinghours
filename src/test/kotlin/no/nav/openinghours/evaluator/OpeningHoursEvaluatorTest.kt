@@ -1,8 +1,11 @@
 package no.nav.openinghours.evaluator
 
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneOffset
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -254,5 +257,36 @@ class OpeningHoursEvaluatorTest {
         // Saturday — rules exist but none match → null
         val data = evaluator.getDisplayData(LocalDate.of(2024, 3, 16), g)
         assertThat(data).isNull()
+    }
+
+    // ── computeIsOpenOnDate ───────────────────────────────────────────────
+
+    @Test
+    fun `computeIsOpenOnDate - today uses real-time check`() {
+        // Clock fixed at 2024-03-15T10:00 UTC
+        val clock = Clock.fixed(Instant.parse("2024-03-15T10:00:00Z"), ZoneOffset.UTC)
+        val today = LocalDate.of(2024, 3, 15)
+
+        // At 10:00 these are open / closed based on actual time
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("07:00-21:00", today, clock)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("11:00-17:00", today, clock)).isFalse() // not yet open
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-23:59", today, clock)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", today, clock)).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpenOnDate - non-today uses open-at-all semantics`() {
+        val clock = Clock.fixed(Instant.parse("2024-03-15T10:00:00Z"), ZoneOffset.UTC)
+        val yesterday = LocalDate.of(2024, 3, 14)
+        val tomorrow  = LocalDate.of(2024, 3, 16)
+
+        // Any hours other than "00:00-00:00" → true (open at some point)
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("07:00-21:00", yesterday, clock)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("11:00-17:00", tomorrow, clock)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-23:59", yesterday, clock)).isTrue()
+
+        // "00:00-00:00" sentinel → always closed regardless of which date
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", yesterday, clock)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", tomorrow, clock)).isFalse()
     }
 }
