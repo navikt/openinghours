@@ -24,18 +24,26 @@ class OpeningHoursEvaluator {
         /**
          * Determines whether a service is currently open based on its opening hours string and the given time.
          *
-         * - "00:00-23:59" → always open (true)
-         * - "00:00-00:00" → always closed (false)
-         * - Otherwise: open if [now] is >= the opening time and <= the closing time
+         * - `"00:00-23:59"` → always open (`true`)
+         * - `"00:00-00:00"` → always closed (`false`)
+         * - Malformed string (bad format or unparseable time component) → `false`
+         * - Normal range (open ≤ close): open if [now] is within `[openTime, closeTime]` (inclusive, no tolerance)
+         * - Cross-midnight range (open > close, e.g. `"22:00-02:00"`): open if [now] is ≥ openTime
+         *   **or** ≤ closeTime — mirrors the logic in [matchesTime] but without the ±1-minute DSL tolerance
          */
         fun computeIsOpen(hours: String, now: LocalTime): Boolean {
             if (hours == "00:00-23:59") return true
             if (hours == "00:00-00:00") return false
             val parts = hours.split("-")
             if (parts.size != 2) return false
-            val openTime = LocalTime.parse(parts[0])
-            val closeTime = LocalTime.parse(parts[1])
-            return !now.isBefore(openTime) && !now.isAfter(closeTime)
+            val openTime = runCatching { LocalTime.parse(parts[0]) }.getOrNull() ?: return false
+            val closeTime = runCatching { LocalTime.parse(parts[1]) }.getOrNull() ?: return false
+            return if (openTime <= closeTime) {
+                !now.isBefore(openTime) && !now.isAfter(closeTime)
+            } else {
+                // cross-midnight: open from openTime until closeTime the next day
+                !now.isBefore(openTime) || !now.isAfter(closeTime)
+            }
         }
 
         /**

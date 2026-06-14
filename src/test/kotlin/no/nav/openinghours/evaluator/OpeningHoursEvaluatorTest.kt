@@ -259,6 +259,148 @@ class OpeningHoursEvaluatorTest {
         assertThat(data).isNull()
     }
 
+    // ── computeIsOpen ─────────────────────────────────────────────────────
+
+    // --- sentinels ---
+
+    @Test
+    fun `computeIsOpen - always-open sentinel returns true regardless of time`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-23:59", LocalTime.MIDNIGHT)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-23:59", LocalTime.NOON)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-23:59", LocalTime.of(23, 59))).isTrue()
+    }
+
+    @Test
+    fun `computeIsOpen - always-closed sentinel returns false regardless of time`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-00:00", LocalTime.MIDNIGHT)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-00:00", LocalTime.NOON)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-00:00", LocalTime.of(23, 59))).isFalse()
+    }
+
+    // --- interior and exterior times ---
+
+    @Test
+    fun `computeIsOpen - time well within range returns true`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.NOON)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("07:30-21:00", LocalTime.of(14, 0))).isTrue()
+    }
+
+    @Test
+    fun `computeIsOpen - time before open returns false`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(8, 59))).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(0, 0))).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen - time after close returns false`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(17, 1))).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(23, 59))).isFalse()
+    }
+
+    // --- exact boundary behavior (strict comparison, no ±1 minute tolerance) ---
+
+    @Test
+    fun `computeIsOpen - time exactly at open boundary returns true`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(9, 0))).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("07:30-21:00", LocalTime.of(7, 30))).isTrue()
+    }
+
+    @Test
+    fun `computeIsOpen - time exactly at close boundary returns true`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(17, 0))).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("07:30-21:00", LocalTime.of(21, 0))).isTrue()
+    }
+
+    @Test
+    fun `computeIsOpen - one second before open boundary returns false`() {
+        // computeIsOpen uses strict isBefore/isAfter with no ±1 min tolerance,
+        // unlike matchesTime which expands the window by one minute on each side.
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(8, 59, 59))).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen - one second after close boundary returns false`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(17, 0, 1))).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen has no boundary tolerance unlike matchesTime`() {
+        // matchesTime (used by isOpen/DSL evaluator) grants ±1 minute tolerance, so
+        // 08:59 is considered inside a 09:00-17:00 window there.  computeIsOpen does
+        // NOT apply that tolerance: 08:59 is strictly before 09:00, so it returns false.
+        val oneMinuteBeforeOpen = LocalTime.of(8, 59)
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", oneMinuteBeforeOpen)).isFalse()
+
+        // For reference: the DSL evaluator would return true at the same moment.
+        val evaluator = OpeningHoursEvaluator()
+        assertThat(evaluator.isOpen(LocalDateTime.of(2024, 3, 15, 8, 59), "??.??.???? ? ? 09:00-17:00")).isTrue()
+    }
+
+    // --- malformed input ---
+
+    @Test
+    fun `computeIsOpen - empty string returns false`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("", LocalTime.NOON)).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen - string with no hyphen returns false`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("0900", LocalTime.NOON)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("open", LocalTime.NOON)).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen - string with too many segments returns false`() {
+        // "09:00-12:00-17:00" splits into 3 parts → size check fails → false
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-12:00-17:00", LocalTime.NOON)).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen - unparseable time component returns false`() {
+        // The size guard passes (2 parts) but the time values are invalid.
+        // computeIsOpen must return false rather than propagating DateTimeParseException
+        // to protect API responses from 500s caused by bad data.
+        assertThat(OpeningHoursEvaluator.computeIsOpen("25:00-26:00", LocalTime.NOON)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("ab:cd-ef:gh", LocalTime.NOON)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("9-17", LocalTime.NOON)).isFalse()
+    }
+
+    // --- midnight-spanning ranges ---
+
+    @Test
+    fun `computeIsOpen - cross-midnight range is open on both sides of midnight`() {
+        // "22:00-02:00": openTime (22:00) > closeTime (02:00) → cross-midnight branch
+        // open if now >= 22:00 OR now <= 02:00
+        val crossMidnight = "22:00-02:00"
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(22, 0))).isTrue()  // exactly at open
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(23, 0))).isTrue()  // evening side
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(0, 0))).isTrue()   // midnight itself
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(1, 30))).isTrue()  // early-morning side
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(2, 0))).isTrue()   // exactly at close
+    }
+
+    @Test
+    fun `computeIsOpen - cross-midnight range is closed in the gap between close and open`() {
+        val crossMidnight = "22:00-02:00"
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(2, 1))).isFalse()   // just after close
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(10, 0))).isFalse()  // midday gap
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(21, 59))).isFalse() // just before open
+    }
+
+    @Test
+    fun `computeIsOpen - cross-midnight mirrors matchesTime logic without boundary tolerance`() {
+        // matchesTime applies ±1 minute tolerance; computeIsOpen does not.
+        // At 21:59 (one minute before 22:00 open):
+        //   matchesTime → true  (21:59 falls within the expanded window starting at 21:59)
+        //   computeIsOpen → false (strict: 21:59 < 22:00)
+        val crossMidnight = "22:00-02:00"
+        val oneMinuteBeforeOpen = LocalTime.of(21, 59)
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, oneMinuteBeforeOpen)).isFalse()
+
+        val evaluator = OpeningHoursEvaluator()
+        assertThat(evaluator.isOpen(LocalDateTime.of(2024, 3, 15, 21, 59), "??.??.???? ? ? 22:00-02:00")).isTrue()
+    }
+
     // ── computeIsOpenOnDate ───────────────────────────────────────────────
 
     @Test
