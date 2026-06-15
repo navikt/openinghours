@@ -25,15 +25,20 @@ class DailyCacheController(
 ) {
     @Operation(summary = "Get today's cached opening hours for all services")
     @GetMapping
-    fun getAll(): Map<UUID, DailyCacheResponse> =
-        cache.getAll().mapValues { (_, data) -> data.toResponse(clock) }
+    fun getAll(): Map<UUID, DailyCacheResponse> {
+        // Snapshot the current time once so every entry in the response is evaluated
+        // at the same instant — avoids inconsistent isOpen values when a request
+        // straddles an open/close boundary.
+        val nowTime = LocalTime.now(clock)
+        return cache.getAll().mapValues { (_, data) -> data.toResponse(nowTime) }
+    }
 
     @Operation(summary = "Get today's cached opening hours for a service")
     @GetMapping("/{serviceId}")
     fun getForService(@PathVariable serviceId: UUID): DailyCacheResponse =
         (cache.getForService(serviceId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No cached data for service $serviceId"))
-            .toResponse(clock)
+            .toResponse(LocalTime.now(clock))
 
     @Operation(summary = "Manually trigger a cache refresh")
     @PostMapping("/refresh")
@@ -51,7 +56,7 @@ data class DailyCacheResponse(
     val isOpen: Boolean,
 )
 
-private fun OpeningHoursDisplayData.toResponse(clock: Clock) = DailyCacheResponse(
+private fun OpeningHoursDisplayData.toResponse(nowTime: LocalTime) = DailyCacheResponse(
     ruleName = ruleName,
     rule = rule,
     openingHours = openingHours,
@@ -59,5 +64,5 @@ private fun OpeningHoursDisplayData.toResponse(clock: Clock) = DailyCacheRespons
     displayText = displayText,
     onlyShowForNavEmployees = onlyShowForNavEmployees,
     redDay = redDay,
-    isOpen = OpeningHoursEvaluator.computeIsOpen(openingHours ?: "00:00-23:59", LocalTime.now(clock)),
+    isOpen = OpeningHoursEvaluator.computeIsOpen(openingHours ?: "00:00-23:59", nowTime),
 )
