@@ -103,9 +103,9 @@ class OpeningHoursEvaluator {
          * are based on the same instant and cannot disagree across a midnight boundary.
          */
         fun computeIsOpenOnDate(hours: String, date: LocalDate, today: LocalDate, nowTime: LocalTime): Boolean {
-            val h = normalizeHours(hours)
-            return if (date == today) computeIsOpen(h, nowTime)
-            else h != "00:00-00:00"
+            val normalized = hours.filterNot { it.isWhitespace() }
+            return if (date == today) computeIsOpen(normalized, nowTime)
+            else normalized != "00:00-00:00"
         }
 
         /**
