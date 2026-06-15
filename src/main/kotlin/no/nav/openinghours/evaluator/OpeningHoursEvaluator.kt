@@ -22,7 +22,22 @@ class OpeningHoursEvaluator {
         )
 
         /**
+         * Strips leading/trailing whitespace from [hours] and collapses any whitespace
+         * surrounding the `-` separator (e.g. `"00:00 - 23:59 "` → `"00:00-23:59"`).
+         *
+         * Normalization is applied at the start of every public entry point ([parseHoursRange],
+         * [computeIsOpen], [computeIsOpenOnDate]) so that sentinel comparisons and
+         * [parseHoursRange] always operate on a canonical form, regardless of how the stored
+         * or transmitted string was formatted.
+         */
+        private fun normalizeHours(hours: String): String =
+            hours.trim().replace(Regex("\\s*-\\s*"), "-")
+
+        /**
          * Parses a `"HH:mm-HH:mm"` hours string into an (openTime, closeTime) pair.
+         *
+         * The input is normalized before parsing (see [normalizeHours]), so surrounding
+         * whitespace and spaces around the `-` separator are accepted.
          *
          * Returns `null` for any malformed input: wrong number of `-`-separated parts, a part that
          * doesn't contain exactly one `:`, or a time component that is not a valid integer or is
@@ -32,7 +47,8 @@ class OpeningHoursEvaluator {
          * the query controller use it so that their interpretations of "valid" can never drift apart.
          */
         fun parseHoursRange(hours: String): Pair<LocalTime, LocalTime>? {
-            val parts = hours.split("-")
+            val h = normalizeHours(hours)
+            val parts = h.split("-")
             if (parts.size != 2) return null
             val open  = parseTime(parts[0]) ?: return null
             val close = parseTime(parts[1]) ?: return null
@@ -49,6 +65,9 @@ class OpeningHoursEvaluator {
         /**
          * Determines whether a service is currently open based on its opening hours string and the given time.
          *
+         * The input is normalized (see [normalizeHours]) before sentinel checks and parsing, so
+         * inputs like `"00:00-23:59 "` or `"00:00 - 00:00"` are handled correctly.
+         *
          * - `"00:00-23:59"` → always open (`true`)
          * - `"00:00-00:00"` → always closed (`false`)
          * - Malformed string (bad format or unparseable time component) → `false`
@@ -57,9 +76,10 @@ class OpeningHoursEvaluator {
          *   **or** ≤ closeTime — mirrors the logic in [matchesTime] but without the ±1-minute DSL tolerance
          */
         fun computeIsOpen(hours: String, now: LocalTime): Boolean {
-            if (hours == "00:00-23:59") return true
-            if (hours == "00:00-00:00") return false
-            val (openTime, closeTime) = parseHoursRange(hours) ?: return false
+            val h = normalizeHours(hours)
+            if (h == "00:00-23:59") return true
+            if (h == "00:00-00:00") return false
+            val (openTime, closeTime) = parseHoursRange(h) ?: return false
             return if (openTime <= closeTime) {
                 !now.isBefore(openTime) && !now.isAfter(closeTime)
             } else {
@@ -82,9 +102,11 @@ class OpeningHoursEvaluator {
          * the [today] value elsewhere (e.g. to derive fallback display times), so that both decisions
          * are based on the same instant and cannot disagree across a midnight boundary.
          */
-        fun computeIsOpenOnDate(hours: String, date: LocalDate, today: LocalDate, nowTime: LocalTime): Boolean =
-            if (date == today) computeIsOpen(hours, nowTime)
-            else hours != "00:00-00:00"
+        fun computeIsOpenOnDate(hours: String, date: LocalDate, today: LocalDate, nowTime: LocalTime): Boolean {
+            val h = normalizeHours(hours)
+            return if (date == today) computeIsOpen(h, nowTime)
+            else h != "00:00-00:00"
+        }
 
         /**
          * Convenience overload that snapshots [clock] once into a [LocalDateTime] and delegates to

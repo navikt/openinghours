@@ -475,12 +475,58 @@ class OpeningHoursEvaluatorTest {
     }
 
     @Test
-    fun `parseHoursRange - surrounding whitespace in a part is tolerated`() {
-        // The DSL occasionally stores times with a leading or trailing space.
+    fun `parseHoursRange - surrounding whitespace is normalized`() {
+        // Leading/trailing on the whole string
         assertThat(OpeningHoursEvaluator.parseHoursRange(" 08:00-16:00"))
             .isEqualTo(LocalTime.of(8, 0) to LocalTime.of(16, 0))
         assertThat(OpeningHoursEvaluator.parseHoursRange("08:00-16:00 "))
             .isEqualTo(LocalTime.of(8, 0) to LocalTime.of(16, 0))
+        // Spaces around the dash separator
+        assertThat(OpeningHoursEvaluator.parseHoursRange("08:00 - 16:00"))
+            .isEqualTo(LocalTime.of(8, 0) to LocalTime.of(16, 0))
+        assertThat(OpeningHoursEvaluator.parseHoursRange("  08:00  -  16:00  "))
+            .isEqualTo(LocalTime.of(8, 0) to LocalTime.of(16, 0))
+        // Sentinels with surrounding whitespace parse to their expected pairs
+        assertThat(OpeningHoursEvaluator.parseHoursRange("00:00 - 23:59"))
+            .isEqualTo(LocalTime.of(0, 0) to LocalTime.of(23, 59))
+        assertThat(OpeningHoursEvaluator.parseHoursRange(" 00:00-00:00 "))
+            .isEqualTo(LocalTime.of(0, 0) to LocalTime.of(0, 0))
+    }
+
+    // ── computeIsOpen whitespace / sentinel normalization ─────────────────
+
+    @Test
+    fun `computeIsOpen normalizes before sentinel check - always-open sentinel with whitespace`() {
+        // Before the fix: "00:00-23:59 " missed the sentinel fast-path and was treated as a
+        // range [00:00, 23:59:00], which returned false for times with seconds > 00 at 23:59.
+        val justAfterLastMinute = LocalTime.of(23, 59, 30)
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-23:59 ", justAfterLastMinute)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen(" 00:00-23:59", LocalTime.of(0, 0))).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00 - 23:59", LocalTime.NOON)).isTrue()
+    }
+
+    @Test
+    fun `computeIsOpen normalizes before sentinel check - always-closed sentinel with whitespace`() {
+        // Before the fix: "00:00 - 00:00" missed the sentinel and was treated as the range
+        // [00:00, 00:00], which returned true only at exactly midnight — not always-closed.
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00 - 00:00", LocalTime.MIDNIGHT)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-00:00 ", LocalTime.NOON)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen(" 00:00 - 00:00 ", LocalTime.of(8, 0))).isFalse()
+    }
+
+    // ── computeIsOpenOnDate whitespace / sentinel normalization ───────────
+
+    @Test
+    fun `computeIsOpenOnDate normalizes always-closed sentinel for non-today path`() {
+        // Before the fix: "00:00-00:00 " != "00:00-00:00" → returned true (incorrectly open).
+        val today    = LocalDate.of(2024, 3, 15)
+        val nowTime  = LocalTime.of(10, 0)
+        val tomorrow = LocalDate.of(2024, 3, 16)
+
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00 ", tomorrow, today, nowTime)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate(" 00:00 - 00:00", tomorrow, today, nowTime)).isFalse()
+        // Non-closed sentinel with whitespace should remain open on non-today
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate(" 00:00-23:59 ", tomorrow, today, nowTime)).isTrue()
     }
 
     @Test
