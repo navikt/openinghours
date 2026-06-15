@@ -26,6 +26,7 @@ jira:
   password: test
 
 openinghours:
+  timezone: Europe/Oslo
   api:
     url: http://localhost/
     token: test-token

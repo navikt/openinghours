@@ -27,6 +27,9 @@ api:
     key: ${API_KEY}
     header-name: X-API-Key
 
+openinghours:
+  timezone: ${OPENINGHOURS_TIMEZONE:Europe/Oslo}
+
 management:
   endpoints:
     web:
