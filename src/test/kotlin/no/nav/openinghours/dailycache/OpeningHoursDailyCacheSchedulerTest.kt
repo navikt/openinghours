@@ -4,6 +4,9 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.scheduling.TriggerContext
+import org.springframework.scheduling.support.CronTrigger
+import java.time.Instant
 import org.mockito.Mockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.event.ApplicationReadyEvent
@@ -152,20 +155,37 @@ class OpeningHoursDailyCacheSchedulerSpringTest {
     }
 
     @Test
-    fun `registered cron task fires in the Clock bean's zone`() {
-        // Spring resolves zone = "#{@clock.zone.id}" when building the CronTrigger.
-        // If the SpEL expression were invalid or produced an unrecognisable zone ID,
-        // the application context would have failed to start, causing the whole test
-        // class to error out before reaching this point.
-        // What we can verify without accessing Spring internals: the midnight CronTask
-        // is registered (i.e. the zone did not prevent task registration).
-        val midnightCrons = scheduledTaskHolder.scheduledTasks
+    fun `registered cron task fires at midnight in the Clock bean's zone, not UTC`() {
+        // Retrieve the CronTrigger for the midnight task.
+        val cronTask = scheduledTaskHolder.scheduledTasks
             .mapNotNull { it.task as? CronTask }
-            .filter { it.expression == "0 0 0 * * *" }
+            .firstOrNull { it.expression == "0 0 0 * * *" }
+        assertThat(cronTask).`as`("Midnight CronTask must be registered").isNotNull()
 
-        assertThat(midnightCrons)
-            .`as`("Midnight CronTask must be registered — context startup proves the zone SpEL resolved")
-            .hasSize(1)
+        val trigger = cronTask!!.trigger as? CronTrigger
+        assertThat(trigger).`as`("Task trigger must be a CronTrigger").isNotNull()
+
+        // Verify zone semantics behaviourally: ask the trigger when it next fires after an
+        // instant that is one second before midnight in Europe/Oslo (UTC+2 in summer).
+        //
+        //   2024-06-15T21:59:59Z  =  2024-06-15T23:59:59 Europe/Oslo
+        //
+        // Expected next execution (correct – Oslo zone):
+        //   2024-06-16T00:00:00 Europe/Oslo  =  2024-06-15T22:00:00Z
+        //
+        // What it would be if the zone were UTC:
+        //   2024-06-16T00:00:00Z  (two hours later — would make this assertion fail)
+        val justBeforeMidnightOslo = Instant.parse("2024-06-15T21:59:59Z")
+        val context = object : TriggerContext {
+            override fun lastScheduledExecution(): Instant = justBeforeMidnightOslo
+            override fun lastActualExecution(): Instant    = justBeforeMidnightOslo
+            override fun lastCompletion(): Instant         = justBeforeMidnightOslo
+        }
+
+        val next = trigger!!.nextExecution(context)
+        assertThat(next)
+            .`as`("Next execution must be midnight Europe/Oslo (22:00 UTC in CEST), not midnight UTC (00:00 UTC)")
+            .isEqualTo(Instant.parse("2024-06-15T22:00:00Z"))
     }
 }
 

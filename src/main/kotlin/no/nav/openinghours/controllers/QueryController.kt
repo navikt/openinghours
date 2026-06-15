@@ -50,7 +50,11 @@ class QueryController(
         if (from.isAfter(to)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "'from' date must not be after 'to' date")
         }
-        return from.datesUntil(to.plusDays(1)).map { buildResponse(groupId, serviceId, it) }.toList()
+        // Capture the clock once for the entire range so every entry is evaluated
+        // against the same instant — prevents isOpen semantics from changing mid-iteration
+        // if processing straddles midnight.
+        val now = LocalDateTime.now(clock)
+        return from.datesUntil(to.plusDays(1)).map { buildResponse(groupId, serviceId, it, now) }.toList()
     }
 
     @Operation(summary = "Get opening hours for a group on a date")
@@ -60,13 +64,19 @@ class QueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
     ): QueryResponse = buildResponse(groupId, null, date)
 
-    private fun buildResponse(groupId: UUID, serviceId: UUID?, date: LocalDate): QueryResponse {
+    private fun buildResponse(
+        groupId: UUID,
+        serviceId: UUID?,
+        date: LocalDate,
+        // Callers that iterate over multiple dates (e.g. queryByServiceRange) should
+        // capture LocalDateTime.now(clock) once and pass it here, so every element in
+        // the same response is evaluated against the same instant and isOpen semantics
+        // cannot diverge across a midnight boundary mid-iteration.
+        // Single-date callers may omit this; the default captures the clock at call time.
+        now: LocalDateTime = LocalDateTime.now(clock),
+    ): QueryResponse {
         val displayData = lookupService.getDisplayData(groupId, date)
         val hours = displayData.openingHours ?: "00:00-23:59"
-        // Snapshot the clock once so that the today-check for display-time fallback
-        // and the isOpen computation are guaranteed to use the same instant, preventing
-        // a midnight boundary from making them disagree.
-        val now = LocalDateTime.now(clock)
         val today = now.toLocalDate()
         val nowTime = now.toLocalTime()
         val isToday = date == today
