@@ -312,6 +312,53 @@ class QueryControllerTest {
             }
     }
 
+    // ── Malformed hours: fallback consistency ─────────────────────────────
+
+    @Test
+    fun `malformed hours on today yields isOpen=false and closed sentinel times`() {
+        // Clock is at 2024-03-15T10:00. A stored hours string that cannot be parsed
+        // must not produce the all-day window (00:00–23:59) alongside isOpen=false.
+        val groupId = UUID.randomUUID()
+        val today = LocalDate.of(2024, 3, 15)
+
+        `when`(lookupService.getDisplayData(groupId, today)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "BADFORMAT", ruleName = "Broken", rule = "??.??.???? ? ? BADFORMAT")
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-15")
+            .andExpect {
+                status { isOk() }
+                // computeIsOpenOnDate: today + malformed → false
+                jsonPath("$.isOpen") { value(false) }
+                // Times must not suggest "open all day" — use closed sentinel
+                jsonPath("$.openingTime") { value("00:00") }
+                jsonPath("$.closingTime") { value("00:00") }
+            }
+    }
+
+    @Test
+    fun `malformed hours on non-today yields isOpen=true and open-all-day sentinel times`() {
+        // 2024-03-16 is not today (clock = 2024-03-15). A stored hours string that
+        // cannot be parsed for a non-today date: isOpen=true (not the always-closed
+        // sentinel), so the displayed times should be the open-all-day sentinel.
+        val groupId = UUID.randomUUID()
+        val future = LocalDate.of(2024, 3, 16)
+
+        `when`(lookupService.getDisplayData(groupId, future)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "BADFORMAT", ruleName = "Broken", rule = "??.??.???? ? ? BADFORMAT")
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                // computeIsOpenOnDate: non-today + not "00:00-00:00" → true
+                jsonPath("$.isOpen") { value(true) }
+                // Times consistent with open-all-day
+                jsonPath("$.openingTime") { value("00:00") }
+                jsonPath("$.closingTime") { value("23:59") }
+            }
+    }
+
     @Test
     fun `query range with from after to returns error`() {
         val serviceId = UUID.randomUUID()

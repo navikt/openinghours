@@ -62,14 +62,23 @@ class QueryController(
     private fun buildResponse(groupId: UUID, serviceId: UUID?, date: LocalDate): QueryResponse {
         val displayData = lookupService.getDisplayData(groupId, date)
         val hours = displayData.openingHours ?: "00:00-23:59"
+        val isToday = date == LocalDate.now(clock)
         val parts = hours.split("-")
         val (openTime, closeTime) =
             if (parts.size == 2) {
-                val open = runCatching { java.time.LocalTime.parse(parts[0]) }.getOrNull()?.toString() ?: "00:00"
-                val close = runCatching { java.time.LocalTime.parse(parts[1]) }.getOrNull()?.toString() ?: "23:59"
-                open to close
+                val open = runCatching { java.time.LocalTime.parse(parts[0]) }.getOrNull()
+                val close = runCatching { java.time.LocalTime.parse(parts[1]) }.getOrNull()
+                if (open != null && close != null) {
+                    open.toString() to close.toString()
+                } else {
+                    // Malformed time component: align fallback with isOpen semantics.
+                    // computeIsOpenOnDate returns false for malformed input on today, and true on non-today,
+                    // so mirror that here to keep openingTime/closingTime consistent with isOpen.
+                    if (isToday) "00:00" to "00:00" else "00:00" to "23:59"
+                }
             } else {
-                "00:00" to "23:59"
+                // Malformed format (wrong number of parts): same date-aware fallback.
+                if (isToday) "00:00" to "00:00" else "00:00" to "23:59"
             }
         val isOpen = OpeningHoursEvaluator.computeIsOpenOnDate(hours, date, clock)
 
