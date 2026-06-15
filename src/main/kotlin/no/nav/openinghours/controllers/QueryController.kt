@@ -73,8 +73,14 @@ class QueryController(
         val parts = hours.split("-")
         val (openTime, closeTime) =
             if (parts.size == 2) {
-                val open = runCatching { java.time.LocalTime.parse(parts[0]) }.getOrNull()
-                val close = runCatching { java.time.LocalTime.parse(parts[1]) }.getOrNull()
+                val open = runCatching {
+                    val (h, m) = parts[0].trim().split(":").map { it.toInt() }
+                    java.time.LocalTime.of(h, m)
+                }.getOrNull()
+                val close = runCatching {
+                    val (h, m) = parts[1].trim().split(":").map { it.toInt() }
+                    java.time.LocalTime.of(h, m)
+                }.getOrNull()
                 if (open != null && close != null) {
                     open.toString() to close.toString()
                 } else {
