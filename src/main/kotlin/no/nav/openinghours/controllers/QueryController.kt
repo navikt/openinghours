@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
 import java.time.Clock
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 
 @RestController
@@ -62,7 +63,13 @@ class QueryController(
     private fun buildResponse(groupId: UUID, serviceId: UUID?, date: LocalDate): QueryResponse {
         val displayData = lookupService.getDisplayData(groupId, date)
         val hours = displayData.openingHours ?: "00:00-23:59"
-        val isToday = date == LocalDate.now(clock)
+        // Snapshot the clock once so that the today-check for display-time fallback
+        // and the isOpen computation are guaranteed to use the same instant, preventing
+        // a midnight boundary from making them disagree.
+        val now = LocalDateTime.now(clock)
+        val today = now.toLocalDate()
+        val nowTime = now.toLocalTime()
+        val isToday = date == today
         val parts = hours.split("-")
         val (openTime, closeTime) =
             if (parts.size == 2) {
@@ -80,7 +87,7 @@ class QueryController(
                 // Malformed format (wrong number of parts): same date-aware fallback.
                 if (isToday) "00:00" to "00:00" else "00:00" to "23:59"
             }
-        val isOpen = OpeningHoursEvaluator.computeIsOpenOnDate(hours, date, clock)
+        val isOpen = OpeningHoursEvaluator.computeIsOpenOnDate(hours, date, today, nowTime)
 
         return QueryResponse(
             resourceId = serviceId ?: groupId,

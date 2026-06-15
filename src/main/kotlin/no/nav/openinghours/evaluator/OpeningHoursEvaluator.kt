@@ -47,18 +47,33 @@ class OpeningHoursEvaluator {
         }
 
         /**
-         * Determines the `isOpen` value for a given [date] and [hours] string, using [clock] for the current time.
+         * Determines the `isOpen` value for a given [date] and [hours] string, using pre-captured
+         * [today] and [nowTime] values derived from a single clock snapshot.
          *
          * Two distinct semantics are applied depending on whether [date] is today:
-         * - **Today** (`date == LocalDate.now(clock)`): "open right now" — delegates to [computeIsOpen] with
-         *   the current wall-clock time so callers get a live open/closed status.
+         * - **Today** (`date == today`): "open right now" — delegates to [computeIsOpen] with [nowTime].
          * - **Any other date** (past or future): "open at all" — returns `true` unless the hours are the
-         *   sentinel "00:00-00:00" (always-closed), preserving the original contract for range/future queries
-         *   where a real-time check would be meaningless.
+         *   sentinel "00:00-00:00" (always-closed), preserving the original contract for range/future
+         *   queries where a real-time check would be meaningless.
+         *
+         * Prefer this overload over [computeIsOpenOnDate(hours, date, clock)] whenever you also need
+         * the [today] value elsewhere (e.g. to derive fallback display times), so that both decisions
+         * are based on the same instant and cannot disagree across a midnight boundary.
          */
-        fun computeIsOpenOnDate(hours: String, date: LocalDate, clock: Clock): Boolean =
-            if (date == LocalDate.now(clock)) computeIsOpen(hours, LocalTime.now(clock))
+        fun computeIsOpenOnDate(hours: String, date: LocalDate, today: LocalDate, nowTime: LocalTime): Boolean =
+            if (date == today) computeIsOpen(hours, nowTime)
             else hours != "00:00-00:00"
+
+        /**
+         * Convenience overload that snapshots [clock] once into a [LocalDateTime] and delegates to
+         * [computeIsOpenOnDate(hours, date, today, nowTime)]. Callers that also need the current
+         * date/time for other purposes should capture `LocalDateTime.now(clock)` themselves and call
+         * the primary overload directly to avoid separate clock reads.
+         */
+        fun computeIsOpenOnDate(hours: String, date: LocalDate, clock: Clock): Boolean {
+            val now = LocalDateTime.now(clock)
+            return computeIsOpenOnDate(hours, date, now.toLocalDate(), now.toLocalTime())
+        }
     }
 
     private sealed interface EvalResult {

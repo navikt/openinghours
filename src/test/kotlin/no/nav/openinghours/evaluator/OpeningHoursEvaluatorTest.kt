@@ -431,4 +431,31 @@ class OpeningHoursEvaluatorTest {
         assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", yesterday, clock)).isFalse()
         assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", tomorrow, clock)).isFalse()
     }
+
+    @Test
+    fun `computeIsOpenOnDate primary overload - today uses provided nowTime, no second clock read`() {
+        // This overload is the one buildResponse calls after capturing LocalDateTime.now(clock) once.
+        // Supply today + nowTime directly to prove there is no internal clock access.
+        val today = LocalDate.of(2024, 3, 15)
+        val nowTime = LocalTime.of(10, 0)  // 10:00
+
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("07:00-21:00", today, today, nowTime)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("11:00-17:00", today, today, nowTime)).isFalse() // not yet open
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-23:59", today, today, nowTime)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", today, today, nowTime)).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpenOnDate primary overload - non-today uses open-at-all semantics`() {
+        val today    = LocalDate.of(2024, 3, 15)
+        val nowTime  = LocalTime.of(10, 0)
+        val yesterday = LocalDate.of(2024, 3, 14)
+        val tomorrow  = LocalDate.of(2024, 3, 16)
+
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("07:00-21:00", yesterday, today, nowTime)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("11:00-17:00", tomorrow,  today, nowTime)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-23:59", yesterday, today, nowTime)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", yesterday, today, nowTime)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", tomorrow,  today, nowTime)).isFalse()
+    }
 }
