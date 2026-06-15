@@ -36,10 +36,11 @@ class OpeningHoursEvaluator {
             if (hours == "00:00-00:00") return false
             val parts = hours.split("-")
             if (parts.size != 2) return false
-            fun parsePart(p: String): LocalTime? = runCatching {
-                val (h, m) = p.trim().split(":").map { it.toInt() }
-                LocalTime.of(h, m)
-            }.getOrNull()
+            fun parsePart(p: String): LocalTime? {
+                val t = p.trim().split(":")
+                if (t.size != 2) return null
+                return runCatching { LocalTime.of(t[0].toInt(), t[1].toInt()) }.getOrNull()
+            }
             val openTime = parsePart(parts[0]) ?: return false
             val closeTime = parsePart(parts[1]) ?: return false
             return if (openTime <= closeTime) {
