@@ -458,4 +458,44 @@ class OpeningHoursEvaluatorTest {
         assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", yesterday, today, nowTime)).isFalse()
         assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", tomorrow,  today, nowTime)).isFalse()
     }
+
+    // ── parseHoursRange ───────────────────────────────────────────────────
+
+    @Test
+    fun `parseHoursRange - valid ranges return correct pair`() {
+        assertThat(OpeningHoursEvaluator.parseHoursRange("07:00-21:00"))
+            .isEqualTo(LocalTime.of(7, 0) to LocalTime.of(21, 0))
+        assertThat(OpeningHoursEvaluator.parseHoursRange("00:00-23:59"))
+            .isEqualTo(LocalTime.of(0, 0) to LocalTime.of(23, 59))
+        assertThat(OpeningHoursEvaluator.parseHoursRange("00:00-00:00"))
+            .isEqualTo(LocalTime.of(0, 0) to LocalTime.of(0, 0))
+        // cross-midnight
+        assertThat(OpeningHoursEvaluator.parseHoursRange("22:00-02:00"))
+            .isEqualTo(LocalTime.of(22, 0) to LocalTime.of(2, 0))
+    }
+
+    @Test
+    fun `parseHoursRange - surrounding whitespace in a part is tolerated`() {
+        // The DSL occasionally stores times with a leading or trailing space.
+        assertThat(OpeningHoursEvaluator.parseHoursRange(" 08:00-16:00"))
+            .isEqualTo(LocalTime.of(8, 0) to LocalTime.of(16, 0))
+        assertThat(OpeningHoursEvaluator.parseHoursRange("08:00-16:00 "))
+            .isEqualTo(LocalTime.of(8, 0) to LocalTime.of(16, 0))
+    }
+
+    @Test
+    fun `parseHoursRange - malformed inputs return null`() {
+        // Missing separator entirely
+        assertThat(OpeningHoursEvaluator.parseHoursRange("BADFORMAT")).isNull()
+        // Too many parts
+        assertThat(OpeningHoursEvaluator.parseHoursRange("08:00-12:00-16:00")).isNull()
+        // Non-numeric hour component
+        assertThat(OpeningHoursEvaluator.parseHoursRange("08:00-AB:00")).isNull()
+        // Missing colon in one part
+        assertThat(OpeningHoursEvaluator.parseHoursRange("0800-16:00")).isNull()
+        // Out-of-range minute
+        assertThat(OpeningHoursEvaluator.parseHoursRange("08:00-16:99")).isNull()
+        // Empty string
+        assertThat(OpeningHoursEvaluator.parseHoursRange("")).isNull()
+    }
 }

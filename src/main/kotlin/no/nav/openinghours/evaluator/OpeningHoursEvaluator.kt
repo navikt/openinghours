@@ -22,6 +22,31 @@ class OpeningHoursEvaluator {
         )
 
         /**
+         * Parses a `"HH:mm-HH:mm"` hours string into an (openTime, closeTime) pair.
+         *
+         * Returns `null` for any malformed input: wrong number of `-`-separated parts, a part that
+         * doesn't contain exactly one `:`, or a time component that is not a valid integer or is
+         * out of range for [LocalTime].
+         *
+         * This is the single source of truth for hours-string parsing; both [computeIsOpen] and
+         * the query controller use it so that their interpretations of "valid" can never drift apart.
+         */
+        fun parseHoursRange(hours: String): Pair<LocalTime, LocalTime>? {
+            val parts = hours.split("-")
+            if (parts.size != 2) return null
+            val open  = parseTime(parts[0]) ?: return null
+            val close = parseTime(parts[1]) ?: return null
+            return open to close
+        }
+
+        /** Parses a single `"HH:mm"` segment, returning `null` on any malformed input. */
+        private fun parseTime(s: String): LocalTime? {
+            val parts = s.trim().split(":")
+            if (parts.size != 2) return null
+            return runCatching { LocalTime.of(parts[0].toInt(), parts[1].toInt()) }.getOrNull()
+        }
+
+        /**
          * Determines whether a service is currently open based on its opening hours string and the given time.
          *
          * - `"00:00-23:59"` → always open (`true`)
@@ -34,15 +59,7 @@ class OpeningHoursEvaluator {
         fun computeIsOpen(hours: String, now: LocalTime): Boolean {
             if (hours == "00:00-23:59") return true
             if (hours == "00:00-00:00") return false
-            val parts = hours.split("-")
-            if (parts.size != 2) return false
-            fun parsePart(p: String): LocalTime? {
-                val t = p.trim().split(":")
-                if (t.size != 2) return null
-                return runCatching { LocalTime.of(t[0].toInt(), t[1].toInt()) }.getOrNull()
-            }
-            val openTime = parsePart(parts[0]) ?: return false
-            val closeTime = parsePart(parts[1]) ?: return false
+            val (openTime, closeTime) = parseHoursRange(hours) ?: return false
             return if (openTime <= closeTime) {
                 !now.isBefore(openTime) && !now.isAfter(closeTime)
             } else {

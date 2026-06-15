@@ -70,27 +70,15 @@ class QueryController(
         val today = now.toLocalDate()
         val nowTime = now.toLocalTime()
         val isToday = date == today
-        val parts = hours.split("-")
-        val (openTime, closeTime) =
-            if (parts.size == 2) {
-                val open = parts[0].trim().split(":").let { t ->
-                    if (t.size != 2) null else runCatching { java.time.LocalTime.of(t[0].toInt(), t[1].toInt()) }.getOrNull()
-                }
-                val close = parts[1].trim().split(":").let { t ->
-                    if (t.size != 2) null else runCatching { java.time.LocalTime.of(t[0].toInt(), t[1].toInt()) }.getOrNull()
-                }
-                if (open != null && close != null) {
-                    open.toString() to close.toString()
-                } else {
-                    // Malformed time component: align fallback with isOpen semantics.
-                    // computeIsOpenOnDate returns false for malformed input on today, and true on non-today,
-                    // so mirror that here to keep openingTime/closingTime consistent with isOpen.
-                    if (isToday) "00:00" to "00:00" else "00:00" to "23:59"
-                }
-            } else {
-                // Malformed format (wrong number of parts): same date-aware fallback.
-                if (isToday) "00:00" to "00:00" else "00:00" to "23:59"
-            }
+        val parsed = OpeningHoursEvaluator.parseHoursRange(hours)
+        val (openTime, closeTime) = if (parsed != null) {
+            parsed.first.toString() to parsed.second.toString()
+        } else {
+            // Malformed hours: align fallback with isOpen semantics so the two fields
+            // never contradict each other (computeIsOpenOnDate returns false for
+            // malformed input on today, and true on non-today).
+            if (isToday) "00:00" to "00:00" else "00:00" to "23:59"
+        }
         val isOpen = OpeningHoursEvaluator.computeIsOpenOnDate(hours, date, today, nowTime)
 
         return QueryResponse(
