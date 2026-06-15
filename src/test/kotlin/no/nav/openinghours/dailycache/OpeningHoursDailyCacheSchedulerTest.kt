@@ -4,6 +4,9 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.scheduling.TriggerContext
+import org.springframework.scheduling.support.CronTrigger
+import java.time.Instant
 import org.mockito.Mockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.event.ApplicationReadyEvent
@@ -18,6 +21,8 @@ import org.springframework.scheduling.config.ScheduledTaskHolder
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.boot.test.context.TestConfiguration
+import java.time.Clock
+import java.time.ZoneId
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Unit-level tests – no Spring context required
@@ -57,7 +62,7 @@ class OpeningHoursDailyCacheSchedulerUnitTest {
     // ── @Scheduled annotation metadata ────────────────────────────────────
 
     @Test
-    fun `refresh() carries @Scheduled with midnight cron expression`() {
+    fun `refresh() carries @Scheduled with midnight cron expression and clock-derived zone`() {
         val method = OpeningHoursDailyCacheScheduler::class.java.getMethod("refresh")
         val annotation = method.getAnnotation(Scheduled::class.java)
 
@@ -68,6 +73,10 @@ class OpeningHoursDailyCacheSchedulerUnitTest {
         assertThat(annotation.cron)
             .`as`("Cron expression must fire at midnight every day")
             .isEqualTo("0 0 0 * * *")
+
+        assertThat(annotation.zone)
+            .`as`("Zone must be derived from the Clock bean so it always matches the configured timezone")
+            .isEqualTo("#{@clock.zone.id}")
     }
 }
 
@@ -79,7 +88,7 @@ class OpeningHoursDailyCacheSchedulerUnitTest {
 @ContextConfiguration(classes = [OpeningHoursDailyCacheSchedulerSpringTest.Config::class])
 class OpeningHoursDailyCacheSchedulerSpringTest {
 
-    /** Minimal Spring context: just the scheduler + a mock cache bean. */
+    /** Minimal Spring context: just the scheduler + a mock cache bean + a fixed clock. */
     @TestConfiguration
     @EnableScheduling
     @Import(OpeningHoursDailyCacheScheduler::class)
@@ -87,6 +96,10 @@ class OpeningHoursDailyCacheSchedulerSpringTest {
         @Bean
         fun openingHoursDailyCache(): OpeningHoursDailyCache =
             Mockito.mock(OpeningHoursDailyCache::class.java)
+
+        /** Fixed zone so the cron zone SpEL expression #{@clock.zone.id} resolves to a known value. */
+        @Bean
+        fun clock(): Clock = Clock.system(ZoneId.of("Europe/Oslo"))
     }
 
     @Autowired lateinit var scheduler: OpeningHoursDailyCacheScheduler
@@ -139,6 +152,40 @@ class OpeningHoursDailyCacheSchedulerSpringTest {
         assertThat(registeredCrons)
             .`as`("Only the midnight cron should be present")
             .containsExactly("0 0 0 * * *")
+    }
+
+    @Test
+    fun `registered cron task fires at midnight in the Clock bean's zone, not UTC`() {
+        // Retrieve the CronTrigger for the midnight task.
+        val cronTask = scheduledTaskHolder.scheduledTasks
+            .mapNotNull { it.task as? CronTask }
+            .firstOrNull { it.expression == "0 0 0 * * *" }
+        assertThat(cronTask).`as`("Midnight CronTask must be registered").isNotNull()
+
+        val trigger = cronTask!!.trigger as? CronTrigger
+        assertThat(trigger).`as`("Task trigger must be a CronTrigger").isNotNull()
+
+        // Verify zone semantics behaviourally: ask the trigger when it next fires after an
+        // instant that is one second before midnight in Europe/Oslo (UTC+2 in summer).
+        //
+        //   2024-06-15T21:59:59Z  =  2024-06-15T23:59:59 Europe/Oslo
+        //
+        // Expected next execution (correct – Oslo zone):
+        //   2024-06-16T00:00:00 Europe/Oslo  =  2024-06-15T22:00:00Z
+        //
+        // What it would be if the zone were UTC:
+        //   2024-06-16T00:00:00Z  (two hours later — would make this assertion fail)
+        val justBeforeMidnightOslo = Instant.parse("2024-06-15T21:59:59Z")
+        val context = object : TriggerContext {
+            override fun lastScheduledExecution(): Instant = justBeforeMidnightOslo
+            override fun lastActualExecution(): Instant    = justBeforeMidnightOslo
+            override fun lastCompletion(): Instant         = justBeforeMidnightOslo
+        }
+
+        val next = trigger!!.nextExecution(context)
+        assertThat(next)
+            .`as`("Next execution must be midnight Europe/Oslo (22:00 UTC in CEST), not midnight UTC (00:00 UTC)")
+            .isEqualTo(Instant.parse("2024-06-15T22:00:00Z"))
     }
 }
 

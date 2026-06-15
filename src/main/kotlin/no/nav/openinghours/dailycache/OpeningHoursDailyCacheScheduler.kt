@@ -12,7 +12,9 @@ import org.springframework.stereotype.Component
 class OpeningHoursDailyCacheScheduler(
     private val cache: OpeningHoursDailyCache,
 ) {
-    @Scheduled(cron = "0 0 0 * * *") // midnight every day
+    // "zone" is derived directly from the Clock bean so the scheduler fires at midnight
+    // in the same zone used for all isOpen/today evaluations — no separate property needed.
+    @Scheduled(cron = "0 0 0 * * *", zone = "#{@clock.zone.id}")
     @EventListener(ApplicationReadyEvent::class) // also on startup
     fun refresh() {
         cache.populate()

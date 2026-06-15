@@ -1,8 +1,11 @@
 package no.nav.openinghours.evaluator
 
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneOffset
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -254,5 +257,291 @@ class OpeningHoursEvaluatorTest {
         // Saturday — rules exist but none match → null
         val data = evaluator.getDisplayData(LocalDate.of(2024, 3, 16), g)
         assertThat(data).isNull()
+    }
+
+    // ── computeIsOpen ─────────────────────────────────────────────────────
+
+    // --- sentinels ---
+
+    @Test
+    fun `computeIsOpen - always-open sentinel returns true regardless of time`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-23:59", LocalTime.MIDNIGHT)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-23:59", LocalTime.NOON)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-23:59", LocalTime.of(23, 59))).isTrue()
+    }
+
+    @Test
+    fun `computeIsOpen - always-closed sentinel returns false regardless of time`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-00:00", LocalTime.MIDNIGHT)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-00:00", LocalTime.NOON)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-00:00", LocalTime.of(23, 59))).isFalse()
+    }
+
+    // --- interior and exterior times ---
+
+    @Test
+    fun `computeIsOpen - time well within range returns true`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.NOON)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("07:30-21:00", LocalTime.of(14, 0))).isTrue()
+    }
+
+    @Test
+    fun `computeIsOpen - time before open returns false`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(8, 59))).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(0, 0))).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen - time after close returns false`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(17, 1))).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(23, 59))).isFalse()
+    }
+
+    // --- exact boundary behavior (strict comparison, no ±1 minute tolerance) ---
+
+    @Test
+    fun `computeIsOpen - time exactly at open boundary returns true`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(9, 0))).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("07:30-21:00", LocalTime.of(7, 30))).isTrue()
+    }
+
+    @Test
+    fun `computeIsOpen - time exactly at close boundary returns true`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(17, 0))).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("07:30-21:00", LocalTime.of(21, 0))).isTrue()
+    }
+
+    @Test
+    fun `computeIsOpen - one second before open boundary returns false`() {
+        // computeIsOpen uses strict isBefore/isAfter with no ±1 min tolerance,
+        // unlike matchesTime which expands the window by one minute on each side.
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(8, 59, 59))).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen - one second after close boundary returns false`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", LocalTime.of(17, 0, 1))).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen has no boundary tolerance unlike matchesTime`() {
+        // matchesTime (used by isOpen/DSL evaluator) grants ±1 minute tolerance, so
+        // 08:59 is considered inside a 09:00-17:00 window there.  computeIsOpen does
+        // NOT apply that tolerance: 08:59 is strictly before 09:00, so it returns false.
+        val oneMinuteBeforeOpen = LocalTime.of(8, 59)
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-17:00", oneMinuteBeforeOpen)).isFalse()
+
+        // For reference: the DSL evaluator would return true at the same moment.
+        val evaluator = OpeningHoursEvaluator()
+        assertThat(evaluator.isOpen(LocalDateTime.of(2024, 3, 15, 8, 59), "??.??.???? ? ? 09:00-17:00")).isTrue()
+    }
+
+    // --- malformed input ---
+
+    @Test
+    fun `computeIsOpen - empty string returns false`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("", LocalTime.NOON)).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen - string with no hyphen returns false`() {
+        assertThat(OpeningHoursEvaluator.computeIsOpen("0900", LocalTime.NOON)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("open", LocalTime.NOON)).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen - string with too many segments returns false`() {
+        // "09:00-12:00-17:00" splits into 3 parts → size check fails → false
+        assertThat(OpeningHoursEvaluator.computeIsOpen("09:00-12:00-17:00", LocalTime.NOON)).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpen - unparseable time component returns false`() {
+        // The size guard passes (2 parts) but the time values are invalid.
+        // computeIsOpen must return false rather than propagating DateTimeParseException
+        // to protect API responses from 500s caused by bad data.
+        assertThat(OpeningHoursEvaluator.computeIsOpen("25:00-26:00", LocalTime.NOON)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("ab:cd-ef:gh", LocalTime.NOON)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("9-17", LocalTime.NOON)).isFalse()
+    }
+
+    // --- midnight-spanning ranges ---
+
+    @Test
+    fun `computeIsOpen - cross-midnight range is open on both sides of midnight`() {
+        // "22:00-02:00": openTime (22:00) > closeTime (02:00) → cross-midnight branch
+        // open if now >= 22:00 OR now <= 02:00
+        val crossMidnight = "22:00-02:00"
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(22, 0))).isTrue()  // exactly at open
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(23, 0))).isTrue()  // evening side
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(0, 0))).isTrue()   // midnight itself
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(1, 30))).isTrue()  // early-morning side
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(2, 0))).isTrue()   // exactly at close
+    }
+
+    @Test
+    fun `computeIsOpen - cross-midnight range is closed in the gap between close and open`() {
+        val crossMidnight = "22:00-02:00"
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(2, 1))).isFalse()   // just after close
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(10, 0))).isFalse()  // midday gap
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, LocalTime.of(21, 59))).isFalse() // just before open
+    }
+
+    @Test
+    fun `computeIsOpen - cross-midnight mirrors matchesTime logic without boundary tolerance`() {
+        // matchesTime applies ±1 minute tolerance; computeIsOpen does not.
+        // At 21:59 (one minute before 22:00 open):
+        //   matchesTime → true  (21:59 falls within the expanded window starting at 21:59)
+        //   computeIsOpen → false (strict: 21:59 < 22:00)
+        val crossMidnight = "22:00-02:00"
+        val oneMinuteBeforeOpen = LocalTime.of(21, 59)
+        assertThat(OpeningHoursEvaluator.computeIsOpen(crossMidnight, oneMinuteBeforeOpen)).isFalse()
+
+        val evaluator = OpeningHoursEvaluator()
+        assertThat(evaluator.isOpen(LocalDateTime.of(2024, 3, 15, 21, 59), "??.??.???? ? ? 22:00-02:00")).isTrue()
+    }
+
+    // ── computeIsOpenOnDate ───────────────────────────────────────────────
+
+    @Test
+    fun `computeIsOpenOnDate - today uses real-time check`() {
+        // Clock fixed at 2024-03-15T10:00 UTC
+        val clock = Clock.fixed(Instant.parse("2024-03-15T10:00:00Z"), ZoneOffset.UTC)
+        val today = LocalDate.of(2024, 3, 15)
+
+        // At 10:00 these are open / closed based on actual time
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("07:00-21:00", today, clock)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("11:00-17:00", today, clock)).isFalse() // not yet open
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-23:59", today, clock)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", today, clock)).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpenOnDate - non-today uses open-at-all semantics`() {
+        val clock = Clock.fixed(Instant.parse("2024-03-15T10:00:00Z"), ZoneOffset.UTC)
+        val yesterday = LocalDate.of(2024, 3, 14)
+        val tomorrow  = LocalDate.of(2024, 3, 16)
+
+        // Any hours other than "00:00-00:00" → true (open at some point)
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("07:00-21:00", yesterday, clock)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("11:00-17:00", tomorrow, clock)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-23:59", yesterday, clock)).isTrue()
+
+        // "00:00-00:00" sentinel → always closed regardless of which date
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", yesterday, clock)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", tomorrow, clock)).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpenOnDate primary overload - today uses provided nowTime, no second clock read`() {
+        // This overload is the one buildResponse calls after capturing LocalDateTime.now(clock) once.
+        // Supply today + nowTime directly to prove there is no internal clock access.
+        val today = LocalDate.of(2024, 3, 15)
+        val nowTime = LocalTime.of(10, 0)  // 10:00
+
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("07:00-21:00", today, today, nowTime)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("11:00-17:00", today, today, nowTime)).isFalse() // not yet open
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-23:59", today, today, nowTime)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", today, today, nowTime)).isFalse()
+    }
+
+    @Test
+    fun `computeIsOpenOnDate primary overload - non-today uses open-at-all semantics`() {
+        val today    = LocalDate.of(2024, 3, 15)
+        val nowTime  = LocalTime.of(10, 0)
+        val yesterday = LocalDate.of(2024, 3, 14)
+        val tomorrow  = LocalDate.of(2024, 3, 16)
+
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("07:00-21:00", yesterday, today, nowTime)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("11:00-17:00", tomorrow,  today, nowTime)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-23:59", yesterday, today, nowTime)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", yesterday, today, nowTime)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00", tomorrow,  today, nowTime)).isFalse()
+    }
+
+    // ── parseHoursRange ───────────────────────────────────────────────────
+
+    @Test
+    fun `parseHoursRange - valid ranges return correct pair`() {
+        assertThat(OpeningHoursEvaluator.parseHoursRange("07:00-21:00"))
+            .isEqualTo(LocalTime.of(7, 0) to LocalTime.of(21, 0))
+        assertThat(OpeningHoursEvaluator.parseHoursRange("00:00-23:59"))
+            .isEqualTo(LocalTime.of(0, 0) to LocalTime.of(23, 59))
+        assertThat(OpeningHoursEvaluator.parseHoursRange("00:00-00:00"))
+            .isEqualTo(LocalTime.of(0, 0) to LocalTime.of(0, 0))
+        // cross-midnight
+        assertThat(OpeningHoursEvaluator.parseHoursRange("22:00-02:00"))
+            .isEqualTo(LocalTime.of(22, 0) to LocalTime.of(2, 0))
+    }
+
+    @Test
+    fun `parseHoursRange - surrounding whitespace is normalized`() {
+        // Leading/trailing on the whole string
+        assertThat(OpeningHoursEvaluator.parseHoursRange(" 08:00-16:00"))
+            .isEqualTo(LocalTime.of(8, 0) to LocalTime.of(16, 0))
+        assertThat(OpeningHoursEvaluator.parseHoursRange("08:00-16:00 "))
+            .isEqualTo(LocalTime.of(8, 0) to LocalTime.of(16, 0))
+        // Spaces around the dash separator
+        assertThat(OpeningHoursEvaluator.parseHoursRange("08:00 - 16:00"))
+            .isEqualTo(LocalTime.of(8, 0) to LocalTime.of(16, 0))
+        assertThat(OpeningHoursEvaluator.parseHoursRange("  08:00  -  16:00  "))
+            .isEqualTo(LocalTime.of(8, 0) to LocalTime.of(16, 0))
+        // Sentinels with surrounding whitespace parse to their expected pairs
+        assertThat(OpeningHoursEvaluator.parseHoursRange("00:00 - 23:59"))
+            .isEqualTo(LocalTime.of(0, 0) to LocalTime.of(23, 59))
+        assertThat(OpeningHoursEvaluator.parseHoursRange(" 00:00-00:00 "))
+            .isEqualTo(LocalTime.of(0, 0) to LocalTime.of(0, 0))
+    }
+
+    // ── computeIsOpen whitespace / sentinel normalization ─────────────────
+
+    @Test
+    fun `computeIsOpen normalizes before sentinel check - always-open sentinel with whitespace`() {
+        // Before the fix: "00:00-23:59 " missed the sentinel fast-path and was treated as a
+        // range [00:00, 23:59:00], which returned false for times with seconds > 00 at 23:59.
+        val justAfterLastMinute = LocalTime.of(23, 59, 30)
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-23:59 ", justAfterLastMinute)).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen(" 00:00-23:59", LocalTime.of(0, 0))).isTrue()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00 - 23:59", LocalTime.NOON)).isTrue()
+    }
+
+    @Test
+    fun `computeIsOpen normalizes before sentinel check - always-closed sentinel with whitespace`() {
+        // Before the fix: "00:00 - 00:00" missed the sentinel and was treated as the range
+        // [00:00, 00:00], which returned true only at exactly midnight — not always-closed.
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00 - 00:00", LocalTime.MIDNIGHT)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen("00:00-00:00 ", LocalTime.NOON)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpen(" 00:00 - 00:00 ", LocalTime.of(8, 0))).isFalse()
+    }
+
+    // ── computeIsOpenOnDate whitespace / sentinel normalization ───────────
+
+    @Test
+    fun `computeIsOpenOnDate normalizes always-closed sentinel for non-today path`() {
+        // Before the fix: "00:00-00:00 " != "00:00-00:00" → returned true (incorrectly open).
+        val today    = LocalDate.of(2024, 3, 15)
+        val nowTime  = LocalTime.of(10, 0)
+        val tomorrow = LocalDate.of(2024, 3, 16)
+
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate("00:00-00:00 ", tomorrow, today, nowTime)).isFalse()
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate(" 00:00 - 00:00", tomorrow, today, nowTime)).isFalse()
+        // Non-closed sentinel with whitespace should remain open on non-today
+        assertThat(OpeningHoursEvaluator.computeIsOpenOnDate(" 00:00-23:59 ", tomorrow, today, nowTime)).isTrue()
+    }
+
+    @Test
+    fun `parseHoursRange - malformed inputs return null`() {
+        // Missing separator entirely
+        assertThat(OpeningHoursEvaluator.parseHoursRange("BADFORMAT")).isNull()
+        // Too many parts
+        assertThat(OpeningHoursEvaluator.parseHoursRange("08:00-12:00-16:00")).isNull()
+        // Non-numeric hour component
+        assertThat(OpeningHoursEvaluator.parseHoursRange("08:00-AB:00")).isNull()
+        // Missing colon in one part
+        assertThat(OpeningHoursEvaluator.parseHoursRange("0800-16:00")).isNull()
+        // Out-of-range minute
+        assertThat(OpeningHoursEvaluator.parseHoursRange("08:00-16:99")).isNull()
+        // Empty string
+        assertThat(OpeningHoursEvaluator.parseHoursRange("")).isNull()
     }
 }

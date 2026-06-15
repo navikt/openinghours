@@ -1,13 +1,16 @@
 package no.nav.openinghours.controllers
 
 import io.swagger.v3.oas.annotations.Operation
+import no.nav.openinghours.evaluator.OpeningHoursEvaluator
 import no.nav.openinghours.service.OpeningHoursLookupService
 import no.nav.openinghours.service.ServiceService
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
+import java.time.Clock
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 
 @RestController
@@ -15,6 +18,7 @@ import java.util.UUID
 class QueryController(
     private val lookupService: OpeningHoursLookupService,
     private val serviceService: ServiceService,
+    private val clock: Clock,
 ) {
 
     @Operation(summary = "Get opening hours for a service on a date")
@@ -46,7 +50,11 @@ class QueryController(
         if (from.isAfter(to)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "'from' date must not be after 'to' date")
         }
-        return from.datesUntil(to.plusDays(1)).map { buildResponse(groupId, serviceId, it) }.toList()
+        // Capture the clock once for the entire range so every entry is evaluated
+        // against the same instant — prevents isOpen semantics from changing mid-iteration
+        // if processing straddles midnight.
+        val now = LocalDateTime.now(clock)
+        return from.datesUntil(to.plusDays(1)).map { buildResponse(groupId, serviceId, it, now) }.toList()
     }
 
     @Operation(summary = "Get opening hours for a group on a date")
@@ -56,13 +64,32 @@ class QueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
     ): QueryResponse = buildResponse(groupId, null, date)
 
-    private fun buildResponse(groupId: UUID, serviceId: UUID?, date: LocalDate): QueryResponse {
+    private fun buildResponse(
+        groupId: UUID,
+        serviceId: UUID?,
+        date: LocalDate,
+        // Callers that iterate over multiple dates (e.g. queryByServiceRange) should
+        // capture LocalDateTime.now(clock) once and pass it here, so every element in
+        // the same response is evaluated against the same instant and isOpen semantics
+        // cannot diverge across a midnight boundary mid-iteration.
+        // Single-date callers may omit this; the default captures the clock at call time.
+        now: LocalDateTime = LocalDateTime.now(clock),
+    ): QueryResponse {
         val displayData = lookupService.getDisplayData(groupId, date)
         val hours = displayData.openingHours ?: "00:00-23:59"
-        val parts = hours.split("-")
-        val openTime = if (parts.size >= 2) parts[0] else "00:00"
-        val closeTime = if (parts.size >= 2) parts[1] else "23:59"
-        val isOpen = hours != "00:00-00:00"
+        val today = now.toLocalDate()
+        val nowTime = now.toLocalTime()
+        val isToday = date == today
+        val parsed = OpeningHoursEvaluator.parseHoursRange(hours)
+        val (openTime, closeTime) = if (parsed != null) {
+            parsed.first.toString() to parsed.second.toString()
+        } else {
+            // Malformed hours: align fallback with isOpen semantics so the two fields
+            // never contradict each other (computeIsOpenOnDate returns false for
+            // malformed input on today, and true on non-today).
+            if (isToday) "00:00" to "00:00" else "00:00" to "23:59"
+        }
+        val isOpen = OpeningHoursEvaluator.computeIsOpenOnDate(hours, date, today, nowTime)
 
         return QueryResponse(
             resourceId = serviceId ?: groupId,

@@ -1,6 +1,7 @@
 package no.nav.openinghours.evaluator
 
 import org.springframework.stereotype.Component
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -19,6 +20,106 @@ class OpeningHoursEvaluator {
             displayText = "Åpent - ingen gjeldende dato regler",
             onlyShowForNavEmployees = false,
         )
+
+        private val DASH_SEPARATOR_WHITESPACE = Regex("\\s*-\\s*")
+
+        /**
+         * Strips leading/trailing whitespace from [hours] and collapses any whitespace
+         * surrounding the `-` separator (e.g. `"00:00 - 23:59 "` → `"00:00-23:59"`).
+         *
+         * Normalization is applied at the start of every public entry point ([parseHoursRange],
+         * [computeIsOpen], [computeIsOpenOnDate]) so that sentinel comparisons and
+         * [parseHoursRange] always operate on a canonical form, regardless of how the stored
+         * or transmitted string was formatted.
+         */
+        private fun normalizeHours(hours: String): String =
+            hours.trim().replace(DASH_SEPARATOR_WHITESPACE, "-")
+
+        /**
+         * Parses a `"HH:mm-HH:mm"` hours string into an (openTime, closeTime) pair.
+         *
+         * The input is normalized before parsing (see [normalizeHours]), so surrounding
+         * whitespace and spaces around the `-` separator are accepted.
+         *
+         * Returns `null` for any malformed input: wrong number of `-`-separated parts, a part that
+         * doesn't contain exactly one `:`, or a time component that is not a valid integer or is
+         * out of range for [LocalTime].
+         *
+         * This is the single source of truth for hours-string parsing; both [computeIsOpen] and
+         * the query controller use it so that their interpretations of "valid" can never drift apart.
+         */
+        fun parseHoursRange(hours: String): Pair<LocalTime, LocalTime>? {
+            val h = normalizeHours(hours)
+            val parts = h.split("-")
+            if (parts.size != 2) return null
+            val open  = parseTime(parts[0]) ?: return null
+            val close = parseTime(parts[1]) ?: return null
+            return open to close
+        }
+
+        /** Parses a single `"HH:mm"` segment, returning `null` on any malformed input. */
+        private fun parseTime(s: String): LocalTime? {
+            val parts = s.trim().split(":")
+            if (parts.size != 2) return null
+            return runCatching { LocalTime.of(parts[0].toInt(), parts[1].toInt()) }.getOrNull()
+        }
+
+        /**
+         * Determines whether a service is currently open based on its opening hours string and the given time.
+         *
+         * The input is normalized (see [normalizeHours]) before sentinel checks and parsing, so
+         * inputs like `"00:00-23:59 "` or `"00:00 - 00:00"` are handled correctly.
+         *
+         * - `"00:00-23:59"` → always open (`true`)
+         * - `"00:00-00:00"` → always closed (`false`)
+         * - Malformed string (bad format or unparseable time component) → `false`
+         * - Normal range (open ≤ close): open if [now] is within `[openTime, closeTime]` (inclusive, no tolerance)
+         * - Cross-midnight range (open > close, e.g. `"22:00-02:00"`): open if [now] is ≥ openTime
+         *   **or** ≤ closeTime — mirrors the logic in [matchesTime] but without the ±1-minute DSL tolerance
+         */
+        fun computeIsOpen(hours: String, now: LocalTime): Boolean {
+            val normalized = normalizeHours(hours)
+            if (normalized == "00:00-23:59") return true
+            if (normalized == "00:00-00:00") return false
+            val (openTime, closeTime) = parseHoursRange(normalized) ?: return false
+            return if (openTime <= closeTime) {
+                !now.isBefore(openTime) && !now.isAfter(closeTime)
+            } else {
+                // cross-midnight: open from openTime until closeTime the next day
+                !now.isBefore(openTime) || !now.isAfter(closeTime)
+            }
+        }
+
+        /**
+         * Determines the `isOpen` value for a given [date] and [hours] string, using pre-captured
+         * [today] and [nowTime] values derived from a single clock snapshot.
+         *
+         * Two distinct semantics are applied depending on whether [date] is today:
+         * - **Today** (`date == today`): "open right now" — delegates to [computeIsOpen] with [nowTime].
+         * - **Any other date** (past or future): "open at all" — returns `true` unless the hours are the
+         *   sentinel "00:00-00:00" (always-closed), preserving the original contract for range/future
+         *   queries where a real-time check would be meaningless.
+         *
+         * Prefer this overload over [computeIsOpenOnDate(hours, date, clock)] whenever you also need
+         * the [today] value elsewhere (e.g. to derive fallback display times), so that both decisions
+         * are based on the same instant and cannot disagree across a midnight boundary.
+         */
+        fun computeIsOpenOnDate(hours: String, date: LocalDate, today: LocalDate, nowTime: LocalTime): Boolean {
+            val normalized = normalizeHours(hours)
+            return if (date == today) computeIsOpen(normalized, nowTime)
+            else normalized != "00:00-00:00"
+        }
+
+        /**
+         * Convenience overload that snapshots [clock] once into a [LocalDateTime] and delegates to
+         * [computeIsOpenOnDate(hours, date, today, nowTime)]. Callers that also need the current
+         * date/time for other purposes should capture `LocalDateTime.now(clock)` themselves and call
+         * the primary overload directly to avoid separate clock reads.
+         */
+        fun computeIsOpenOnDate(hours: String, date: LocalDate, clock: Clock): Boolean {
+            val now = LocalDateTime.now(clock)
+            return computeIsOpenOnDate(hours, date, now.toLocalDate(), now.toLocalTime())
+        }
     }
 
     private sealed interface EvalResult {

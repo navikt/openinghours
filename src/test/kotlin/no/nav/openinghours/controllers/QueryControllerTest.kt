@@ -3,6 +3,7 @@ package no.nav.openinghours.controllers
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import no.nav.openinghours.service.OpeningHoursLookupService
 import no.nav.openinghours.service.ServiceService
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,7 +15,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.web.server.ResponseStatusException
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 
 @WebMvcTest(QueryController::class)
@@ -30,6 +34,17 @@ class QueryControllerTest {
 
     @MockitoBean
     private lateinit var serviceService: ServiceService
+
+    @MockitoBean
+    private lateinit var clock: Clock
+
+    @BeforeEach
+    fun setupClock() {
+        // Fix the clock at 10:00 UTC so time-dependent isOpen assertions are deterministic
+        val fixed = Clock.fixed(Instant.parse("2024-03-15T10:00:00Z"), ZoneOffset.UTC)
+        `when`(clock.instant()).thenReturn(fixed.instant())
+        `when`(clock.zone).thenReturn(fixed.zone)
+    }
 
 
     @Test
@@ -213,6 +228,137 @@ class QueryControllerTest {
             .andExpect { status { isNotFound() } }
     }
 
+    // ── isOpen semantics: today vs non-today ──────────────────────────────
+
+    @Test
+    fun `isOpen uses real-time check for today - before opening returns false`() {
+        // Clock is at 10:00; hours 11:00-17:00 → not yet open
+        val groupId = UUID.randomUUID()
+        val today = LocalDate.of(2024, 3, 15)
+
+        `when`(lookupService.getDisplayData(groupId, today)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "11:00-17:00", ruleName = "Late open", rule = "??.??.???? ? ? 11:00-17:00")
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-15")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.isOpen") { value(false) }
+            }
+    }
+
+    @Test
+    fun `isOpen uses open-at-all semantics for non-today date - partial hours yield true`() {
+        // 2024-03-16 is not today (clock = 2024-03-15); hours 11:00-17:00 → open at some point
+        val groupId = UUID.randomUUID()
+        val future = LocalDate.of(2024, 3, 16)
+
+        `when`(lookupService.getDisplayData(groupId, future)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "11:00-17:00", ruleName = "Standard", rule = "??.??.???? ? 1-5 11:00-17:00")
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.isOpen") { value(true) }
+            }
+    }
+
+    @Test
+    fun `isOpen uses open-at-all semantics for non-today date - closed all day yields false`() {
+        // 2024-03-16 is not today; hours 00:00-00:00 → closed all day
+        val groupId = UUID.randomUUID()
+        val future = LocalDate.of(2024, 3, 16)
+
+        `when`(lookupService.getDisplayData(groupId, future)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = "Closed", rule = "??.??.???? ? 6-7 00:00-00:00")
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.isOpen") { value(false) }
+            }
+    }
+
+    @Test
+    fun `query range isOpen reflects open-at-all for non-today entries`() {
+        // Clock = 2024-03-15T10:00. Range 2024-03-14 (past) to 2024-03-16 (future).
+        // Past/future entries use open-at-all semantics; today uses real-time.
+        val serviceId = UUID.randomUUID()
+        val groupId = UUID.randomUUID()
+
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 14))).thenReturn(
+            OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 07:00-21:00")
+        )
+        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
+            OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 07:00-21:00")
+        )
+        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
+            OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = "Weekend", rule = "??.??.???? ? 6-7 00:00-00:00")
+        )
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-14&to=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(3) }
+                // 2024-03-14 (past, not today): open at all → true
+                jsonPath("$[0].isOpen") { value(true) }
+                // 2024-03-15 (today, clock=10:00, hours 07:00-21:00): open right now → true
+                jsonPath("$[1].isOpen") { value(true) }
+                // 2024-03-16 (future, not today): 00:00-00:00 → false
+                jsonPath("$[2].isOpen") { value(false) }
+            }
+    }
+
+    // ── Malformed hours: fallback consistency ─────────────────────────────
+
+    @Test
+    fun `malformed hours on today yields isOpen=false and closed sentinel times`() {
+        // Clock is at 2024-03-15T10:00. A stored hours string that cannot be parsed
+        // must not produce the all-day window (00:00–23:59) alongside isOpen=false.
+        val groupId = UUID.randomUUID()
+        val today = LocalDate.of(2024, 3, 15)
+
+        `when`(lookupService.getDisplayData(groupId, today)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "BADFORMAT", ruleName = "Broken", rule = "??.??.???? ? ? BADFORMAT")
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-15")
+            .andExpect {
+                status { isOk() }
+                // computeIsOpenOnDate: today + malformed → false
+                jsonPath("$.isOpen") { value(false) }
+                // Times must not suggest "open all day" — use closed sentinel
+                jsonPath("$.openingTime") { value("00:00") }
+                jsonPath("$.closingTime") { value("00:00") }
+            }
+    }
+
+    @Test
+    fun `malformed hours on non-today yields isOpen=true and open-all-day sentinel times`() {
+        // 2024-03-16 is not today (clock = 2024-03-15). A stored hours string that
+        // cannot be parsed for a non-today date: isOpen=true (not the always-closed
+        // sentinel), so the displayed times should be the open-all-day sentinel.
+        val groupId = UUID.randomUUID()
+        val future = LocalDate.of(2024, 3, 16)
+
+        `when`(lookupService.getDisplayData(groupId, future)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "BADFORMAT", ruleName = "Broken", rule = "??.??.???? ? ? BADFORMAT")
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                // computeIsOpenOnDate: non-today + not "00:00-00:00" → true
+                jsonPath("$.isOpen") { value(true) }
+                // Times consistent with open-all-day
+                jsonPath("$.openingTime") { value("00:00") }
+                jsonPath("$.closingTime") { value("23:59") }
+            }
+    }
+
     @Test
     fun `query range with from after to returns error`() {
         val serviceId = UUID.randomUUID()
@@ -246,5 +392,50 @@ class QueryControllerTest {
     fun `query with invalid UUID returns 400`() {
         mockMvc.get("/api/openinghours/query/service/not-a-uuid?date=2024-03-15")
             .andExpect { status { isBadRequest() } }
+    }
+
+    // ── Range: single clock snapshot across all entries ───────────────────
+
+    @Test
+    fun `query range uses a single clock snapshot - isOpen is consistent even when clock ticks during iteration`() {
+        // Simulate the clock ticking across midnight between the first and second entry.
+        // With the fix, the snapshot is taken once in queryByServiceRange before the map,
+        // so both entries are evaluated against the same today/nowTime.
+        //
+        // Clock ticks: first read → 2024-03-15T23:59:59Z (just before midnight, today = 2024-03-15)
+        //              second read → 2024-03-16T00:00:01Z (just after midnight, today = 2024-03-16)
+        // Without the fix: entry 0 (date=2024-03-15) would be evaluated as "today" at 23:59:59,
+        //   and entry 1 (date=2024-03-16) would be evaluated as "today" at 00:00:01 — different semantics.
+        // With the fix: both entries use the first read (23:59:59, today=2024-03-15).
+        val justBeforeMidnight = Clock.fixed(Instant.parse("2024-03-15T23:59:59Z"), ZoneOffset.UTC)
+        val justAfterMidnight  = Clock.fixed(Instant.parse("2024-03-16T00:00:01Z"), ZoneOffset.UTC)
+        `when`(clock.instant())
+            .thenReturn(justBeforeMidnight.instant())  // first call: range snapshot
+            .thenReturn(justAfterMidnight.instant())   // subsequent calls must not be used
+        `when`(clock.zone).thenReturn(ZoneOffset.UTC)
+
+        val serviceId = UUID.randomUUID()
+        val groupId   = UUID.randomUUID()
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        // Both dates have open hours; what matters is which "today" semantics are applied.
+        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
+            OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 08:00-21:00")
+        )
+        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
+            OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekend", rule = "??.??.???? ? 6-7 08:00-21:00")
+        )
+
+        // At 23:59:59 with snapshot today=2024-03-15:
+        //   entry 0 (2024-03-15 = today) → real-time check at 23:59:59 → open (within 08:00-21:00? No — 23:59 is after 21:00 → false)
+        //   entry 1 (2024-03-16 ≠ today) → open-at-all → 08:00-21:00 ≠ 00:00-00:00 → true
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-15&to=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(2) }
+                // today (2024-03-15) at 23:59:59 is after 21:00 → closed
+                jsonPath("$[0].isOpen") { value(false) }
+                // non-today (2024-03-16) with non-closed hours → open-at-all → true
+                jsonPath("$[1].isOpen") { value(true) }
+            }
     }
 }

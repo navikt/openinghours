@@ -4,6 +4,7 @@ import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import no.nav.openinghours.evaluator.OpeningHoursEvaluator
 import no.nav.openinghours.service.ServiceService
 import org.springframework.stereotype.Component
+import java.time.Clock
 import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
@@ -12,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference
 class OpeningHoursDailyCache(
     private val serviceService: ServiceService,
     private val evaluator: OpeningHoursEvaluator,
+    private val clock: Clock,
 ) {
     // Holds an immutable snapshot. Reads always see a fully-consistent map;
     // populate() builds a brand-new map on the calling thread, then swaps the reference
@@ -19,7 +21,7 @@ class OpeningHoursDailyCache(
     private val cacheRef = AtomicReference<Map<UUID, OpeningHoursDisplayData>>(emptyMap())
 
     fun populate() {
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         val serviceGroups = serviceService.getAllServicesForCache()
         val newMap = serviceGroups.mapValues { (_, group) ->
             // null  → service has no linked OH group   → use default

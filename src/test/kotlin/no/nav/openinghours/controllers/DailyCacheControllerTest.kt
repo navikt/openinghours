@@ -3,6 +3,7 @@ package no.nav.openinghours.controllers
 import no.nav.openinghours.dailycache.OpeningHoursDailyCache
 import no.nav.openinghours.dailycache.OpeningHoursDailyCacheScheduler
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.verify
@@ -14,6 +15,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.UUID
 
 @WebMvcTest(DailyCacheController::class)
@@ -29,6 +33,17 @@ class DailyCacheControllerTest {
 
     @MockitoBean
     private lateinit var scheduler: OpeningHoursDailyCacheScheduler
+
+    @MockitoBean
+    private lateinit var clock: Clock
+
+    @BeforeEach
+    fun setupClock() {
+        // Fix the clock at 10:00 UTC so isOpen assertions are deterministic
+        val fixed = Clock.fixed(Instant.parse("2024-01-01T10:00:00Z"), ZoneOffset.UTC)
+        `when`(clock.instant()).thenReturn(fixed.instant())
+        `when`(clock.zone).thenReturn(fixed.zone)
+    }
 
     // ── GET /api/openinghours/daily ────────────────────────────────────────
 
@@ -56,8 +71,10 @@ class DailyCacheControllerTest {
                 status { isOk() }
                 jsonPath("$['$id1'].ruleName") { value("Weekday rule") }
                 jsonPath("$['$id1'].openingHours") { value("08:00-16:00") }
+                jsonPath("$['$id1'].isOpen") { value(true) }
                 jsonPath("$['$id2'].ruleName") { value("Weekend closed") }
                 jsonPath("$['$id2'].openingHours") { value("00:00-00:00") }
+                jsonPath("$['$id2'].isOpen") { value(false) }
             }
     }
 
@@ -98,6 +115,7 @@ class DailyCacheControllerTest {
                 jsonPath("$['$id'].displayText") { value("Kun for ansatte") }
                 jsonPath("$['$id'].onlyShowForNavEmployees") { value(true) }
                 jsonPath("$['$id'].redDay") { value(false) }
+                jsonPath("$['$id'].isOpen") { value(true) }
             }
     }
 
@@ -119,6 +137,7 @@ class DailyCacheControllerTest {
                 jsonPath("$.ruleName") { value("Standard weekdays") }
                 jsonPath("$.openingHours") { value("07:00-21:00") }
                 jsonPath("$.rule") { value("??.??.???? ? 1-5 07:00-21:00") }
+                jsonPath("$.isOpen") { value(true) }
             }
     }
 
@@ -146,6 +165,7 @@ class DailyCacheControllerTest {
                 jsonPath("$.displayText") { value("Kun for ansatte") }
                 jsonPath("$.onlyShowForNavEmployees") { value(true) }
                 jsonPath("$.redDay") { value(false) }
+                jsonPath("$.isOpen") { value(true) }
             }
     }
 
