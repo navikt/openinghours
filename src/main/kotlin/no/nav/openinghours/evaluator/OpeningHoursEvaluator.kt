@@ -21,6 +21,8 @@ class OpeningHoursEvaluator {
             onlyShowForNavEmployees = false,
         )
 
+        private val DASH_SEPARATOR_WHITESPACE = Regex("\\s*-\\s*")
+
         /**
          * Strips leading/trailing whitespace from [hours] and collapses any whitespace
          * surrounding the `-` separator (e.g. `"00:00 - 23:59 "` → `"00:00-23:59"`).
@@ -31,7 +33,7 @@ class OpeningHoursEvaluator {
          * or transmitted string was formatted.
          */
         private fun normalizeHours(hours: String): String =
-            hours.trim().replace(Regex("\\s*-\\s*"), "-")
+            hours.trim().replace(DASH_SEPARATOR_WHITESPACE, "-")
 
         /**
          * Parses a `"HH:mm-HH:mm"` hours string into an (openTime, closeTime) pair.
@@ -76,10 +78,10 @@ class OpeningHoursEvaluator {
          *   **or** ≤ closeTime — mirrors the logic in [matchesTime] but without the ±1-minute DSL tolerance
          */
         fun computeIsOpen(hours: String, now: LocalTime): Boolean {
-            val h = normalizeHours(hours)
-            if (h == "00:00-23:59") return true
-            if (h == "00:00-00:00") return false
-            val (openTime, closeTime) = parseHoursRange(h) ?: return false
+            val normalized = hours.filterNot { it.isWhitespace() }
+            if (normalized == "00:00-23:59") return true
+            if (normalized == "00:00-00:00") return false
+            val (openTime, closeTime) = parseHoursRange(normalized) ?: return false
             return if (openTime <= closeTime) {
                 !now.isBefore(openTime) && !now.isAfter(closeTime)
             } else {
@@ -103,7 +105,7 @@ class OpeningHoursEvaluator {
          * are based on the same instant and cannot disagree across a midnight boundary.
          */
         fun computeIsOpenOnDate(hours: String, date: LocalDate, today: LocalDate, nowTime: LocalTime): Boolean {
-            val normalized = hours.filterNot { it.isWhitespace() }
+            val normalized = normalizeHours(hours)
             return if (date == today) computeIsOpen(normalized, nowTime)
             else normalized != "00:00-00:00"
         }
