@@ -78,7 +78,7 @@ class OpeningHoursEvaluator {
          *   **or** ≤ closeTime — mirrors the logic in [matchesTime] but without the ±1-minute DSL tolerance
          */
         fun computeIsOpen(hours: String, now: LocalTime): Boolean {
-            val normalized = hours.filterNot { it.isWhitespace() }
+            val normalized = normalizeHours(hours)
             if (normalized == "00:00-23:59") return true
             if (normalized == "00:00-00:00") return false
             val (openTime, closeTime) = parseHoursRange(normalized) ?: return false
