@@ -18,6 +18,8 @@ import org.springframework.scheduling.config.ScheduledTaskHolder
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.boot.test.context.TestConfiguration
+import java.time.Clock
+import java.time.ZoneId
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Unit-level tests – no Spring context required
@@ -57,7 +59,7 @@ class OpeningHoursDailyCacheSchedulerUnitTest {
     // ── @Scheduled annotation metadata ────────────────────────────────────
 
     @Test
-    fun `refresh() carries @Scheduled with midnight cron expression`() {
+    fun `refresh() carries @Scheduled with midnight cron expression and clock-derived zone`() {
         val method = OpeningHoursDailyCacheScheduler::class.java.getMethod("refresh")
         val annotation = method.getAnnotation(Scheduled::class.java)
 
@@ -68,6 +70,10 @@ class OpeningHoursDailyCacheSchedulerUnitTest {
         assertThat(annotation.cron)
             .`as`("Cron expression must fire at midnight every day")
             .isEqualTo("0 0 0 * * *")
+
+        assertThat(annotation.zone)
+            .`as`("Zone must be derived from the Clock bean so it always matches the configured timezone")
+            .isEqualTo("#{@clock.zone.id}")
     }
 }
 
@@ -79,7 +85,7 @@ class OpeningHoursDailyCacheSchedulerUnitTest {
 @ContextConfiguration(classes = [OpeningHoursDailyCacheSchedulerSpringTest.Config::class])
 class OpeningHoursDailyCacheSchedulerSpringTest {
 
-    /** Minimal Spring context: just the scheduler + a mock cache bean. */
+    /** Minimal Spring context: just the scheduler + a mock cache bean + a fixed clock. */
     @TestConfiguration
     @EnableScheduling
     @Import(OpeningHoursDailyCacheScheduler::class)
@@ -87,6 +93,10 @@ class OpeningHoursDailyCacheSchedulerSpringTest {
         @Bean
         fun openingHoursDailyCache(): OpeningHoursDailyCache =
             Mockito.mock(OpeningHoursDailyCache::class.java)
+
+        /** Fixed zone so the cron zone SpEL expression #{@clock.zone.id} resolves to a known value. */
+        @Bean
+        fun clock(): Clock = Clock.system(ZoneId.of("Europe/Oslo"))
     }
 
     @Autowired lateinit var scheduler: OpeningHoursDailyCacheScheduler
@@ -139,6 +149,23 @@ class OpeningHoursDailyCacheSchedulerSpringTest {
         assertThat(registeredCrons)
             .`as`("Only the midnight cron should be present")
             .containsExactly("0 0 0 * * *")
+    }
+
+    @Test
+    fun `registered cron task fires in the Clock bean's zone`() {
+        // Spring resolves zone = "#{@clock.zone.id}" when building the CronTrigger.
+        // If the SpEL expression were invalid or produced an unrecognisable zone ID,
+        // the application context would have failed to start, causing the whole test
+        // class to error out before reaching this point.
+        // What we can verify without accessing Spring internals: the midnight CronTask
+        // is registered (i.e. the zone did not prevent task registration).
+        val midnightCrons = scheduledTaskHolder.scheduledTasks
+            .mapNotNull { it.task as? CronTask }
+            .filter { it.expression == "0 0 0 * * *" }
+
+        assertThat(midnightCrons)
+            .`as`("Midnight CronTask must be registered — context startup proves the zone SpEL resolved")
+            .hasSize(1)
     }
 }
 

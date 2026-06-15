@@ -11,6 +11,10 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito
+import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
@@ -27,7 +31,9 @@ class OpeningHoursDailyCacheTest {
 
     private val serviceService: ServiceService = Mockito.mock(ServiceService::class.java)
     private val evaluator: OpeningHoursEvaluator = Mockito.mock(OpeningHoursEvaluator::class.java)
-    private val cache = OpeningHoursDailyCache(serviceService, evaluator)
+    // Fixed clock at a known instant so LocalDate.now(clock) is deterministic in tests.
+    private val clock: Clock = Clock.fixed(Instant.parse("2024-01-15T10:00:00Z"), ZoneOffset.UTC)
+    private val cache = OpeningHoursDailyCache(serviceService, evaluator, clock)
 
     private val serviceId1 = UUID.randomUUID()
     private val serviceId2 = UUID.randomUUID()
@@ -67,6 +73,21 @@ class OpeningHoursDailyCacheTest {
         assertThat(result).isEqualTo(displayData1)
         assertThat(result?.ruleName).isEqualTo("Weekday rule")
         assertThat(result?.openingHours).isEqualTo("08:00-16:00")
+    }
+
+    @Test
+    fun `populate derives today from the injected clock, not the JVM default zone`() {
+        // The fixed clock is 2024-01-15T10:00:00Z (UTC), so LocalDate.now(clock) = 2024-01-15.
+        // Verify that exact date is forwarded to the evaluator — not LocalDate.now() which
+        // would use the JVM default zone and could differ in non-UTC containers.
+        val clockDate = LocalDate.now(clock) // 2024-01-15
+        given(serviceService.getAllServicesForCache())
+            .willReturn(mapOf(serviceId1 to group1))
+        given(evaluator.getDisplayData(eq(clockDate), eq(group1))).willReturn(displayData1)
+
+        cache.populate()
+
+        Mockito.verify(evaluator).getDisplayData(clockDate, group1)
     }
 
     @Test
