@@ -193,4 +193,101 @@ class DailyCacheControllerTest {
 
         verify(scheduler).refresh()
     }
+
+    // ── redDay: public-holiday flag surfaces through the controller ────────
+
+    @Test
+    fun `GET daily returns redDay true when cache holds a public-holiday entry`() {
+        // The cache already has redDay=true baked in (set by OpeningHoursDailyCache.populate()
+        // when the date is a Norwegian public holiday). The controller must surface it as-is.
+        val holidayId = UUID.randomUUID()
+        `when`(cache.getAll()).thenReturn(
+            mapOf(
+                holidayId to OpeningHoursDisplayData(
+                    ruleName = "Easter Sunday",
+                    rule = "??.??.???? ? ? 00:00-00:00",
+                    openingHours = "00:00-00:00",
+                    redDay = true,
+                )
+            )
+        )
+
+        mockMvc.get("/api/openinghours/daily")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$['$holidayId'].redDay") { value(true) }
+                jsonPath("$['$holidayId'].isOpen") { value(false) }
+            }
+    }
+
+    @Test
+    fun `GET daily by id returns redDay true when cache holds a public-holiday entry`() {
+        val serviceId = UUID.randomUUID()
+        `when`(cache.getForService(serviceId)).thenReturn(
+            OpeningHoursDisplayData(
+                ruleName = "Christmas Day",
+                rule = "25.12.???? ? ? 00:00-00:00",
+                openingHours = "00:00-00:00",
+                redDay = true,
+            )
+        )
+
+        mockMvc.get("/api/openinghours/daily/$serviceId")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.ruleName") { value("Christmas Day") }
+                jsonPath("$.redDay") { value(true) }
+                jsonPath("$.isOpen") { value(false) }
+            }
+    }
+
+    @Test
+    fun `GET daily returns redDay false for an ordinary cached entry`() {
+        val serviceId = UUID.randomUUID()
+        `when`(cache.getAll()).thenReturn(
+            mapOf(
+                serviceId to OpeningHoursDisplayData(
+                    ruleName = "Weekday rule",
+                    rule = "??.??.???? ? 1-5 08:00-16:00",
+                    openingHours = "08:00-16:00",
+                    redDay = false,
+                )
+            )
+        )
+
+        mockMvc.get("/api/openinghours/daily")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$['$serviceId'].redDay") { value(false) }
+            }
+    }
+
+    @Test
+    fun `GET daily map contains both redDay true and redDay false entries simultaneously`() {
+        val holidayId = UUID.randomUUID()
+        val normalId  = UUID.randomUUID()
+        `when`(cache.getAll()).thenReturn(
+            mapOf(
+                holidayId to OpeningHoursDisplayData(
+                    ruleName = "Labour Day",
+                    rule = "01.05.???? ? ? 00:00-00:00",
+                    openingHours = "00:00-00:00",
+                    redDay = true,
+                ),
+                normalId to OpeningHoursDisplayData(
+                    ruleName = "Standard weekday",
+                    rule = "??.??.???? ? 1-5 08:00-16:00",
+                    openingHours = "08:00-16:00",
+                    redDay = false,
+                ),
+            )
+        )
+
+        mockMvc.get("/api/openinghours/daily")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$['$holidayId'].redDay") { value(true) }
+                jsonPath("$['$normalId'].redDay") { value(false) }
+            }
+    }
 }
