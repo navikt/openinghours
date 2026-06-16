@@ -1,6 +1,7 @@
 package no.nav.openinghours.evaluator
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 
@@ -179,5 +180,51 @@ class NorwegianPublicHolidaysTest {
         assertThat(holidays.isPublicHoliday(easter2024)).isTrue()
         assertThat(holidays.isPublicHoliday(easter2024)).isTrue() // cache hit
     }
-}
 
+    // ── Bounded cache: years outside [CACHE_YEAR_MIN, CACHE_YEAR_MAX] ─────────
+
+    @Test
+    fun `holidaysForYear for a year inside the window is memoised`() {
+        val first  = holidays.holidaysForYear(NorwegianPublicHolidays.CACHE_YEAR_MIN)
+        val second = holidays.holidaysForYear(NorwegianPublicHolidays.CACHE_YEAR_MIN)
+        assertThat(second).isSameAs(first)
+
+        val last1 = holidays.holidaysForYear(NorwegianPublicHolidays.CACHE_YEAR_MAX)
+        val last2 = holidays.holidaysForYear(NorwegianPublicHolidays.CACHE_YEAR_MAX)
+        assertThat(last2).isSameAs(last1)
+    }
+
+    @Test
+    fun `holidaysForYear for a year outside the window is not cached`() {
+        val farFuture = NorwegianPublicHolidays.CACHE_YEAR_MAX + 1
+        val farPast   = NorwegianPublicHolidays.CACHE_YEAR_MIN - 1
+
+        // Each call for an out-of-window year allocates a new Set — not the same instance.
+        assertThat(holidays.holidaysForYear(farFuture)).isNotSameAs(holidays.holidaysForYear(farFuture))
+        assertThat(holidays.holidaysForYear(farPast)).isNotSameAs(holidays.holidaysForYear(farPast))
+    }
+
+    @Test
+    fun `holidaysForYear still returns correct results for extreme years outside the window`() {
+        // Correctness must not be sacrificed for years that bypass the cache.
+        // Easter 2101: computed value is 2101-04-14 (verified independently).
+        val year = NorwegianPublicHolidays.CACHE_YEAR_MAX + 1  // 2101
+        val set  = holidays.holidaysForYear(year)
+        assertThat(set).hasSize(12)
+        // Fixed holidays must always be present regardless of year.
+        assertThat(set).contains(
+            LocalDate.of(year, 1, 1),
+            LocalDate.of(year, 5, 1),
+            LocalDate.of(year, 5, 17),
+            LocalDate.of(year, 12, 25),
+            LocalDate.of(year, 12, 26),
+        )
+    }
+
+    @Test
+    fun `holidaysForYear for a very far future year computes without error`() {
+        // Ensures no exception is thrown for an extreme user-supplied year from a request param.
+        assertThatCode { holidays.holidaysForYear(100_000) }.doesNotThrowAnyException()
+        assertThatCode { holidays.isPublicHoliday(LocalDate.of(100_000, 1, 1)) }.doesNotThrowAnyException()
+    }
+}

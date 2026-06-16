@@ -37,10 +37,25 @@ class NorwegianPublicHolidays {
 
     /**
      * Returns the full set of Norwegian public holidays for the given [year].
-     * The result is memoised: the first call for a year computes Easter and builds the Set;
-     * every subsequent call for the same year returns the cached instance immediately.
+     *
+     * Results are memoised for years in [[CACHE_YEAR_MIN]..[CACHE_YEAR_MAX]] so that Easter
+     * is computed and the Set allocated at most once per JVM lifetime for realistic dates.
+     * Years outside that window (e.g. far-future or far-past values from user-controlled
+     * request parameters) are computed on the fly without being stored, keeping the cache
+     * bounded to at most [CACHE_YEAR_MAX] − [CACHE_YEAR_MIN] + 1 entries.
      */
-    fun holidaysForYear(year: Int): Set<LocalDate> = cache.computeIfAbsent(year) { computeHolidaysForYear(it) }
+    fun holidaysForYear(year: Int): Set<LocalDate> =
+        if (year in CACHE_YEAR_MIN..CACHE_YEAR_MAX)
+            cache.computeIfAbsent(year) { computeHolidaysForYear(it) }
+        else
+            computeHolidaysForYear(year)
+
+    companion object {
+        /** Inclusive lower bound of the memoisation window. */
+        const val CACHE_YEAR_MIN = 1900
+        /** Inclusive upper bound of the memoisation window. */
+        const val CACHE_YEAR_MAX = 2100
+    }
 
     private fun computeHolidaysForYear(year: Int): Set<LocalDate> {
         val easter = easterSunday(year)
