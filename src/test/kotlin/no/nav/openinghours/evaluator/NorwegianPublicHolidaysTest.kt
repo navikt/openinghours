@@ -152,5 +152,32 @@ class NorwegianPublicHolidaysTest {
     fun `day before Labour Day is not a public holiday`() {
         assertThat(holidays.isPublicHoliday(LocalDate.of(2024, 4, 30))).isFalse()
     }
+
+    // ── Per-year caching ──────────────────────────────────────────────────────
+
+    @Test
+    fun `holidaysForYear returns the same Set instance on repeated calls for the same year`() {
+        // Verifies that the ConcurrentHashMap cache is hit on the second call,
+        // i.e. no new Set is allocated and Easter is not recomputed.
+        val first  = holidays.holidaysForYear(2025)
+        val second = holidays.holidaysForYear(2025)
+        assertThat(second).isSameAs(first)
+    }
+
+    @Test
+    fun `holidaysForYear returns different Set instances for different years`() {
+        val set2024 = holidays.holidaysForYear(2024)
+        val set2025 = holidays.holidaysForYear(2025)
+        assertThat(set2025).isNotSameAs(set2024)
+        assertThat(set2025).doesNotContainAnyElementsOf(set2024)
+    }
+
+    @Test
+    fun `isPublicHoliday is consistent across multiple calls for the same date`() {
+        // Also exercises the cache path via isPublicHoliday.
+        val easter2024 = LocalDate.of(2024, 3, 31)
+        assertThat(holidays.isPublicHoliday(easter2024)).isTrue()
+        assertThat(holidays.isPublicHoliday(easter2024)).isTrue() // cache hit
+    }
 }
 

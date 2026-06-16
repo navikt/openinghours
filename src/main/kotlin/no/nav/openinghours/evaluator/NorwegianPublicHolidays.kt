@@ -2,6 +2,7 @@ package no.nav.openinghours.evaluator
 
 import org.springframework.stereotype.Component
 import java.time.LocalDate
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Calculates Norwegian public holidays (røde dager / helligdager) for any given year.
@@ -21,19 +22,27 @@ import java.time.LocalDate
  *  - Easter Sunday + 39 – Kristi himmelfartsdag (Ascension Day)
  *  - Easter Sunday + 49 – Første pinsedag (Whit Sunday / Pentecost)
  *  - Easter Sunday + 50 – Andre pinsedag  (Whit Monday)
+ *
+ * Results are cached per year so that Easter is computed and the Set allocated at most
+ * once per JVM lifetime per year — safe for long-lived range queries and repeated calls
+ * from both the daily cache and the query controller.
  */
 @Component
 class NorwegianPublicHolidays {
+
+    private val cache = ConcurrentHashMap<Int, Set<LocalDate>>()
 
     /** Returns true if [date] is a Norwegian public holiday. */
     fun isPublicHoliday(date: LocalDate): Boolean = date in holidaysForYear(date.year)
 
     /**
      * Returns the full set of Norwegian public holidays for the given [year].
-     * Results are not cached here; callers that need the set for many dates in
-     * the same year should retrieve it once and reuse it.
+     * The result is memoised: the first call for a year computes Easter and builds the Set;
+     * every subsequent call for the same year returns the cached instance immediately.
      */
-    fun holidaysForYear(year: Int): Set<LocalDate> {
+    fun holidaysForYear(year: Int): Set<LocalDate> = cache.getOrPut(year) { computeHolidaysForYear(year) }
+
+    private fun computeHolidaysForYear(year: Int): Set<LocalDate> {
         val easter = easterSunday(year)
         return setOf(
             // ── Fixed ────────────────────────────────────────────────
