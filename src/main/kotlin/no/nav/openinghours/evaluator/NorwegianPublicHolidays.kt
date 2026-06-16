@@ -38,7 +38,7 @@ class NorwegianPublicHolidays {
     /**
      * Returns the full set of Norwegian public holidays for the given [year].
      *
-     * Results are memoised for years in [[CACHE_YEAR_MIN]..[CACHE_YEAR_MAX]] so that Easter
+     * Results are memoised for years in [CACHE_YEAR_MIN] .. [CACHE_YEAR_MAX] so that Easter
      * is computed and the Set allocated at most once per JVM lifetime for realistic dates.
      * Years outside that window (e.g. far-future or far-past values from user-controlled
      * request parameters) are computed on the fly without being stored, keeping the cache
