@@ -1,5 +1,6 @@
 package no.nav.openinghours.controllers
 
+import no.nav.openinghours.evaluator.NorwegianPublicHolidays
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import no.nav.openinghours.service.OpeningHoursLookupService
 import no.nav.openinghours.service.ServiceService
@@ -9,6 +10,7 @@ import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -22,6 +24,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 @WebMvcTest(QueryController::class)
+@Import(NorwegianPublicHolidays::class)
 @ActiveProfiles("mock")
 @AutoConfigureMockMvc(addFilters = false)
 class QueryControllerTest {
@@ -398,15 +401,7 @@ class QueryControllerTest {
 
     @Test
     fun `query range uses a single clock snapshot - isOpen is consistent even when clock ticks during iteration`() {
-        // Simulate the clock ticking across midnight between the first and second entry.
-        // With the fix, the snapshot is taken once in queryByServiceRange before the map,
-        // so both entries are evaluated against the same today/nowTime.
-        //
-        // Clock ticks: first read → 2024-03-15T23:59:59Z (just before midnight, today = 2024-03-15)
-        //              second read → 2024-03-16T00:00:01Z (just after midnight, today = 2024-03-16)
-        // Without the fix: entry 0 (date=2024-03-15) would be evaluated as "today" at 23:59:59,
-        //   and entry 1 (date=2024-03-16) would be evaluated as "today" at 00:00:01 — different semantics.
-        // With the fix: both entries use the first read (23:59:59, today=2024-03-15).
+        // Simulate the clock ticking across midnight to verify the range uses a single clock snapshot.
         val justBeforeMidnight = Clock.fixed(Instant.parse("2024-03-15T23:59:59Z"), ZoneOffset.UTC)
         val justAfterMidnight  = Clock.fixed(Instant.parse("2024-03-16T00:00:01Z"), ZoneOffset.UTC)
         `when`(clock.instant())
@@ -436,6 +431,92 @@ class QueryControllerTest {
                 jsonPath("$[0].isOpen") { value(false) }
                 // non-today (2024-03-16) with non-closed hours → open-at-all → true
                 jsonPath("$[1].isOpen") { value(true) }
+            }
+    }
+
+    // ── redDay: Norwegian public holidays ─────────────────────────────────
+
+    @Test
+    fun `query by group returns redDay true on Norwegian public holiday even when rule does not set it`() {
+        // 2024-03-31 is Easter Sunday — official Norwegian public holiday.
+        // The lookup service returns redDay=false (rule does not mark it), but the
+        // controller must override it to true based on the date.
+        val groupId = UUID.randomUUID()
+        val easter  = LocalDate.of(2024, 3, 31)
+
+        `when`(lookupService.getDisplayData(groupId, easter)).thenReturn(
+            OpeningHoursDisplayData(
+                openingHours = "00:00-00:00",
+                ruleName = "Easter Sunday",
+                rule = "??.??.???? ? ? 00:00-00:00",
+                redDay = false,
+            )
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-31")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.redDay") { value(true) }
+            }
+    }
+
+    @Test
+    fun `query by group returns redDay true on Constitution Day (17 May)`() {
+        val groupId = UUID.randomUUID()
+        val date    = LocalDate.of(2025, 5, 17)
+
+        `when`(lookupService.getDisplayData(groupId, date)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = "17 mai", rule = "17.05.???? ? ? 00:00-00:00", redDay = false)
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2025-05-17")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.redDay") { value(true) }
+            }
+    }
+
+    @Test
+    fun `query by group returns redDay false on an ordinary weekday`() {
+        val groupId = UUID.randomUUID()
+        val date    = LocalDate.of(2024, 3, 18) // Monday — not a holiday
+
+        `when`(lookupService.getDisplayData(groupId, date)).thenReturn(
+            OpeningHoursDisplayData(openingHours = "08:00-16:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 08:00-16:00", redDay = false)
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-18")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.redDay") { value(false) }
+            }
+    }
+
+    @Test
+    fun `query range includes redDay true for public holidays and false for normal days`() {
+        // 2025-04-17 Maundy Thursday, 2025-04-18 Good Friday (both public holidays)
+        // 2025-04-16 Wednesday before Easter — ordinary day
+        val serviceId = UUID.randomUUID()
+        val groupId   = UUID.randomUUID()
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+
+        val wednesday = LocalDate.of(2025, 4, 16)
+        val thursday  = LocalDate.of(2025, 4, 17) // Skjærtorsdag
+        val friday    = LocalDate.of(2025, 4, 18) // Langfredag
+
+        listOf(wednesday, thursday, friday).forEach { d ->
+            `when`(lookupService.getDisplayData(groupId, d)).thenReturn(
+                OpeningHoursDisplayData(openingHours = "08:00-16:00", ruleName = "Base", rule = "??.??.???? ? 1-5 08:00-16:00", redDay = false)
+            )
+        }
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2025-04-16&to=2025-04-18")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(3) }
+                jsonPath("$[0].redDay") { value(false) } // Wednesday — ordinary day
+                jsonPath("$[1].redDay") { value(true) }  // Maundy Thursday — public holiday
+                jsonPath("$[2].redDay") { value(true) }  // Good Friday — public holiday
             }
     }
 }

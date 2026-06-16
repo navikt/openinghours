@@ -1,6 +1,7 @@
 package no.nav.openinghours.controllers
 
 import io.swagger.v3.oas.annotations.Operation
+import no.nav.openinghours.evaluator.NorwegianPublicHolidays
 import no.nav.openinghours.evaluator.OpeningHoursEvaluator
 import no.nav.openinghours.service.OpeningHoursLookupService
 import no.nav.openinghours.service.ServiceService
@@ -19,6 +20,7 @@ class QueryController(
     private val lookupService: OpeningHoursLookupService,
     private val serviceService: ServiceService,
     private val clock: Clock,
+    private val norwegianPublicHolidays: NorwegianPublicHolidays,
 ) {
 
     @Operation(summary = "Get opening hours for a service on a date")
@@ -100,7 +102,9 @@ class QueryController(
             displayHeader = displayData.displayHeader,
             displayText = displayData.displayText,
             onlyShowForNavEmployees = displayData.onlyShowForNavEmployees,
-            redDay = displayData.redDay,
+            // redDay is true when the matched rule marks the day as a red day OR when the
+            // queried date is an official Norwegian public holiday (helligdag / rød dag).
+            redDay = displayData.redDay || norwegianPublicHolidays.isPublicHoliday(date),
             matchedRule = if (displayData.ruleName != null && displayData.rule != null) MatchedRule(displayData.ruleName, displayData.rule) else null,
         )
     }

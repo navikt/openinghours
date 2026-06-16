@@ -107,4 +107,45 @@ class RuleServiceTest {
         assertThat(ex.reason).contains("Upsert opening hours")
         assertThat(ex.cause).isInstanceOf(DataIntegrityViolationException::class.java)
     }
+
+    // ── redDay preservation on upsert ─────────────────────────────────────
+
+    @Test
+    fun `upsert on a new rule stores redDay as false`() {
+        val rule = ruleService.upsert("new-rule-red-day", VALID_RULE, null, null)
+        assertThat(rule.redDay).isFalse()
+    }
+
+    @Test
+    fun `upsert on an existing rule preserves a previously stored redDay true value`() {
+        // Seed the rule with redDay=true directly via the repository to simulate
+        // a value that was written before manual input was removed.
+        val seed = ruleRepo.saveAndFlush(
+            no.nav.openinghours.model.db.Rule.create(
+                UUID.randomUUID(), "preserve-red-day", VALID_RULE,
+                null, null, false, redDay = true
+            )
+        )
+        assertThat(seed.redDay).isTrue()
+
+        // Upsert (update path) the same rule by name — must NOT clear redDay.
+        val updated = ruleService.upsert("preserve-red-day", "??.??.???? ? ? 09:00-17:00", null, null)
+        assertThat(updated.id).isEqualTo(seed.id)          // same entity
+        assertThat(updated.rule).isEqualTo("??.??.???? ? ? 09:00-17:00") // rule updated
+        assertThat(updated.redDay).isTrue()                // redDay preserved
+    }
+
+    @Test
+    fun `upsert on an existing rule preserves redDay false value`() {
+        val seed = ruleRepo.saveAndFlush(
+            no.nav.openinghours.model.db.Rule.create(
+                UUID.randomUUID(), "preserve-red-day-false", VALID_RULE,
+                null, null, false, redDay = false
+            )
+        )
+
+        val updated = ruleService.upsert("preserve-red-day-false", "??.??.???? ? ? 09:00-17:00", null, null)
+        assertThat(updated.id).isEqualTo(seed.id)
+        assertThat(updated.redDay).isFalse()
+    }
 }
