@@ -401,7 +401,7 @@ class QueryControllerTest {
 
     @Test
     fun `query range uses a single clock snapshot - isOpen is consistent even when clock ticks during iteration`() {
-        // ...existing test body...
+        // Simulate the clock ticking across midnight to verify the range uses a single clock snapshot.
         val justBeforeMidnight = Clock.fixed(Instant.parse("2024-03-15T23:59:59Z"), ZoneOffset.UTC)
         val justAfterMidnight  = Clock.fixed(Instant.parse("2024-03-16T00:00:01Z"), ZoneOffset.UTC)
         `when`(clock.instant())
