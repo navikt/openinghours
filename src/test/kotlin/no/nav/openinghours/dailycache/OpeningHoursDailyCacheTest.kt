@@ -343,6 +343,56 @@ class OpeningHoursDailyCacheTest {
     }
 
     // ------------------------------------------------------------------ //
+    // No unnecessary allocations — identity preserved when no copy needed //
+    // ------------------------------------------------------------------ //
+
+    @Test
+    fun `populate reuses DEFAULT_DISPLAY_DATA instance on a normal weekday (no copy)`() {
+        // isRedDay = false and the fallback already has redDay = false →
+        // no .copy() should occur; the stored value must be the exact same object.
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to group1))
+        given(evaluator.getDisplayData(any(), eq(group1))).willReturn(null) // triggers default
+
+        cache.populate() // clock = 2024-01-15, not a public holiday
+
+        assertThat(cache.getForService(serviceId1))
+            .`as`("DEFAULT_DISPLAY_DATA singleton must be reused — no copy on a normal weekday")
+            .isSameAs(OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA)
+    }
+
+    @Test
+    fun `populate reuses existing display-data instance when rule already has redDay true on a public holiday`() {
+        // isRedDay = true but displayData.redDay is already true →
+        // no .copy() should occur; the stored value must be the exact same object.
+        val easterClock = Clock.fixed(Instant.parse("2024-03-31T10:00:00Z"), ZoneOffset.UTC)
+        val cacheOnEaster = OpeningHoursDailyCache(serviceService, evaluator, easterClock, NorwegianPublicHolidays())
+
+        val alreadyRedData = OpeningHoursDisplayData(ruleName = "Holiday rule", openingHours = "00:00-00:00", redDay = true)
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to group1))
+        given(evaluator.getDisplayData(any(), eq(group1))).willReturn(alreadyRedData)
+
+        cacheOnEaster.populate()
+
+        assertThat(cacheOnEaster.getForService(serviceId1))
+            .`as`("Instance must be reused when displayData.redDay is already true — no redundant copy")
+            .isSameAs(alreadyRedData)
+    }
+
+    @Test
+    fun `populate reuses non-default display-data instance on a normal weekday`() {
+        // isRedDay = false, displayData.redDay = false →
+        // the evaluator result itself must be stored unchanged (no copy).
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to group1))
+        given(evaluator.getDisplayData(any(), eq(group1))).willReturn(displayData1)
+
+        cache.populate() // clock = 2024-01-15, not a public holiday
+
+        assertThat(cache.getForService(serviceId1))
+            .`as`("Evaluator result must be reused as-is on a normal weekday — no redundant copy")
+            .isSameAs(displayData1)
+    }
+
+    // ------------------------------------------------------------------ //
     // Atomic swap — readers never see an empty / partially-populated map  //
     // ------------------------------------------------------------------ //
 

@@ -31,9 +31,12 @@ class OpeningHoursDailyCache(
             // non-null but no rule matches today       → evaluator returns null → use default
             val displayData = group?.let { evaluator.getDisplayData(today, it) }
                 ?: OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA
-            // redDay is true when the rule itself marks it as a red day OR when today is
-            // a Norwegian public holiday (helligdag / rød dag).
-            displayData.copy(redDay = displayData.redDay || isRedDay)
+            // Promote redDay to true only when today is a public holiday AND the existing
+            // flag is still false — the only case that actually requires a new object.
+            // All other combinations (isRedDay=false, or displayData.redDay already true)
+            // return the existing instance unchanged, preserving DEFAULT_DISPLAY_DATA reuse
+            // and avoiding a per-service allocation on every populate() call.
+            if (isRedDay && !displayData.redDay) displayData.copy(redDay = true) else displayData
         }
         cacheRef.set(newMap) // atomic swap — readers never observe a partial state
     }
