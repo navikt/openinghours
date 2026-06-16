@@ -49,7 +49,9 @@ class RuleService(
                     this.header = header
                     this.text = text
                     this.onlyShowForNavEmployees = onlyShowForNavEmployees
-                    this.redDay = false
+                    // redDay is intentionally NOT updated here — it is managed
+                    // programmatically (Norwegian public holidays) and must not
+                    // be silently cleared on every upsert of an existing rule.
                 }
                 ?: Rule.create(
                     UUID.randomUUID(),
