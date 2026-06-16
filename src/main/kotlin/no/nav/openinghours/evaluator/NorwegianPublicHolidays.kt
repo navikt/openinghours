@@ -40,7 +40,7 @@ class NorwegianPublicHolidays {
      * The result is memoised: the first call for a year computes Easter and builds the Set;
      * every subsequent call for the same year returns the cached instance immediately.
      */
-    fun holidaysForYear(year: Int): Set<LocalDate> = cache.getOrPut(year) { computeHolidaysForYear(year) }
+    fun holidaysForYear(year: Int): Set<LocalDate> = cache.computeIfAbsent(year) { computeHolidaysForYear(it) }
 
     private fun computeHolidaysForYear(year: Int): Set<LocalDate> {
         val easter = easterSunday(year)
