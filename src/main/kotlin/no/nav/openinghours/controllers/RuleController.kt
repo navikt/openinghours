@@ -15,16 +15,15 @@ class RuleController(
     @GetMapping("/{id}")
     fun get(@PathVariable id: UUID): Rule? = service.get(id)
 
-    @Operation(summary = "Upsert opening hours rule with name, rule, header, text, onlyShowForNavEmployees, and redDay")
+    @Operation(summary = "Upsert opening hours rule with name, rule, header, text, and onlyShowForNavEmployees")
     @PutMapping
     fun upsert(
         @RequestParam name: String,
         @RequestParam rule: String,
         @RequestParam(required = false) header: String?,
         @RequestParam(required = false) text: String?,
-        @RequestParam(required = false, defaultValue = "false") onlyShowForNavEmployees: Boolean?,
-        @RequestParam(required = false, defaultValue = "false") redDay: Boolean?
-    ): Rule = service.upsert(name, rule, header, text, onlyShowForNavEmployees ?: false, redDay ?: false)
+        @RequestParam(required = false, defaultValue = "false") onlyShowForNavEmployees: Boolean?
+    ): Rule = service.upsert(name, rule, header, text, onlyShowForNavEmployees ?: false)
 
     @Operation(summary = "Delete opening hours rule by id")
     @DeleteMapping("/{id}")
@@ -36,7 +35,7 @@ class RuleController(
     @GetMapping
     fun getAll(): List<Rule> = service.getAll()
 
-    @Operation(summary = "Update opening hours rule by id with name, rule, header, text, onlyShowForNavEmployees, and redDay")
+    @Operation(summary = "Update opening hours rule by id with name, rule, header, text, and onlyShowForNavEmployees")
     @PatchMapping("/{id}")
     fun update(
         @PathVariable id: UUID,
@@ -44,9 +43,8 @@ class RuleController(
         @RequestParam(required = false) rule: String?,
         @RequestParam(required = false) header: String?,
         @RequestParam(required = false) text: String?,
-        @RequestParam(required = false) onlyShowForNavEmployees: Boolean?,
-        @RequestParam(required = false) redDay: Boolean?
-    ): Rule = service.update(id, name, rule, header, text, onlyShowForNavEmployees, redDay)
+        @RequestParam(required = false) onlyShowForNavEmployees: Boolean?
+    ): Rule = service.update(id, name, rule, header, text, onlyShowForNavEmployees)
 
 
 }

@@ -30,8 +30,7 @@ class RuleService(
         rule: String,
         header: String?,
         text: String?,
-        onlyShowForNavEmployees: Boolean = false,
-        redDay: Boolean = false
+        onlyShowForNavEmployees: Boolean = false
     ): Rule {
         return try {
             if (name.isBlank()) {
@@ -50,7 +49,7 @@ class RuleService(
                     this.header = header
                     this.text = text
                     this.onlyShowForNavEmployees = onlyShowForNavEmployees
-                    this.redDay = redDay
+                    this.redDay = false
                 }
                 ?: Rule.create(
                     UUID.randomUUID(),
@@ -59,7 +58,7 @@ class RuleService(
                     header,
                     text,
                     onlyShowForNavEmployees,
-                    redDay
+                    redDay = false
                 )
 
             repo.saveAndFlush(entity).also {
@@ -127,8 +126,7 @@ class RuleService(
         rule: String?,
         header: String?,
         text: String?,
-        onlyShowForNavEmployees: Boolean? = null,
-        redDay: Boolean? = null
+        onlyShowForNavEmployees: Boolean? = null
     ): Rule {
         return try {
             val entity = repo.findById(id).orElseThrow {
@@ -144,7 +142,7 @@ class RuleService(
                 if (header != null) this.header = header
                 if (text != null) this.text = text
                 this.onlyShowForNavEmployees = onlyShowForNavEmployees ?: this.onlyShowForNavEmployees
-                this.redDay = redDay ?: this.redDay
+                // redDay is always managed programmatically — never updated through user input
             }
 
             repo.saveAndFlush(entity)
