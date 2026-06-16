@@ -1,5 +1,6 @@
 package no.nav.openinghours.dailycache
 
+import no.nav.openinghours.evaluator.NorwegianPublicHolidays
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import no.nav.openinghours.evaluator.OpeningHoursEvaluator
 import no.nav.openinghours.evaluator.ResolvedGroup
@@ -32,8 +33,9 @@ class OpeningHoursDailyCacheTest {
     private val serviceService: ServiceService = Mockito.mock(ServiceService::class.java)
     private val evaluator: OpeningHoursEvaluator = Mockito.mock(OpeningHoursEvaluator::class.java)
     // Fixed clock at a known instant so LocalDate.now(clock) is deterministic in tests.
+    // 2024-01-15 is NOT a Norwegian public holiday, so redDay logic leaves existing assertions intact.
     private val clock: Clock = Clock.fixed(Instant.parse("2024-01-15T10:00:00Z"), ZoneOffset.UTC)
-    private val cache = OpeningHoursDailyCache(serviceService, evaluator, clock)
+    private val cache = OpeningHoursDailyCache(serviceService, evaluator, clock, NorwegianPublicHolidays())
 
     private val serviceId1 = UUID.randomUUID()
     private val serviceId2 = UUID.randomUUID()
@@ -256,6 +258,88 @@ class OpeningHoursDailyCacheTest {
         cache.populate() // second refresh — entry must still be present
 
         assertThat(cache.getForService(serviceId3)).isEqualTo(OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA)
+    }
+
+    // ------------------------------------------------------------------ //
+    // redDay is true on Norwegian public holidays                         //
+    // ------------------------------------------------------------------ //
+
+    @Test
+    fun `populate sets redDay true when today is a Norwegian public holiday`() {
+        // 2024-03-31 is Easter Sunday — a Norwegian public holiday.
+        val easterClock = Clock.fixed(Instant.parse("2024-03-31T10:00:00Z"), ZoneOffset.UTC)
+        val cacheOnEaster = OpeningHoursDailyCache(serviceService, evaluator, easterClock, NorwegianPublicHolidays())
+
+        // Rule itself does NOT mark redDay = true
+        val nonRedData = OpeningHoursDisplayData(ruleName = "Normal rule", openingHours = "08:00-16:00", redDay = false)
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to group1))
+        given(evaluator.getDisplayData(any(), eq(group1))).willReturn(nonRedData)
+
+        cacheOnEaster.populate()
+
+        assertThat(cacheOnEaster.getForService(serviceId1)?.redDay)
+            .`as`("redDay must be true on Easter Sunday even if rule does not set it")
+            .isTrue()
+    }
+
+    @Test
+    fun `populate keeps redDay true when both rule and holiday agree`() {
+        val easterClock = Clock.fixed(Instant.parse("2024-03-31T10:00:00Z"), ZoneOffset.UTC)
+        val cacheOnEaster = OpeningHoursDailyCache(serviceService, evaluator, easterClock, NorwegianPublicHolidays())
+
+        val redByRule = OpeningHoursDisplayData(ruleName = "Holiday rule", openingHours = "00:00-00:00", redDay = true)
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to group1))
+        given(evaluator.getDisplayData(any(), eq(group1))).willReturn(redByRule)
+
+        cacheOnEaster.populate()
+
+        assertThat(cacheOnEaster.getForService(serviceId1)?.redDay).isTrue()
+    }
+
+    @Test
+    fun `populate sets redDay false on a normal weekday`() {
+        // 2024-01-15 is a Monday — not a public holiday.
+        val normalData = OpeningHoursDisplayData(ruleName = "Normal rule", openingHours = "08:00-16:00", redDay = false)
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to group1))
+        given(evaluator.getDisplayData(any(), eq(group1))).willReturn(normalData)
+
+        cache.populate() // clock is 2024-01-15
+
+        assertThat(cache.getForService(serviceId1)?.redDay)
+            .`as`("redDay must be false on an ordinary weekday")
+            .isFalse()
+    }
+
+    @Test
+    fun `populate sets redDay true on Constitution Day (17 May)`() {
+        val constitutionClock = Clock.fixed(Instant.parse("2024-05-17T08:00:00Z"), ZoneOffset.UTC)
+        val cacheOn17May = OpeningHoursDailyCache(serviceService, evaluator, constitutionClock, NorwegianPublicHolidays())
+
+        val normalData = OpeningHoursDisplayData(ruleName = "Rule", openingHours = "00:00-00:00", redDay = false)
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to group1))
+        given(evaluator.getDisplayData(any(), eq(group1))).willReturn(normalData)
+
+        cacheOn17May.populate()
+
+        assertThat(cacheOn17May.getForService(serviceId1)?.redDay)
+            .`as`("redDay must be true on Grunnlovsdag (17 May)")
+            .isTrue()
+    }
+
+    @Test
+    fun `populate sets redDay true on default display data when today is a public holiday`() {
+        // evaluator returns null → DEFAULT_DISPLAY_DATA is used; holiday flag must still apply.
+        val easterClock = Clock.fixed(Instant.parse("2024-03-31T10:00:00Z"), ZoneOffset.UTC)
+        val cacheOnEaster = OpeningHoursDailyCache(serviceService, evaluator, easterClock, NorwegianPublicHolidays())
+
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to group1))
+        given(evaluator.getDisplayData(any(), eq(group1))).willReturn(null)
+
+        cacheOnEaster.populate()
+
+        assertThat(cacheOnEaster.getForService(serviceId1)?.redDay)
+            .`as`("redDay must be true on a public holiday even when the default display data is used")
+            .isTrue()
     }
 
     // ------------------------------------------------------------------ //
