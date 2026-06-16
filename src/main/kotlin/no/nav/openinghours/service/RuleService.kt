@@ -49,9 +49,9 @@ class RuleService(
                     this.header = header
                     this.text = text
                     this.onlyShowForNavEmployees = onlyShowForNavEmployees
-                    // redDay is intentionally NOT updated here — it is managed
-                    // programmatically (Norwegian public holidays) and must not
-                    // be silently cleared on every upsert of an existing rule.
+                    // redDay is intentionally NOT updated here — it is a legacy per-rule flag.
+                    // Public-holiday redDay is computed at read time (QueryController / DailyCache),
+                    // and existing persisted values must not be silently cleared on upsert.
                 }
                 ?: Rule.create(
                     UUID.randomUUID(),
@@ -144,7 +144,7 @@ class RuleService(
                 if (header != null) this.header = header
                 if (text != null) this.text = text
                 this.onlyShowForNavEmployees = onlyShowForNavEmployees ?: this.onlyShowForNavEmployees
-                // redDay is always managed programmatically — never updated through user input
+                // redDay is not updated through this API; public-holiday redDay is computed at read time.
             }
 
             repo.saveAndFlush(entity)
