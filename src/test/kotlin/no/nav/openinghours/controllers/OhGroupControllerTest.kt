@@ -119,6 +119,21 @@ class OhGroupControllerTest {
     }
 
     @Test
+    fun `PUT update group with empty body retains existing data`() {
+        val id = UUID.randomUUID()
+        val existing = aGroup(id = id, name = "Unchanged")
+        `when`(ohGroupService.update(id, null, null)).thenReturn(existing)
+
+        mockMvc.put("/api/openinghours/group/$id") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.name") { value("Unchanged") }
+        }
+    }
+
+    @Test
     fun `PUT update non-existent group returns 404`() {
         val id = UUID.randomUUID()
         `when`(ohGroupService.update(id, "X", null))
