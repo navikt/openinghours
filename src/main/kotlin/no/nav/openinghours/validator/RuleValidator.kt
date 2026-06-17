@@ -103,10 +103,9 @@ class RuleValidator {
     private fun isValidWeekdayFormat(weekDayRule: String): Boolean {
         if (weekDayRule == "?") return true
 
-        // Mirror the evaluator's two-level parsing: split on ',' first to get tokens,
-        // then split each token on '-' to get range bounds.
-        // This rejects multi-dash tokens like "1-3-5" (3 parts → else branch)
-        // and out-of-range values like "1-8" or "0-5" (bounds must be in [1-7]).
+        // Parse like the evaluator (comma-separated tokens, each optionally a '-' range),
+        // and additionally enforce ascending, non-overlapping tokens (via previousMax).
+        // This rejects multi-dash tokens like "1-3-5" and out-of-range values outside [1-7].
         val tokens = weekDayRule.split(",")
         var previousMax = 0
 
