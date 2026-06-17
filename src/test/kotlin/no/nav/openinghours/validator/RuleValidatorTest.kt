@@ -51,6 +51,35 @@ class RuleValidatorTest {
     }
 
     @Test
+    fun `validate weekday rejects out-of-range values`() {
+        // Upper bound above 7
+        assertThat(validator.isAValidRule("??.??.???? ? 1-8 07:00-21:00")).isFalse
+        // Lower bound below 1
+        assertThat(validator.isAValidRule("??.??.???? ? 0-5 07:00-21:00")).isFalse
+        // Comma-separated value above 7
+        assertThat(validator.isAValidRule("??.??.???? ? 1,8 07:00-21:00")).isFalse
+        // Single value above 7
+        assertThat(validator.isAValidRule("??.??.???? ? 8 07:00-21:00")).isFalse
+        // Zero as single value
+        assertThat(validator.isAValidRule("??.??.???? ? 0 07:00-21:00")).isFalse
+        // Both bounds out of range
+        assertThat(validator.isAValidRule("??.??.???? ? 0-8 07:00-21:00")).isFalse
+        // Exactly 7 is valid (Sunday)
+        assertThat(validator.isAValidRule("??.??.???? ? 7 07:00-21:00")).isTrue
+        assertThat(validator.isAValidRule("??.??.???? ? 1-7 07:00-21:00")).isTrue
+    }
+
+    @Test
+    fun `validate weekday rejects multi-dash tokens`() {
+        // "1-3-5" would be silently mis-evaluated by the evaluator (treats it as 1-3)
+        assertThat(validator.isAValidRule("??.??.???? ? 1-3-5 07:00-21:00")).isFalse
+        // "1-2-3" same issue
+        assertThat(validator.isAValidRule("??.??.???? ? 1-2-3 07:00-21:00")).isFalse
+        // Comma prefix with multi-dash token
+        assertThat(validator.isAValidRule("??.??.???? ? 1,3-5-7 07:00-21:00")).isFalse
+    }
+
+    @Test
     fun `validate time format`() {
         assertThat(validator.isAValidRule("??.??.???? ? ? 07:00-21:00")).isTrue
         assertThat(validator.isAValidRule("??.??.???? ? ? 00:00-21:00")).isTrue

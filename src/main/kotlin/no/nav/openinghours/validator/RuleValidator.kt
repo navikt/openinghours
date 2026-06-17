@@ -103,16 +103,33 @@ class RuleValidator {
     private fun isValidWeekdayFormat(weekDayRule: String): Boolean {
         if (weekDayRule == "?") return true
 
-        val ruleParts = weekDayRule.split("[,-]".toRegex())
-        if (ruleParts.size == 1) {
-            return weekDayRule.matches(Regex("^[1-7]$"))
-        }
+        // Mirror the evaluator's two-level parsing: split on ',' first to get tokens,
+        // then split each token on '-' to get range bounds.
+        // This rejects multi-dash tokens like "1-3-5" (3 parts → else branch)
+        // and out-of-range values like "1-8" or "0-5" (bounds must be in [1-7]).
+        val tokens = weekDayRule.split(",")
+        var previousMax = 0
 
-        var lowerRange = ruleParts[0].toIntOrNull() ?: return false
-        for (i in 1 until ruleParts.size) {
-            val upperRange = ruleParts[i].toIntOrNull() ?: return false
-            if (lowerRange > upperRange) return false
-            lowerRange = upperRange
+        for (token in tokens) {
+            val rangeParts = token.split("-")
+            when (rangeParts.size) {
+                1 -> {
+                    val value = rangeParts[0].toIntOrNull() ?: return false
+                    if (value < 1 || value > 7) return false
+                    if (value <= previousMax) return false
+                    previousMax = value
+                }
+                2 -> {
+                    val lo = rangeParts[0].toIntOrNull() ?: return false
+                    val hi = rangeParts[1].toIntOrNull() ?: return false
+                    if (lo < 1 || lo > 7) return false
+                    if (hi < 1 || hi > 7) return false
+                    if (lo > hi) return false
+                    if (lo <= previousMax) return false
+                    previousMax = hi
+                }
+                else -> return false // e.g. "1-3-5" — more than one '-' in a token
+            }
         }
         return true
     }
