@@ -80,12 +80,16 @@ class RuleService(
         }
     }
 
-    fun get(id: UUID): Rule? =
+    fun get(id: UUID): Rule =
         try {
-            repo.findById(id).orElse(null)
+            repo.findById(id).orElseThrow {
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $id")
+            }
+        } catch (e: ResponseStatusException) {
+            throw e
         } catch (e: Exception) {
-            log.error("Fetch opening hours failed id={} msg={}", id, e.message, e)
-            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch opening hours: ${e.message}", e)
+            log.error("Fetch rule failed id={} msg={}", id, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch rule: ${e.message}", e)
         }
 
     fun getAll(): List<Rule> =
@@ -132,7 +136,7 @@ class RuleService(
     ): Rule {
         return try {
             val entity = repo.findById(id).orElseThrow {
-                ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found")
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $id")
             }.apply {
                 if (!name.isNullOrBlank()) this.name = name
                 if (!rule.isNullOrBlank()) {
