@@ -88,8 +88,8 @@ class RuleService(
         } catch (e: ResponseStatusException) {
             throw e
         } catch (e: Exception) {
-            log.error("Fetch opening hours failed id={} msg={}", id, e.message, e)
-            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch opening hours: ${e.message}", e)
+            log.error("Fetch rule failed id={} msg={}", id, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch rule: ${e.message}", e)
         }
 
     fun getAll(): List<Rule> =
