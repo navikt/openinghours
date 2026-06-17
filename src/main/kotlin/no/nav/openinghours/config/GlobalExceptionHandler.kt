@@ -74,7 +74,7 @@ class GlobalExceptionHandler(
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun handleTypeMismatch(ex: MethodArgumentTypeMismatchException): ResponseEntity<Map<String, Any>> {
         val statusCode = HttpStatus.BAD_REQUEST
-        val message = ex.cause?.message ?: ex.message ?: "Invalid value for parameter '${ex.name}'"
+        val message = "Invalid value '${ex.value}' for parameter '${ex.name}'"
         val body = mutableMapOf<String, Any>(
             "status" to statusCode.value(),
             "error" to statusCode.toString(),
