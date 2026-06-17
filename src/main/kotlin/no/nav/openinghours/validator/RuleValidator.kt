@@ -106,7 +106,8 @@ class RuleValidator {
         // Parse like the evaluator (comma-separated tokens, each optionally a '-' range),
         // and additionally enforce ascending, non-overlapping tokens (via previousMax).
         // This rejects multi-dash tokens like "1-3-5" and out-of-range values outside [1-7].
-        val tokens = weekDayRule.split(",")
+        val tokens = weekDayRule.split(",", limit = -1)
+        if (tokens.any { it.isBlank() }) return false
         var previousMax = 0
 
         for (token in tokens) {
