@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.client.HttpStatusCodeException
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.server.ResponseStatusException
 
 @RestControllerAdvice
@@ -76,6 +77,18 @@ class GlobalExceptionHandler(
             "error" to statusCode.toString(),
             "message" to (messages.firstOrNull() ?: "Validation failed"),
             "errorMessages" to messages
+        )
+        return ResponseEntity.status(statusCode).body(body)
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    fun handleTypeMismatch(ex: MethodArgumentTypeMismatchException): ResponseEntity<Map<String, Any>> {
+        val statusCode = HttpStatus.BAD_REQUEST
+        val message = ex.cause?.message ?: ex.message ?: "Invalid value for parameter '${ex.name}'"
+        val body = mutableMapOf<String, Any>(
+            "status" to statusCode.value(),
+            "error" to statusCode.toString(),
+            "message" to message
         )
         return ResponseEntity.status(statusCode).body(body)
     }
