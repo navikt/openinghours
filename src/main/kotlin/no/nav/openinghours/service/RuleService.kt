@@ -83,9 +83,9 @@ class RuleService(
     fun get(id: UUID): Rule =
         try {
             repo.findById(id).orElseThrow {
-                IllegalArgumentException("Not found: Rule with id \"$id\"")
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Not found: Rule with id \"$id\"")
             }
-        } catch (e: IllegalArgumentException) {
+        } catch (e: ResponseStatusException) {
             throw e
         } catch (e: Exception) {
             log.error("Fetch opening hours failed id={} msg={}", id, e.message, e)
