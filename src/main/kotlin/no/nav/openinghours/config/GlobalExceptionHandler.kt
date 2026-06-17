@@ -14,6 +14,17 @@ class GlobalExceptionHandler(
     private val objectMapper: ObjectMapper
 ) {
 
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleIllegalArgument(ex: IllegalArgumentException): ResponseEntity<Map<String, Any>> {
+        val statusCode = HttpStatus.NOT_FOUND
+        val body = mutableMapOf<String, Any>(
+            "status" to statusCode.value(),
+            "error" to statusCode.toString(),
+            "message" to (ex.message ?: "")
+        )
+        return ResponseEntity.status(statusCode).body(body)
+    }
+
     @ExceptionHandler(ResponseStatusException::class)
     fun handleRse(ex: ResponseStatusException): ResponseEntity<Map<String, Any>> {
         val statusCode = ex.statusCode

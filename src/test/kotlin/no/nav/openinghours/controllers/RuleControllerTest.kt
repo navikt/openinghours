@@ -46,12 +46,15 @@ class RuleControllerTest {
     }
 
     @Test
-    fun `GET rule by id returns 200 with null body when not found`() {
+    fun `GET rule by id returns 404 when not found`() {
         val id = UUID.randomUUID()
-        `when`(ruleService.get(id)).thenReturn(null)
+        `when`(ruleService.get(id)).thenThrow(IllegalArgumentException("Not found: Rule with id \"$id\""))
 
         mockMvc.get("/api/openinghours/rule/$id")
-            .andExpect { status { isOk() } }
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.message") { value("Not found: Rule with id \"$id\"") }
+            }
     }
 
     @Test

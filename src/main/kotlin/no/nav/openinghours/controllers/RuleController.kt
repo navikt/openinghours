@@ -13,7 +13,7 @@ class RuleController(
 ) {
     @Operation(summary = "Get opening hours rule id")
     @GetMapping("/{id}")
-    fun get(@PathVariable id: UUID): Rule? = service.get(id)
+    fun get(@PathVariable id: UUID): Rule = service.get(id)
 
     @Operation(summary = "Upsert opening hours rule with name, rule, header, text, and onlyShowForNavEmployees")
     @PutMapping
