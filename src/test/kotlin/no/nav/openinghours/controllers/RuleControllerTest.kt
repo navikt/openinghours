@@ -48,12 +48,12 @@ class RuleControllerTest {
     @Test
     fun `GET rule by id returns 404 when not found`() {
         val id = UUID.randomUUID()
-        `when`(ruleService.get(id)).thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Not found: Rule with id \"$id\""))
+        `when`(ruleService.get(id)).thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $id"))
 
         mockMvc.get("/api/openinghours/rule/$id")
             .andExpect {
                 status { isNotFound() }
-                jsonPath("$.message") { value("Not found: Rule with id \"$id\"") }
+                jsonPath("$.message") { value("Rule not found: $id") }
             }
     }
 
@@ -128,7 +128,7 @@ class RuleControllerTest {
     fun `PATCH update non-existent id returns 404`() {
         val id = UUID.randomUUID()
         `when`(ruleService.update(id, "X", null, null, null, null))
-            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found"))
+            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $id"))
 
         mockMvc.patch("/api/openinghours/rule/$id") {
             param("name", "X")

@@ -83,7 +83,7 @@ class RuleService(
     fun get(id: UUID): Rule =
         try {
             repo.findById(id).orElseThrow {
-                ResponseStatusException(HttpStatus.NOT_FOUND, "Not found: Rule with id \"$id\"")
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $id")
             }
         } catch (e: ResponseStatusException) {
             throw e
@@ -136,7 +136,7 @@ class RuleService(
     ): Rule {
         return try {
             val entity = repo.findById(id).orElseThrow {
-                ResponseStatusException(HttpStatus.NOT_FOUND, "Opening hours rule not found")
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $id")
             }.apply {
                 if (!name.isNullOrBlank()) this.name = name
                 if (!rule.isNullOrBlank()) {
