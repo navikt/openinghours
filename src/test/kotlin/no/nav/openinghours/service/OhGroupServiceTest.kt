@@ -92,6 +92,39 @@ class OhGroupServiceTest {
     }
 
     @Test
+    fun `update with null fields retains existing name and ruleGroupIds`() {
+        val ruleGroupA = service.save("child-a", emptyList())
+        val original = service.save("original-name", listOf(ruleGroupA.id))
+
+        val updated = service.update(original.id, null, null)
+
+        assertThat(updated.name).isEqualTo("original-name")
+        assertThat(updated.ruleGroupUuids).containsExactly(ruleGroupA.id)
+    }
+
+    @Test
+    fun `update with only name provided retains existing ruleGroupIds`() {
+        val ruleGroupA = service.save("child-b", emptyList())
+        val original = service.save("old-name", listOf(ruleGroupA.id))
+
+        val updated = service.update(original.id, "new-name", null)
+
+        assertThat(updated.name).isEqualTo("new-name")
+        assertThat(updated.ruleGroupUuids).containsExactly(ruleGroupA.id)
+    }
+
+    @Test
+    fun `update with only ruleGroupIds provided retains existing name`() {
+        val ruleGroupA = service.save("child-c", emptyList())
+        val original = service.save("keep-this-name", emptyList())
+
+        val updated = service.update(original.id, null, listOf(ruleGroupA.id))
+
+        assertThat(updated.name).isEqualTo("keep-this-name")
+        assertThat(updated.ruleGroupUuids).containsExactly(ruleGroupA.id)
+    }
+
+    @Test
     fun `circular dependency is rejected`() {
         val a = service.save("a", emptyList())
         val b = service.save("b", listOf(a.id))

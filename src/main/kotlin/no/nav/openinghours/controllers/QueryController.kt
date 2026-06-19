@@ -3,6 +3,7 @@ package no.nav.openinghours.controllers
 import io.swagger.v3.oas.annotations.Operation
 import no.nav.openinghours.evaluator.NorwegianPublicHolidays
 import no.nav.openinghours.evaluator.OpeningHoursEvaluator
+import no.nav.openinghours.service.DisplayDataResult
 import no.nav.openinghours.service.OpeningHoursLookupService
 import no.nav.openinghours.service.ServiceService
 import org.springframework.format.annotation.DateTimeFormat
@@ -13,6 +14,7 @@ import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
+
 
 @RestController
 @RequestMapping("/api/openinghours/query")
@@ -56,7 +58,10 @@ class QueryController(
         // against the same instant — prevents isOpen semantics from changing mid-iteration
         // if processing straddles midnight.
         val now = LocalDateTime.now(clock)
-        return from.datesUntil(to.plusDays(1)).map { buildResponse(groupId, serviceId, it, now) }.toList()
+        return from.datesUntil(to.plusDays(1)).map { date ->
+            val result = lookupService.getDisplayDataOrDefault(groupId, date)
+            buildResponse(groupId, serviceId, date, now, result)
+        }.toList()
     }
 
     @Operation(summary = "Get opening hours for a group on a date")
@@ -76,8 +81,12 @@ class QueryController(
         // cannot diverge across a midnight boundary mid-iteration.
         // Single-date callers may omit this; the default captures the clock at call time.
         now: LocalDateTime = LocalDateTime.now(clock),
+        // Pre-resolved display data. When null the lookup service is called directly
+        // (single-date path that should still 404 on no-match).
+        displayDataResult: DisplayDataResult? = null,
     ): QueryResponse {
-        val displayData = lookupService.getDisplayData(groupId, date)
+        val displayData = displayDataResult?.data ?: lookupService.getDisplayData(groupId, date)
+        val warningMessage = displayDataResult?.warningMessage
         val hours = displayData.openingHours ?: "00:00-23:59"
         val today = now.toLocalDate()
         val nowTime = now.toLocalTime()
@@ -105,7 +114,8 @@ class QueryController(
             // redDay is true when the matched rule marks the day as a red day OR when the
             // queried date is an official Norwegian public holiday (helligdag / rød dag).
             redDay = displayData.redDay || norwegianPublicHolidays.isPublicHoliday(date),
-            matchedRule = if (displayData.ruleName != null && displayData.rule != null) MatchedRule(displayData.ruleName, displayData.rule) else null,
+            matchedRule = if (warningMessage == null && displayData.ruleName != null && displayData.rule != null) MatchedRule(displayData.ruleName, displayData.rule) else null,
+            warningMessage = warningMessage,
         )
     }
 }
@@ -120,7 +130,10 @@ data class QueryResponse(
     val displayText: String?,
     val onlyShowForNavEmployees: Boolean,
     val redDay: Boolean,
+    @field:com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     val matchedRule: MatchedRule?,
+    @field:com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    val warningMessage: String? = null,
 )
 
 data class MatchedRule(
