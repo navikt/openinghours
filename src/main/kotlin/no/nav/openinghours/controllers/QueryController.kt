@@ -1,6 +1,5 @@
 package no.nav.openinghours.controllers
 
-import com.fasterxml.jackson.annotation.JsonFormat
 import io.swagger.v3.oas.annotations.Operation
 import no.nav.openinghours.evaluator.NorwegianPublicHolidays
 import no.nav.openinghours.evaluator.OpeningHoursEvaluator
@@ -16,7 +15,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
 
-private const val DATE_PATTERN = "dd.MM.yyyy"
 
 @RestController
 @RequestMapping("/api/openinghours/query")
@@ -31,7 +29,7 @@ class QueryController(
     @GetMapping("/service/{serviceId}")
     fun queryByService(
         @PathVariable serviceId: UUID,
-        @RequestParam @DateTimeFormat(pattern = DATE_PATTERN) date: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
     ): QueryResponse {
         val groupIds = serviceService.getOhGroupIdsForService(serviceId)
         if (groupIds.isEmpty()) {
@@ -45,8 +43,8 @@ class QueryController(
     @GetMapping("/service/{serviceId}/range")
     fun queryByServiceRange(
         @PathVariable serviceId: UUID,
-        @RequestParam @DateTimeFormat(pattern = DATE_PATTERN) from: LocalDate,
-        @RequestParam @DateTimeFormat(pattern = DATE_PATTERN) to: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
     ): List<QueryResponse> {
         val groupIds = serviceService.getOhGroupIdsForService(serviceId)
         if (groupIds.isEmpty()) {
@@ -70,7 +68,7 @@ class QueryController(
     @GetMapping("/group/{groupId}")
     fun queryByGroup(
         @PathVariable groupId: UUID,
-        @RequestParam @DateTimeFormat(pattern = DATE_PATTERN) date: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
     ): QueryResponse = buildResponse(groupId, null, date)
 
     private fun buildResponse(
@@ -116,15 +114,13 @@ class QueryController(
             // redDay is true when the matched rule marks the day as a red day OR when the
             // queried date is an official Norwegian public holiday (helligdag / rød dag).
             redDay = displayData.redDay || norwegianPublicHolidays.isPublicHoliday(date),
-            matchedRule = if (displayData.ruleName != null && displayData.rule != null) MatchedRule(displayData.ruleName, displayData.rule) else null,
-            warningMessage = warningMessage,
+            matchedRule = if (warningMessage == null && displayData.ruleName != null && displayData.rule != null) MatchedRule(displayData.ruleName, displayData.rule) else null,
         )
     }
 }
 
 data class QueryResponse(
     val resourceId: UUID,
-    @JsonFormat(pattern = DATE_PATTERN)
     val date: LocalDate,
     val isOpen: Boolean,
     val openingTime: String,
