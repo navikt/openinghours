@@ -49,8 +49,7 @@ class OpeningHoursLookupService(
         } else {
             DisplayDataResult(
                 data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
-                warningMessage = "Group: $groupId has rules defined, but none match the requested date: $date. " +
-                    "Default rule ID will be used because no valid rule is assigned.",
+                warningMessage = "Group '$groupId' has rules defined, but none match the requested date: $date. Returned default display data.",
             )
         }
     }
