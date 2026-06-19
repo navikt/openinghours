@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.Operation
 import no.nav.openinghours.dailycache.OpeningHoursDailyCache
 import no.nav.openinghours.dailycache.OpeningHoursDailyCacheScheduler
 import no.nav.openinghours.dailycache.ServiceCacheEntry
-import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import no.nav.openinghours.evaluator.OpeningHoursEvaluator
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping

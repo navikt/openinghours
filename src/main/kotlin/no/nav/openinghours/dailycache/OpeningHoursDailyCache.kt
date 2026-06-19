@@ -3,6 +3,7 @@ package no.nav.openinghours.dailycache
 import no.nav.openinghours.evaluator.NorwegianPublicHolidays
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import no.nav.openinghours.evaluator.OpeningHoursEvaluator
+import no.nav.openinghours.service.ServiceNameAndGroup
 import no.nav.openinghours.service.ServiceService
 import org.springframework.stereotype.Component
 import java.time.Clock
@@ -32,10 +33,9 @@ class OpeningHoursDailyCache(
         val isRedDay = norwegianPublicHolidays.isPublicHoliday(today)
         val serviceGroups = serviceService.getAllServicesForCache()
         val newMap = serviceGroups.mapValues { (_, nameAndGroup) ->
-            val (serviceName, group) = nameAndGroup
             // null  → service has no linked OH group   → use default
             // non-null but no rule matches today       → evaluator returns null → use default
-            val displayData = group?.let { evaluator.getDisplayData(today, it) }
+            val displayData = nameAndGroup.group?.let { evaluator.getDisplayData(today, it) }
                 ?: OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA
             // Promote redDay to true only when today is a public holiday AND the existing
             // flag is still false — the only case that actually requires a new object.
@@ -43,7 +43,7 @@ class OpeningHoursDailyCache(
             // return the existing instance unchanged, preserving DEFAULT_DISPLAY_DATA reuse
             // and avoiding a per-service allocation on every populate() call.
             val finalDisplayData = if (isRedDay && !displayData.redDay) displayData.copy(redDay = true) else displayData
-            ServiceCacheEntry(serviceName = serviceName, displayData = finalDisplayData)
+            ServiceCacheEntry(serviceName = nameAndGroup.name, displayData = finalDisplayData)
         }
         cacheRef.set(newMap) // atomic swap — readers never observe a partial state
     }

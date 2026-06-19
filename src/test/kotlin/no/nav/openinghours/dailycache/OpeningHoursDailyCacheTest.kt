@@ -4,6 +4,7 @@ import no.nav.openinghours.evaluator.NorwegianPublicHolidays
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import no.nav.openinghours.evaluator.OpeningHoursEvaluator
 import no.nav.openinghours.evaluator.ResolvedGroup
+import no.nav.openinghours.service.ServiceNameAndGroup
 import no.nav.openinghours.service.ServiceService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -21,7 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
-// ── Kotlin-safe Mockito argument matcher helpers ──────────────────────────────
+// â”€â”€ Kotlin-safe Mockito argument matcher helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // ArgumentMatchers methods return null at runtime to register the matcher;
 // the unchecked cast is intentional and safe inside Mockito stubbing calls.
 @Suppress("UNCHECKED_CAST")
@@ -54,7 +55,7 @@ class OpeningHoursDailyCacheTest {
     fun reset() {
         // Ensure each test starts with a clean cache
         given(serviceService.getAllServicesForCache())
-            .willReturn(emptyMap<UUID, Pair<String, ResolvedGroup?>>())
+            .willReturn(emptyMap<UUID, ServiceNameAndGroup>())
         cache.populate()
     }
 
@@ -65,7 +66,7 @@ class OpeningHoursDailyCacheTest {
     @Test
     fun `populate fills cache with evaluator result for each service`() {
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+            .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1)))
             .willReturn(displayData1)
 
@@ -80,11 +81,11 @@ class OpeningHoursDailyCacheTest {
     @Test
     fun `populate derives today from the injected clock, not the JVM default zone`() {
         // The fixed clock is 2024-01-15T10:00:00Z (UTC), so LocalDate.now(clock) = 2024-01-15.
-        // Verify that exact date is forwarded to the evaluator — not LocalDate.now() which
+        // Verify that exact date is forwarded to the evaluator â€” not LocalDate.now() which
         // would use the JVM default zone and could differ in non-UTC containers.
         val clockDate = LocalDate.now(clock) // 2024-01-15
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+            .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(eq(clockDate), eq(group1))).willReturn(displayData1)
 
         cache.populate()
@@ -96,7 +97,7 @@ class OpeningHoursDailyCacheTest {
     fun `populate stores entries for all services returned by serviceService`() {
         val data2 = OpeningHoursDisplayData(ruleName = "Weekend rule", openingHours = "10:00-14:00")
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId1 to Pair("ServiceA", group1), serviceId2 to Pair("ServiceB", group2)))
+            .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1), serviceId2 to ServiceNameAndGroup("ServiceB", group2)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(displayData1)
         given(evaluator.getDisplayData(any(), eq(group2))).willReturn(data2)
 
@@ -116,14 +117,14 @@ class OpeningHoursDailyCacheTest {
         val staleData = OpeningHoursDisplayData(ruleName = "Old rule", openingHours = "06:00-12:00")
         val freshData = OpeningHoursDisplayData(ruleName = "New rule", openingHours = "08:00-20:00")
 
-        // First populate – stale data
+        // First populate â€“ stale data
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+            .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(staleData)
         cache.populate()
         assertThat(cache.getForService(serviceId1)?.displayData?.ruleName).isEqualTo("Old rule")
 
-        // Second populate – fresh data
+        // Second populate â€“ fresh data
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(freshData)
         cache.populate()
 
@@ -134,13 +135,13 @@ class OpeningHoursDailyCacheTest {
     @Test
     fun `populate removes service that is no longer returned by serviceService`() {
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId1 to Pair("ServiceA", group1), serviceId2 to Pair("ServiceB", group2)))
+            .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1), serviceId2 to ServiceNameAndGroup("ServiceB", group2)))
         given(evaluator.getDisplayData(any(), any())).willReturn(displayData1)
         cache.populate()
         assertThat(cache.getAll()).containsKeys(serviceId1, serviceId2)
 
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+            .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         cache.populate()
 
         assertThat(cache.getAll()).containsKey(serviceId1)
@@ -160,13 +161,13 @@ class OpeningHoursDailyCacheTest {
     @Test
     fun `getForService returns null after cache is cleared by populate with empty map`() {
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+            .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(displayData1)
         cache.populate()
         assertThat(cache.getForService(serviceId1)).isNotNull()
 
         given(serviceService.getAllServicesForCache())
-            .willReturn(emptyMap<UUID, Pair<String, ResolvedGroup?>>())
+            .willReturn(emptyMap<UUID, ServiceNameAndGroup>())
         cache.populate()
 
         assertThat(cache.getForService(serviceId1)).isNull()
@@ -179,7 +180,7 @@ class OpeningHoursDailyCacheTest {
     @Test
     fun `populate stores default display data when evaluator returns null`() {
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+            .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(null)
 
         cache.populate()
@@ -195,7 +196,7 @@ class OpeningHoursDailyCacheTest {
     @Test
     fun `default fallback is used only for services whose evaluator result is null`() {
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId1 to Pair("ServiceA", group1), serviceId2 to Pair("ServiceB", group2)))
+            .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1), serviceId2 to ServiceNameAndGroup("ServiceB", group2)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(displayData1)
         given(evaluator.getDisplayData(any(), eq(group2))).willReturn(null)
 
@@ -216,7 +217,7 @@ class OpeningHoursDailyCacheTest {
     @Test
     fun `populate includes service with no attached group using default display data`() {
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId3 to Pair("ServiceC", null)))
+            .willReturn(mapOf(serviceId3 to ServiceNameAndGroup("ServiceC", null)))
 
         cache.populate()
 
@@ -232,9 +233,9 @@ class OpeningHoursDailyCacheTest {
     fun `populate mixes services with and without groups correctly`() {
         given(serviceService.getAllServicesForCache())
             .willReturn(mapOf(
-                serviceId1 to Pair("ServiceA", group1),
-                serviceId2 to Pair("ServiceB", group2),
-                serviceId3 to Pair("ServiceC", null)
+                serviceId1 to ServiceNameAndGroup("ServiceA", group1),
+                serviceId2 to ServiceNameAndGroup("ServiceB", group2),
+                serviceId3 to ServiceNameAndGroup("ServiceC", null)
             ))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(displayData1)
         given(evaluator.getDisplayData(any(), eq(group2))).willReturn(null)
@@ -250,7 +251,7 @@ class OpeningHoursDailyCacheTest {
     @Test
     fun `getForService returns default for service with no group even after multiple populates`() {
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId3 to Pair("ServiceC", null)))
+            .willReturn(mapOf(serviceId3 to ServiceNameAndGroup("ServiceC", null)))
 
         cache.populate()
         cache.populate()
@@ -268,7 +269,7 @@ class OpeningHoursDailyCacheTest {
         val cacheOnEaster = OpeningHoursDailyCache(serviceService, evaluator, easterClock, NorwegianPublicHolidays())
 
         val nonRedData = OpeningHoursDisplayData(ruleName = "Normal rule", openingHours = "08:00-16:00", redDay = false)
-        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(nonRedData)
 
         cacheOnEaster.populate()
@@ -284,7 +285,7 @@ class OpeningHoursDailyCacheTest {
         val cacheOnEaster = OpeningHoursDailyCache(serviceService, evaluator, easterClock, NorwegianPublicHolidays())
 
         val redByRule = OpeningHoursDisplayData(ruleName = "Holiday rule", openingHours = "00:00-00:00", redDay = true)
-        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(redByRule)
 
         cacheOnEaster.populate()
@@ -295,7 +296,7 @@ class OpeningHoursDailyCacheTest {
     @Test
     fun `populate sets redDay false on a normal weekday`() {
         val normalData = OpeningHoursDisplayData(ruleName = "Normal rule", openingHours = "08:00-16:00", redDay = false)
-        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(normalData)
 
         cache.populate()
@@ -311,7 +312,7 @@ class OpeningHoursDailyCacheTest {
         val cacheOn17May = OpeningHoursDailyCache(serviceService, evaluator, constitutionClock, NorwegianPublicHolidays())
 
         val normalData = OpeningHoursDisplayData(ruleName = "Rule", openingHours = "00:00-00:00", redDay = false)
-        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(normalData)
 
         cacheOn17May.populate()
@@ -326,7 +327,7 @@ class OpeningHoursDailyCacheTest {
         val easterClock = Clock.fixed(Instant.parse("2024-03-31T10:00:00Z"), ZoneOffset.UTC)
         val cacheOnEaster = OpeningHoursDailyCache(serviceService, evaluator, easterClock, NorwegianPublicHolidays())
 
-        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(null)
 
         cacheOnEaster.populate()
@@ -337,18 +338,18 @@ class OpeningHoursDailyCacheTest {
     }
 
     // ------------------------------------------------------------------ //
-    // No unnecessary allocations — identity preserved when no copy needed //
+    // No unnecessary allocations â€” identity preserved when no copy needed //
     // ------------------------------------------------------------------ //
 
     @Test
     fun `populate reuses DEFAULT_DISPLAY_DATA instance on a normal weekday (no copy)`() {
-        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(null)
 
         cache.populate()
 
         assertThat(cache.getForService(serviceId1)?.displayData)
-            .`as`("DEFAULT_DISPLAY_DATA singleton must be reused — no copy on a normal weekday")
+            .`as`("DEFAULT_DISPLAY_DATA singleton must be reused â€” no copy on a normal weekday")
             .isSameAs(OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA)
     }
 
@@ -358,42 +359,42 @@ class OpeningHoursDailyCacheTest {
         val cacheOnEaster = OpeningHoursDailyCache(serviceService, evaluator, easterClock, NorwegianPublicHolidays())
 
         val alreadyRedData = OpeningHoursDisplayData(ruleName = "Holiday rule", openingHours = "00:00-00:00", redDay = true)
-        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(alreadyRedData)
 
         cacheOnEaster.populate()
 
         assertThat(cacheOnEaster.getForService(serviceId1)?.displayData)
-            .`as`("Instance must be reused when displayData.redDay is already true — no redundant copy")
+            .`as`("Instance must be reused when displayData.redDay is already true â€” no redundant copy")
             .isSameAs(alreadyRedData)
     }
 
     @Test
     fun `populate reuses non-default display-data instance on a normal weekday`() {
-        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+        given(serviceService.getAllServicesForCache()).willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(displayData1)
 
         cache.populate()
 
         assertThat(cache.getForService(serviceId1)?.displayData)
-            .`as`("Evaluator result must be reused as-is on a normal weekday — no redundant copy")
+            .`as`("Evaluator result must be reused as-is on a normal weekday â€” no redundant copy")
             .isSameAs(displayData1)
     }
 
     // ------------------------------------------------------------------ //
-    // Atomic swap — readers never see an empty / partially-populated map  //
+    // Atomic swap â€” readers never see an empty / partially-populated map  //
     // ------------------------------------------------------------------ //
 
     @RepeatedTest(5)
     fun `concurrent reads during populate never observe an empty map`() {
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId1 to Pair("ServiceA", group1)))
+            .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(displayData1)
         cache.populate()
 
         val newData = OpeningHoursDisplayData(ruleName = "New rule", openingHours = "09:00-17:00")
         given(serviceService.getAllServicesForCache())
-            .willReturn(mapOf(serviceId1 to Pair("ServiceA", group1), serviceId2 to Pair("ServiceB", group2)))
+            .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1), serviceId2 to ServiceNameAndGroup("ServiceB", group2)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(displayData1)
         given(evaluator.getDisplayData(any(), eq(group2))).willReturn(newData)
 
