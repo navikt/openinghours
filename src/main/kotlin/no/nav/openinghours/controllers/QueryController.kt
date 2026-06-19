@@ -36,7 +36,8 @@ class QueryController(
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "No opening-hours group assigned to service $serviceId")
         }
         val groupId = groupIds.first()
-        return buildResponse(groupId, serviceId, date)
+        val serviceName = serviceService.get(serviceId).name
+        return buildResponse(groupId, serviceId, date, serviceName = serviceName)
     }
 
     @Operation(summary = "Get opening hours for a service over a date range")
@@ -54,13 +55,14 @@ class QueryController(
         if (from.isAfter(to)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "'from' date must not be after 'to' date")
         }
+        val serviceName = serviceService.get(serviceId).name
         // Capture the clock once for the entire range so every entry is evaluated
         // against the same instant — prevents isOpen semantics from changing mid-iteration
         // if processing straddles midnight.
         val now = LocalDateTime.now(clock)
         return from.datesUntil(to.plusDays(1)).map { date ->
             val result = lookupService.getDisplayDataOrDefault(groupId, date)
-            buildResponse(groupId, serviceId, date, now, result)
+            buildResponse(groupId, serviceId, date, now, result, serviceName = serviceName)
         }.toList()
     }
 
@@ -75,15 +77,9 @@ class QueryController(
         groupId: UUID,
         serviceId: UUID?,
         date: LocalDate,
-        // Callers that iterate over multiple dates (e.g. queryByServiceRange) should
-        // capture LocalDateTime.now(clock) once and pass it here, so every element in
-        // the same response is evaluated against the same instant and isOpen semantics
-        // cannot diverge across a midnight boundary mid-iteration.
-        // Single-date callers may omit this; the default captures the clock at call time.
         now: LocalDateTime = LocalDateTime.now(clock),
-        // Pre-resolved display data. When null the lookup service is called directly
-        // (single-date path that should still 404 on no-match).
         displayDataResult: DisplayDataResult? = null,
+        serviceName: String? = null,
     ): QueryResponse {
         val displayData = displayDataResult?.data ?: lookupService.getDisplayData(groupId, date)
         val warningMessage = displayDataResult?.warningMessage
@@ -104,6 +100,7 @@ class QueryController(
 
         return QueryResponse(
             resourceId = serviceId ?: groupId,
+            serviceName = serviceName,
             date = date,
             isOpen = isOpen,
             openingTime = openTime,
@@ -122,6 +119,8 @@ class QueryController(
 
 data class QueryResponse(
     val resourceId: UUID,
+    @field:com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    val serviceName: String?,
     val date: LocalDate,
     val isOpen: Boolean,
     val openingTime: String,
