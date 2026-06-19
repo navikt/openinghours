@@ -2,6 +2,7 @@ package no.nav.openinghours.controllers
 
 import no.nav.openinghours.dailycache.OpeningHoursDailyCache
 import no.nav.openinghours.dailycache.OpeningHoursDailyCacheScheduler
+import no.nav.openinghours.dailycache.ServiceCacheEntry
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -53,15 +54,21 @@ class DailyCacheControllerTest {
         val id2 = UUID.randomUUID()
         `when`(cache.getAll()).thenReturn(
             mapOf(
-                id1 to OpeningHoursDisplayData(
-                    ruleName = "Weekday rule",
-                    rule = "??.??.???? ? 1-5 08:00-16:00",
-                    openingHours = "08:00-16:00",
+                id1 to ServiceCacheEntry(
+                    serviceName = "Bidrag",
+                    displayData = OpeningHoursDisplayData(
+                        ruleName = "Weekday rule",
+                        rule = "??.??.???? ? 1-5 08:00-16:00",
+                        openingHours = "08:00-16:00",
+                    )
                 ),
-                id2 to OpeningHoursDisplayData(
-                    ruleName = "Weekend closed",
-                    rule = "??.??.???? ? 6-7 00:00-00:00",
-                    openingHours = "00:00-00:00",
+                id2 to ServiceCacheEntry(
+                    serviceName = "Dagpenger",
+                    displayData = OpeningHoursDisplayData(
+                        ruleName = "Weekend closed",
+                        rule = "??.??.???? ? 6-7 00:00-00:00",
+                        openingHours = "00:00-00:00",
+                    )
                 ),
             )
         )
@@ -69,9 +76,11 @@ class DailyCacheControllerTest {
         mockMvc.get("/api/openinghours/daily")
             .andExpect {
                 status { isOk() }
+                jsonPath("$['$id1'].serviceName") { value("Bidrag") }
                 jsonPath("$['$id1'].ruleName") { value("Weekday rule") }
                 jsonPath("$['$id1'].openingHours") { value("08:00-16:00") }
                 jsonPath("$['$id1'].isOpen") { value(true) }
+                jsonPath("$['$id2'].serviceName") { value("Dagpenger") }
                 jsonPath("$['$id2'].ruleName") { value("Weekend closed") }
                 jsonPath("$['$id2'].openingHours") { value("00:00-00:00") }
                 jsonPath("$['$id2'].isOpen") { value(false) }
@@ -94,14 +103,17 @@ class DailyCacheControllerTest {
         val id = UUID.randomUUID()
         `when`(cache.getAll()).thenReturn(
             mapOf(
-                id to OpeningHoursDisplayData(
-                    ruleName = "Nav employees only",
-                    rule = "??.??.???? ? 1-5 09:00-15:00",
-                    openingHours = "09:00-15:00",
-                    displayHeader = "Intern åpningstid",
-                    displayText = "Kun for ansatte",
-                    onlyShowForNavEmployees = true,
-                    redDay = false,
+                id to ServiceCacheEntry(
+                    serviceName = "Nav Employees Service",
+                    displayData = OpeningHoursDisplayData(
+                        ruleName = "Nav employees only",
+                        rule = "??.??.???? ? 1-5 09:00-15:00",
+                        openingHours = "09:00-15:00",
+                        displayHeader = "Intern åpningstid",
+                        displayText = "Kun for ansatte",
+                        onlyShowForNavEmployees = true,
+                        redDay = false,
+                    )
                 )
             )
         )
@@ -109,6 +121,7 @@ class DailyCacheControllerTest {
         mockMvc.get("/api/openinghours/daily")
             .andExpect {
                 status { isOk() }
+                jsonPath("$['$id'].serviceName") { value("Nav Employees Service") }
                 jsonPath("$['$id'].ruleName") { value("Nav employees only") }
                 jsonPath("$['$id'].openingHours") { value("09:00-15:00") }
                 jsonPath("$['$id'].displayHeader") { value("Intern åpningstid") }
@@ -124,16 +137,21 @@ class DailyCacheControllerTest {
     @Test
     fun `GET daily by id returns the cached display data for that service`() {
         val serviceId = UUID.randomUUID()
-        val displayData = OpeningHoursDisplayData(
-            ruleName = "Standard weekdays",
-            rule = "??.??.???? ? 1-5 07:00-21:00",
-            openingHours = "07:00-21:00",
+        `when`(cache.getForService(serviceId)).thenReturn(
+            ServiceCacheEntry(
+                serviceName = "Standard Service",
+                displayData = OpeningHoursDisplayData(
+                    ruleName = "Standard weekdays",
+                    rule = "??.??.???? ? 1-5 07:00-21:00",
+                    openingHours = "07:00-21:00",
+                )
+            )
         )
-        `when`(cache.getForService(serviceId)).thenReturn(displayData)
 
         mockMvc.get("/api/openinghours/daily/$serviceId")
             .andExpect {
                 status { isOk() }
+                jsonPath("$.serviceName") { value("Standard Service") }
                 jsonPath("$.ruleName") { value("Standard weekdays") }
                 jsonPath("$.openingHours") { value("07:00-21:00") }
                 jsonPath("$.rule") { value("??.??.???? ? 1-5 07:00-21:00") }
@@ -145,20 +163,24 @@ class DailyCacheControllerTest {
     fun `GET daily by id returns all display data fields`() {
         val serviceId = UUID.randomUUID()
         `when`(cache.getForService(serviceId)).thenReturn(
-            OpeningHoursDisplayData(
-                ruleName = "Internal",
-                rule = "??.??.???? ? 1-5 09:00-15:00",
-                openingHours = "09:00-15:00",
-                displayHeader = "Intern åpningstid",
-                displayText = "Kun for ansatte",
-                onlyShowForNavEmployees = true,
-                redDay = false,
+            ServiceCacheEntry(
+                serviceName = "Internal Service",
+                displayData = OpeningHoursDisplayData(
+                    ruleName = "Internal",
+                    rule = "??.??.???? ? 1-5 09:00-15:00",
+                    openingHours = "09:00-15:00",
+                    displayHeader = "Intern åpningstid",
+                    displayText = "Kun for ansatte",
+                    onlyShowForNavEmployees = true,
+                    redDay = false,
+                )
             )
         )
 
         mockMvc.get("/api/openinghours/daily/$serviceId")
             .andExpect {
                 status { isOk() }
+                jsonPath("$.serviceName") { value("Internal Service") }
                 jsonPath("$.ruleName") { value("Internal") }
                 jsonPath("$.openingHours") { value("09:00-15:00") }
                 jsonPath("$.displayHeader") { value("Intern åpningstid") }
@@ -198,16 +220,17 @@ class DailyCacheControllerTest {
 
     @Test
     fun `GET daily returns redDay true when cache holds a public-holiday entry`() {
-        // The cache already has redDay=true baked in (set by OpeningHoursDailyCache.populate()
-        // when the date is a Norwegian public holiday). The controller must surface it as-is.
         val holidayId = UUID.randomUUID()
         `when`(cache.getAll()).thenReturn(
             mapOf(
-                holidayId to OpeningHoursDisplayData(
-                    ruleName = "Easter Sunday",
-                    rule = "??.??.???? ? ? 00:00-00:00",
-                    openingHours = "00:00-00:00",
-                    redDay = true,
+                holidayId to ServiceCacheEntry(
+                    serviceName = "Holiday Service",
+                    displayData = OpeningHoursDisplayData(
+                        ruleName = "Easter Sunday",
+                        rule = "??.??.???? ? ? 00:00-00:00",
+                        openingHours = "00:00-00:00",
+                        redDay = true,
+                    )
                 )
             )
         )
@@ -224,11 +247,14 @@ class DailyCacheControllerTest {
     fun `GET daily by id returns redDay true when cache holds a public-holiday entry`() {
         val serviceId = UUID.randomUUID()
         `when`(cache.getForService(serviceId)).thenReturn(
-            OpeningHoursDisplayData(
-                ruleName = "Christmas Day",
-                rule = "25.12.???? ? ? 00:00-00:00",
-                openingHours = "00:00-00:00",
-                redDay = true,
+            ServiceCacheEntry(
+                serviceName = "Christmas Service",
+                displayData = OpeningHoursDisplayData(
+                    ruleName = "Christmas Day",
+                    rule = "25.12.???? ? ? 00:00-00:00",
+                    openingHours = "00:00-00:00",
+                    redDay = true,
+                )
             )
         )
 
@@ -246,11 +272,14 @@ class DailyCacheControllerTest {
         val serviceId = UUID.randomUUID()
         `when`(cache.getAll()).thenReturn(
             mapOf(
-                serviceId to OpeningHoursDisplayData(
-                    ruleName = "Weekday rule",
-                    rule = "??.??.???? ? 1-5 08:00-16:00",
-                    openingHours = "08:00-16:00",
-                    redDay = false,
+                serviceId to ServiceCacheEntry(
+                    serviceName = "Normal Service",
+                    displayData = OpeningHoursDisplayData(
+                        ruleName = "Weekday rule",
+                        rule = "??.??.???? ? 1-5 08:00-16:00",
+                        openingHours = "08:00-16:00",
+                        redDay = false,
+                    )
                 )
             )
         )
@@ -268,17 +297,23 @@ class DailyCacheControllerTest {
         val normalId  = UUID.randomUUID()
         `when`(cache.getAll()).thenReturn(
             mapOf(
-                holidayId to OpeningHoursDisplayData(
-                    ruleName = "Labour Day",
-                    rule = "01.05.???? ? ? 00:00-00:00",
-                    openingHours = "00:00-00:00",
-                    redDay = true,
+                holidayId to ServiceCacheEntry(
+                    serviceName = "Labour Service",
+                    displayData = OpeningHoursDisplayData(
+                        ruleName = "Labour Day",
+                        rule = "01.05.???? ? ? 00:00-00:00",
+                        openingHours = "00:00-00:00",
+                        redDay = true,
+                    )
                 ),
-                normalId to OpeningHoursDisplayData(
-                    ruleName = "Standard weekday",
-                    rule = "??.??.???? ? 1-5 08:00-16:00",
-                    openingHours = "08:00-16:00",
-                    redDay = false,
+                normalId to ServiceCacheEntry(
+                    serviceName = "Standard Service",
+                    displayData = OpeningHoursDisplayData(
+                        ruleName = "Standard weekday",
+                        rule = "??.??.???? ? 1-5 08:00-16:00",
+                        openingHours = "08:00-16:00",
+                        redDay = false,
+                    )
                 ),
             )
         )

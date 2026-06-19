@@ -3,6 +3,7 @@ package no.nav.openinghours.controllers
 import io.swagger.v3.oas.annotations.Operation
 import no.nav.openinghours.dailycache.OpeningHoursDailyCache
 import no.nav.openinghours.dailycache.OpeningHoursDailyCacheScheduler
+import no.nav.openinghours.dailycache.ServiceCacheEntry
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import no.nav.openinghours.evaluator.OpeningHoursEvaluator
 import org.springframework.http.HttpStatus
@@ -30,7 +31,7 @@ class DailyCacheController(
         // at the same instant — avoids inconsistent isOpen values when a request
         // straddles an open/close boundary.
         val nowTime = LocalTime.now(clock)
-        return cache.getAll().mapValues { (_, data) -> data.toResponse(nowTime) }
+        return cache.getAll().mapValues { (_, entry) -> entry.toResponse(nowTime) }
     }
 
     @Operation(summary = "Get today's cached opening hours for a service")
@@ -46,6 +47,7 @@ class DailyCacheController(
 }
 
 data class DailyCacheResponse(
+    val serviceName: String,
     val ruleName: String?,
     val rule: String?,
     val openingHours: String?,
@@ -56,13 +58,14 @@ data class DailyCacheResponse(
     val isOpen: Boolean,
 )
 
-private fun OpeningHoursDisplayData.toResponse(nowTime: LocalTime) = DailyCacheResponse(
-    ruleName = ruleName,
-    rule = rule,
-    openingHours = openingHours,
-    displayHeader = displayHeader,
-    displayText = displayText,
-    onlyShowForNavEmployees = onlyShowForNavEmployees,
-    redDay = redDay,
-    isOpen = OpeningHoursEvaluator.computeIsOpen(openingHours ?: "00:00-23:59", nowTime),
+private fun ServiceCacheEntry.toResponse(nowTime: LocalTime) = DailyCacheResponse(
+    serviceName = serviceName,
+    ruleName = displayData.ruleName,
+    rule = displayData.rule,
+    openingHours = displayData.openingHours,
+    displayHeader = displayData.displayHeader,
+    displayText = displayData.displayText,
+    onlyShowForNavEmployees = displayData.onlyShowForNavEmployees,
+    redDay = displayData.redDay,
+    isOpen = OpeningHoursEvaluator.computeIsOpen(displayData.openingHours ?: "00:00-23:59", nowTime),
 )

@@ -348,7 +348,7 @@ class ServiceServiceTest {
 
         assertThat(result).containsKey(s.id)
         assertThat(result[s.id]).isNotNull()
-        assertThat(result[s.id]!!.name).isEqualTo("cache-group")
+        assertThat(result[s.id]!!.second?.name).isEqualTo("cache-group")
     }
 
     @Test
@@ -360,8 +360,8 @@ class ServiceServiceTest {
 
         assertThat(result).containsKey(s1.id)
         assertThat(result).containsKey(s2.id)
-        assertThat(result[s1.id]).isNull()
-        assertThat(result[s2.id]).isNull()
+        assertThat(result[s1.id]?.second).isNull()
+        assertThat(result[s2.id]?.second).isNull()
     }
 
     @Test
@@ -374,7 +374,7 @@ class ServiceServiceTest {
 
         assertThat(result).containsKey(withGroup.id)
         assertThat(result).containsKey(withoutGroup.id)
-        assertThat(result[withGroup.id]?.name).isEqualTo("cache-mixed-group")
-        assertThat(result[withoutGroup.id]).isNull()
+        assertThat(result[withGroup.id]?.second?.name).isEqualTo("cache-mixed-group")
+        assertThat(result[withoutGroup.id]?.second).isNull()
     }
 }
