@@ -22,7 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
-// â”€â”€ Kotlin-safe Mockito argument matcher helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Kotlin-safe Mockito argument matcher helpers --------------------------------
 // ArgumentMatchers methods return null at runtime to register the matcher;
 // the unchecked cast is intentional and safe inside Mockito stubbing calls.
 @Suppress("UNCHECKED_CAST")
@@ -81,7 +81,7 @@ class OpeningHoursDailyCacheTest {
     @Test
     fun `populate derives today from the injected clock, not the JVM default zone`() {
         // The fixed clock is 2024-01-15T10:00:00Z (UTC), so LocalDate.now(clock) = 2024-01-15.
-        // Verify that exact date is forwarded to the evaluator â€” not LocalDate.now() which
+        // Verify that exact date is forwarded to the evaluator - not LocalDate.now() which
         // would use the JVM default zone and could differ in non-UTC containers.
         val clockDate = LocalDate.now(clock) // 2024-01-15
         given(serviceService.getAllServicesForCache())
@@ -117,14 +117,14 @@ class OpeningHoursDailyCacheTest {
         val staleData = OpeningHoursDisplayData(ruleName = "Old rule", openingHours = "06:00-12:00")
         val freshData = OpeningHoursDisplayData(ruleName = "New rule", openingHours = "08:00-20:00")
 
-        // First populate â€“ stale data
+        // First populate - stale data
         given(serviceService.getAllServicesForCache())
             .willReturn(mapOf(serviceId1 to ServiceNameAndGroup("ServiceA", group1)))
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(staleData)
         cache.populate()
         assertThat(cache.getForService(serviceId1)?.displayData?.ruleName).isEqualTo("Old rule")
 
-        // Second populate â€“ fresh data
+        // Second populate - fresh data
         given(evaluator.getDisplayData(any(), eq(group1))).willReturn(freshData)
         cache.populate()
 
@@ -338,7 +338,7 @@ class OpeningHoursDailyCacheTest {
     }
 
     // ------------------------------------------------------------------ //
-    // No unnecessary allocations â€” identity preserved when no copy needed //
+    // No unnecessary allocations - identity preserved when no copy needed //
     // ------------------------------------------------------------------ //
 
     @Test
@@ -349,7 +349,7 @@ class OpeningHoursDailyCacheTest {
         cache.populate()
 
         assertThat(cache.getForService(serviceId1)?.displayData)
-            .`as`("DEFAULT_DISPLAY_DATA singleton must be reused â€” no copy on a normal weekday")
+            .`as`("DEFAULT_DISPLAY_DATA singleton must be reused - no copy on a normal weekday")
             .isSameAs(OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA)
     }
 
@@ -382,7 +382,7 @@ class OpeningHoursDailyCacheTest {
     }
 
     // ------------------------------------------------------------------ //
-    // Atomic swap â€” readers never see an empty / partially-populated map  //
+    // Atomic swap - readers never see an empty / partially-populated map  //
     // ------------------------------------------------------------------ //
 
     @RepeatedTest(5)

@@ -347,7 +347,7 @@ class ServiceServiceTest {
         val result = service.getAllServicesForCache()
 
         assertThat(result).containsKey(s.id)
-        assertThat(result[s.id]).isNotNull()
+        assertThat(result[s.id]?.group).isNotNull()
         assertThat(result[s.id]!!.group?.name).isEqualTo("cache-group")
     }
 
