@@ -130,7 +130,9 @@ data class QueryResponse(
     val displayText: String?,
     val onlyShowForNavEmployees: Boolean,
     val redDay: Boolean,
+    @field:com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     val matchedRule: MatchedRule?,
+    @field:com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     val warningMessage: String? = null,
 )
 
