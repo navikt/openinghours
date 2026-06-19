@@ -115,6 +115,7 @@ class QueryController(
             // queried date is an official Norwegian public holiday (helligdag / rød dag).
             redDay = displayData.redDay || norwegianPublicHolidays.isPublicHoliday(date),
             matchedRule = if (warningMessage == null && displayData.ruleName != null && displayData.rule != null) MatchedRule(displayData.ruleName, displayData.rule) else null,
+            warningMessage = warningMessage,
         )
     }
 }

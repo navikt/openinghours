@@ -2,6 +2,8 @@ package no.nav.openinghours.controllers
 
 import no.nav.openinghours.evaluator.NorwegianPublicHolidays
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
+import no.nav.openinghours.evaluator.OpeningHoursEvaluator
+import no.nav.openinghours.service.DisplayDataResult
 import no.nav.openinghours.service.OpeningHoursLookupService
 import no.nav.openinghours.service.ServiceService
 import org.junit.jupiter.api.BeforeEach
@@ -49,6 +51,69 @@ class QueryControllerTest {
         `when`(clock.zone).thenReturn(fixed.zone)
     }
 
+
+    @Test
+    fun `query range includes warningMessage and null matchedRule for dates with no matching rule`() {
+        // 2024-03-15 has a matching rule; 2024-03-16 has no matching rule (fallback).
+        val serviceId = UUID.randomUUID()
+        val groupId = UUID.randomUUID()
+        val matchDate = LocalDate.of(2024, 3, 15)
+        val noMatchDate = LocalDate.of(2024, 3, 16)
+        val expectedWarning = "Group: $groupId has rules defined, but none match the requested date: $noMatchDate. " +
+            "Default rule ID will be used because no valid rule is assigned."
+
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(lookupService.getDisplayDataOrDefault(groupId, matchDate)).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekdays", rule = "??.??.???? ? 1-5 07:00-21:00"))
+        )
+        `when`(lookupService.getDisplayDataOrDefault(groupId, noMatchDate)).thenReturn(
+            DisplayDataResult(
+                data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
+                warningMessage = expectedWarning,
+            )
+        )
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-15&to=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(2) }
+                // matched day — no warning, matchedRule present
+                jsonPath("$[0].warningMessage") { doesNotExist() }
+                jsonPath("$[0].matchedRule.name") { value("Weekdays") }
+                // no-match day — warning present, matchedRule absent
+                jsonPath("$[1].warningMessage") { value(expectedWarning) }
+                jsonPath("$[1].matchedRule") { doesNotExist() }
+                // default data: open all day
+                jsonPath("$[1].openingTime") { value("00:00") }
+                jsonPath("$[1].closingTime") { value("23:59") }
+            }
+    }
+
+    @Test
+    fun `query range returns full range even when every date has no matching rule`() {
+        // All dates fall back to DEFAULT_DISPLAY_DATA with a warning — response must still be 200 with all entries.
+        val serviceId = UUID.randomUUID()
+        val groupId = UUID.randomUUID()
+
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        listOf(LocalDate.of(2024, 3, 15), LocalDate.of(2024, 3, 16)).forEach { d ->
+            `when`(lookupService.getDisplayDataOrDefault(groupId, d)).thenReturn(
+                DisplayDataResult(
+                    data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
+                    warningMessage = "Group: $groupId has rules defined, but none match the requested date: $d. " +
+                        "Default rule ID will be used because no valid rule is assigned.",
+                )
+            )
+        }
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-15&to=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(2) }
+                jsonPath("$[0].warningMessage") { isString() }
+                jsonPath("$[1].warningMessage") { isString() }
+            }
+    }
 
     @Test
     fun `query by service returns opening hours`() {
@@ -104,11 +169,11 @@ class QueryControllerTest {
         val groupId = UUID.randomUUID()
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
-        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
-            OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekdays", rule = "??.??.???? ? 1-5 07:00-21:00")
+        `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekdays", rule = "??.??.???? ? 1-5 07:00-21:00"))
         )
-        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
-            OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = "weekend-closed", rule = "??.??.???? ? 6-7 00:00-00:00")
+        `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = "weekend-closed", rule = "??.??.???? ? 6-7 00:00-00:00"))
         )
 
         mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-15&to=2024-03-16")
@@ -292,14 +357,14 @@ class QueryControllerTest {
         val groupId = UUID.randomUUID()
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
-        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 14))).thenReturn(
-            OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 07:00-21:00")
+        `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 14))).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 07:00-21:00"))
         )
-        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
-            OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 07:00-21:00")
+        `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 07:00-21:00"))
         )
-        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
-            OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = "Weekend", rule = "??.??.???? ? 6-7 00:00-00:00")
+        `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(openingHours = "00:00-00:00", ruleName = "Weekend", rule = "??.??.???? ? 6-7 00:00-00:00"))
         )
 
         mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-14&to=2024-03-16")
@@ -413,11 +478,11 @@ class QueryControllerTest {
         val groupId   = UUID.randomUUID()
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
         // Both dates have open hours; what matters is which "today" semantics are applied.
-        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
-            OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 08:00-21:00")
+        `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 08:00-21:00"))
         )
-        `when`(lookupService.getDisplayData(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
-            OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekend", rule = "??.??.???? ? 6-7 08:00-21:00")
+        `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekend", rule = "??.??.???? ? 6-7 08:00-21:00"))
         )
 
         // At 23:59:59 with snapshot today=2024-03-15:
@@ -505,8 +570,8 @@ class QueryControllerTest {
         val friday    = LocalDate.of(2025, 4, 18) // Langfredag
 
         listOf(wednesday, thursday, friday).forEach { d ->
-            `when`(lookupService.getDisplayData(groupId, d)).thenReturn(
-                OpeningHoursDisplayData(openingHours = "08:00-16:00", ruleName = "Base", rule = "??.??.???? ? 1-5 08:00-16:00", redDay = false)
+            `when`(lookupService.getDisplayDataOrDefault(groupId, d)).thenReturn(
+                DisplayDataResult(OpeningHoursDisplayData(openingHours = "08:00-16:00", ruleName = "Base", rule = "??.??.???? ? 1-5 08:00-16:00", redDay = false))
             )
         }
 
