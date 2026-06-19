@@ -3,6 +3,8 @@ package no.nav.openinghours.controllers
 import no.nav.openinghours.evaluator.NorwegianPublicHolidays
 import no.nav.openinghours.evaluator.OpeningHoursDisplayData
 import no.nav.openinghours.evaluator.OpeningHoursEvaluator
+import no.nav.openinghours.model.db.Service
+import no.nav.openinghours.model.db.ServiceType
 import no.nav.openinghours.service.DisplayDataResult
 import no.nav.openinghours.service.OpeningHoursLookupService
 import no.nav.openinghours.service.ServiceService
@@ -63,6 +65,7 @@ class QueryControllerTest {
             "Default rule ID will be used because no valid rule is assigned."
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
         `when`(lookupService.getDisplayDataOrDefault(groupId, matchDate)).thenReturn(
             DisplayDataResult(OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekdays", rule = "??.??.???? ? 1-5 07:00-21:00"))
         )
@@ -77,9 +80,11 @@ class QueryControllerTest {
             .andExpect {
                 status { isOk() }
                 jsonPath("$.length()") { value(2) }
+                jsonPath("$[0].serviceName") { value("Bidrag") }
                 // matched day — no warning, matchedRule present
                 jsonPath("$[0].warningMessage") { doesNotExist() }
                 jsonPath("$[0].matchedRule.name") { value("Weekdays") }
+                jsonPath("$[1].serviceName") { value("Bidrag") }
                 // no-match day — warning present, matchedRule absent
                 jsonPath("$[1].warningMessage") { value(expectedWarning) }
                 jsonPath("$[1].matchedRule") { doesNotExist() }
@@ -96,6 +101,7 @@ class QueryControllerTest {
         val groupId = UUID.randomUUID()
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
         listOf(LocalDate.of(2024, 3, 15), LocalDate.of(2024, 3, 16)).forEach { d ->
             `when`(lookupService.getDisplayDataOrDefault(groupId, d)).thenReturn(
                 DisplayDataResult(
@@ -122,6 +128,7 @@ class QueryControllerTest {
         val date = LocalDate.of(2024, 3, 15)
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
         `when`(lookupService.getDisplayData(groupId, date)).thenReturn(
             OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Standard weekdays", rule = "??.??.???? ? 1-5 07:00-21:00")
         )
@@ -129,6 +136,7 @@ class QueryControllerTest {
         mockMvc.get("/api/openinghours/query/service/$serviceId?date=2024-03-15")
             .andExpect {
                 status { isOk() }
+                jsonPath("$.serviceName") { value("Bidrag") }
                 jsonPath("$.isOpen") { value(true) }
                 jsonPath("$.openingTime") { value("07:00") }
                 jsonPath("$.closingTime") { value("21:00") }
@@ -169,6 +177,7 @@ class QueryControllerTest {
         val groupId = UUID.randomUUID()
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
         `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
             DisplayDataResult(OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekdays", rule = "??.??.???? ? 1-5 07:00-21:00"))
         )
@@ -192,6 +201,7 @@ class QueryControllerTest {
         val date = LocalDate.of(2024, 3, 15)
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
         `when`(lookupService.getDisplayData(groupId, date)).thenReturn(
             OpeningHoursDisplayData(
                 openingHours = "09:00-15:00",
@@ -207,6 +217,7 @@ class QueryControllerTest {
         mockMvc.get("/api/openinghours/query/service/$serviceId?date=2024-03-15")
             .andExpect {
                 status { isOk() }
+                jsonPath("$.serviceName") { value("Bidrag") }
                 jsonPath("$.isOpen") { value(true) }
                 jsonPath("$.openingTime") { value("09:00") }
                 jsonPath("$.closingTime") { value("15:00") }
@@ -357,6 +368,7 @@ class QueryControllerTest {
         val groupId = UUID.randomUUID()
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
         `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 14))).thenReturn(
             DisplayDataResult(OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 07:00-21:00"))
         )
@@ -477,6 +489,7 @@ class QueryControllerTest {
         val serviceId = UUID.randomUUID()
         val groupId   = UUID.randomUUID()
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
         // Both dates have open hours; what matters is which "today" semantics are applied.
         `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
             DisplayDataResult(OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 08:00-21:00"))
@@ -564,6 +577,7 @@ class QueryControllerTest {
         val serviceId = UUID.randomUUID()
         val groupId   = UUID.randomUUID()
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
 
         val wednesday = LocalDate.of(2025, 4, 16)
         val thursday  = LocalDate.of(2025, 4, 17) // Skjærtorsdag

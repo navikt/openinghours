@@ -15,6 +15,9 @@ import org.springframework.web.server.ResponseStatusException
 import java.util.UUID
 import org.springframework.dao.IncorrectResultSizeDataAccessException
 
+/** Pairs a service's display name with its resolved opening-hours group (null = no group linked). */
+data class ServiceNameAndGroup(val name: String, val group: ResolvedGroup?)
+
 @SpringService
 class ServiceService(
     private val repo: ServiceRepository,
@@ -188,17 +191,17 @@ class ServiceService(
     }
 
     /**
-     * Returns every service in the system paired with its resolved opening-hours group.
-     * Services that have no linked group are mapped to null; callers should fall back
+     * Returns every service in the system paired with its name and resolved opening-hours group.
+     * Services that have no linked group have a null ResolvedGroup; callers should fall back
      * to the default display data for those entries.
      */
     @Transactional(readOnly = true)
-    fun getAllServicesForCache(): Map<UUID, ResolvedGroup?> {
+    fun getAllServicesForCache(): Map<UUID, ServiceNameAndGroup> {
         val resolvedGroupsById = mutableMapOf<UUID, ResolvedGroup>()
         val serviceToGroup = repo.findAllServiceGroupLinks().associate { link ->
             link.getServiceId() to resolvedGroupsById.getOrPut(link.getGroupId()) { resolver.resolve(link.getGroupId()) }
         }
-        return repo.findAll().associate { it.id to serviceToGroup[it.id] }
+        return repo.findAll().associate { it.id to ServiceNameAndGroup(it.name, serviceToGroup[it.id]) }
     }
 
     fun getResolvedOhGroupForService(serviceId: UUID): ResolvedGroup? {
