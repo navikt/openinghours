@@ -365,7 +365,7 @@ class OpeningHoursDailyCacheTest {
         cacheOnEaster.populate()
 
         assertThat(cacheOnEaster.getForService(serviceId1)?.displayData)
-            .`as`("Instance must be reused when displayData.redDay is already true â€” no redundant copy")
+            .`as`("Instance must be reused when displayData.redDay is already true - no redundant copy")
             .isSameAs(alreadyRedData)
     }
 
@@ -377,7 +377,7 @@ class OpeningHoursDailyCacheTest {
         cache.populate()
 
         assertThat(cache.getForService(serviceId1)?.displayData)
-            .`as`("Evaluator result must be reused as-is on a normal weekday â€” no redundant copy")
+            .`as`("Evaluator result must be reused as-is on a normal weekday - no redundant copy")
             .isSameAs(displayData1)
     }
 
