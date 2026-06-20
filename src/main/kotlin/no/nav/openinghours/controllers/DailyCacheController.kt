@@ -30,7 +30,7 @@ class DailyCacheController(
         // at the same instant — avoids inconsistent isOpen values when a request
         // straddles an open/close boundary.
         val nowTime = LocalTime.now(clock)
-        return cache.getAll().mapValues { (_, entry) -> entry.toResponse(nowTime) }
+        return cache.getAll().mapValues { (id, entry) -> entry.toResponse(id, nowTime) }
     }
 
     @Operation(summary = "Get today's cached opening hours for a service")
@@ -38,7 +38,7 @@ class DailyCacheController(
     fun getForService(@PathVariable serviceId: UUID): DailyCacheResponse =
         (cache.getForService(serviceId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No cached data for service $serviceId"))
-            .toResponse(LocalTime.now(clock))
+            .toResponse(serviceId, LocalTime.now(clock))
 
     @Operation(summary = "Manually trigger a cache refresh")
     @PostMapping("/refresh")
@@ -46,6 +46,7 @@ class DailyCacheController(
 }
 
 data class DailyCacheResponse(
+    val serviceId: UUID,
     val serviceName: String,
     val ruleName: String?,
     val rule: String?,
@@ -57,7 +58,8 @@ data class DailyCacheResponse(
     val isOpen: Boolean,
 )
 
-private fun ServiceCacheEntry.toResponse(nowTime: LocalTime) = DailyCacheResponse(
+private fun ServiceCacheEntry.toResponse(serviceId: UUID, nowTime: LocalTime) = DailyCacheResponse(
+    serviceId = serviceId,
     serviceName = serviceName,
     ruleName = displayData.ruleName,
     rule = displayData.rule,
