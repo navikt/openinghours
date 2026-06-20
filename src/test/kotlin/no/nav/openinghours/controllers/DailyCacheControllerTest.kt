@@ -76,10 +76,12 @@ class DailyCacheControllerTest {
         mockMvc.get("/api/openinghours/daily")
             .andExpect {
                 status { isOk() }
+                jsonPath("$['$id1'].serviceId") { value(id1.toString()) }
                 jsonPath("$['$id1'].serviceName") { value("Bidrag") }
                 jsonPath("$['$id1'].ruleName") { value("Weekday rule") }
                 jsonPath("$['$id1'].openingHours") { value("08:00-16:00") }
                 jsonPath("$['$id1'].isOpen") { value(true) }
+                jsonPath("$['$id2'].serviceId") { value(id2.toString()) }
                 jsonPath("$['$id2'].serviceName") { value("Dagpenger") }
                 jsonPath("$['$id2'].ruleName") { value("Weekend closed") }
                 jsonPath("$['$id2'].openingHours") { value("00:00-00:00") }
@@ -121,6 +123,7 @@ class DailyCacheControllerTest {
         mockMvc.get("/api/openinghours/daily")
             .andExpect {
                 status { isOk() }
+                jsonPath("$['$id'].serviceId") { value(id.toString()) }
                 jsonPath("$['$id'].serviceName") { value("Nav Employees Service") }
                 jsonPath("$['$id'].ruleName") { value("Nav employees only") }
                 jsonPath("$['$id'].openingHours") { value("09:00-15:00") }
@@ -151,6 +154,7 @@ class DailyCacheControllerTest {
         mockMvc.get("/api/openinghours/daily/$serviceId")
             .andExpect {
                 status { isOk() }
+                jsonPath("$.serviceId") { value(serviceId.toString()) }
                 jsonPath("$.serviceName") { value("Standard Service") }
                 jsonPath("$.ruleName") { value("Standard weekdays") }
                 jsonPath("$.openingHours") { value("07:00-21:00") }
@@ -180,6 +184,7 @@ class DailyCacheControllerTest {
         mockMvc.get("/api/openinghours/daily/$serviceId")
             .andExpect {
                 status { isOk() }
+                jsonPath("$.serviceId") { value(serviceId.toString()) }
                 jsonPath("$.serviceName") { value("Internal Service") }
                 jsonPath("$.ruleName") { value("Internal") }
                 jsonPath("$.openingHours") { value("09:00-15:00") }
@@ -261,6 +266,7 @@ class DailyCacheControllerTest {
         mockMvc.get("/api/openinghours/daily/$serviceId")
             .andExpect {
                 status { isOk() }
+                jsonPath("$.serviceId") { value(serviceId.toString()) }
                 jsonPath("$.ruleName") { value("Christmas Day") }
                 jsonPath("$.redDay") { value(true) }
                 jsonPath("$.isOpen") { value(false) }
