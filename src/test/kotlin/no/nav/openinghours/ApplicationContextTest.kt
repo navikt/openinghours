@@ -2,11 +2,16 @@ package no.nav.openinghours
 
 import no.nav.openinghours.dailycache.OpeningHoursDailyCache
 import no.nav.openinghours.dailycache.OpeningHoursDailyCacheScheduler
+import no.nav.openinghours.model.db.ServiceType
+import no.nav.openinghours.service.ServiceService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContext
+import org.springframework.context.annotation.Bean
 import org.springframework.scheduling.config.CronTask
 import org.springframework.scheduling.config.ScheduledTaskHolder
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -23,10 +28,43 @@ import java.time.Clock
  * A real PostgreSQL container is used so Flyway migrations run exactly as in
  * production, catching any schema/bean wiring problem before it reaches an
  * environment.
+ *
+ * Cache-populate verification strategy
+ * ─────────────────────────────────────
+ * cacheRef is initialised with AtomicReference(emptyMap()), so asserting
+ * getAll().isNotNull is a tautology — it passes whether or not populate() ever
+ * ran.  Instead, a @TestConfiguration ApplicationRunner inserts a known service
+ * BEFORE ApplicationReadyEvent fires (runners execute before the ready event),
+ * so when populate() runs it has real data to load.  The test then asserts the
+ * cache contains that service, proving the full chain:
+ *   ApplicationReadyEvent → scheduler.refresh() → cache.populate()
+ * actually fired and did real work.
  */
 @SpringBootTest
 @Testcontainers
 class ApplicationContextTest {
+
+    /**
+     * Seeds a known service before ApplicationReadyEvent fires so that
+     * cache.populate() has something to store — making a non-empty cache the
+     * observable proof that the startup chain ran.
+     *
+     * Spring's startup order:
+     *   refreshContext()  →  callRunners()  →  ApplicationReadyEvent
+     * ApplicationRunner beans run in callRunners(), which is before the event.
+     */
+    @TestConfiguration
+    class SeedConfiguration {
+        @Bean
+        fun seedSmokeTestService(serviceService: ServiceService): ApplicationRunner =
+            ApplicationRunner {
+                serviceService.save(
+                    name = "SmokeTestService",
+                    type = ServiceType.TJENESTE,
+                    team  = "smoke-team",
+                )
+            }
+    }
 
     companion object {
         @Container
@@ -68,13 +106,22 @@ class ApplicationContextTest {
     // ── Cache bean ───────────────────────────────────────────────────────────
 
     @Test
-    fun `OpeningHoursDailyCache bean is present and populated after startup`() {
+    fun `OpeningHoursDailyCache bean is present`() {
         assertThat(cache).isNotNull
-        // ApplicationReadyEvent fired on startup → cache.populate() was called.
-        // On a fresh DB with no services the snapshot is an empty map, never null.
-        assertThat(cache.getAll())
-            .`as`("Cache snapshot must be non-null after context startup")
-            .isNotNull
+    }
+
+    @Test
+    fun `OpeningHoursDailyCache populate is invoked on startup via ApplicationReadyEvent`() {
+        // SeedConfiguration.seedSmokeTestService inserts "SmokeTestService" via an
+        // ApplicationRunner, which runs before ApplicationReadyEvent fires.
+        // populate() must therefore store that service in the cache by the time any
+        // test method executes.  A non-empty cache (containing the known service) is
+        // the only assertion that can distinguish "populate() was called" from
+        // "cacheRef still holds the initial emptyMap()".
+        val cachedNames = cache.getAll().values.map { it.serviceName }
+        assertThat(cachedNames)
+            .`as`("Cache must contain the service seeded before ApplicationReadyEvent")
+            .contains("SmokeTestService")
     }
 
     // ── Scheduler bean ───────────────────────────────────────────────────────
@@ -105,4 +152,3 @@ class ApplicationContextTest {
             .isEqualTo("Europe/Oslo")
     }
 }
-
