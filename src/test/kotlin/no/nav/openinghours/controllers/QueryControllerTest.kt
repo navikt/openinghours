@@ -11,6 +11,8 @@ import no.nav.openinghours.service.ServiceService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
@@ -509,6 +511,120 @@ class QueryControllerTest {
                 jsonPath("$[0].isOpen") { value(false) }
                 // non-today (2024-03-16) with non-closed hours → open-at-all → true
                 jsonPath("$[1].isOpen") { value(true) }
+            }
+    }
+
+    @Test
+    fun `query range snapshot just after midnight - yesterday in the range is treated as not-today`() {
+        // Mirror of the before-midnight test: the clock has just ticked past midnight, so
+        // "today" from the snapshot is 2024-03-16. A stale second read would give 2024-03-15.
+        // Without the single-snapshot guarantee the two entries would swap semantics.
+        val justAfterMidnight  = Clock.fixed(Instant.parse("2024-03-16T00:00:01Z"), ZoneOffset.UTC)
+        val justBeforeMidnight = Clock.fixed(Instant.parse("2024-03-15T23:59:59Z"), ZoneOffset.UTC)
+        `when`(clock.instant())
+            .thenReturn(justAfterMidnight.instant())   // first call: range snapshot → today = 2024-03-16
+            .thenReturn(justBeforeMidnight.instant())  // must never be used
+        `when`(clock.zone).thenReturn(ZoneOffset.UTC)
+
+        val serviceId = UUID.randomUUID()
+        val groupId   = UUID.randomUUID()
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
+        `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 08:00-21:00"))
+        )
+        `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 08:00-21:00"))
+        )
+
+        // Snapshot today = 2024-03-16 at 00:00:01:
+        //   entry 0 (2024-03-15 ≠ today) → open-at-all → 08:00-21:00 ≠ 00:00-00:00 → true
+        //   entry 1 (2024-03-16 = today at 00:00:01) → real-time → before 08:00 → false
+        //
+        // Without the snapshot, if entry 1 re-read the clock and got 23:59:59 (today=2024-03-15):
+        //   entry 0 would become today → real-time at 23:59:59 after 21:00 → false  (WRONG)
+        //   entry 1 would become not-today → open-at-all → true                     (WRONG)
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-15&to=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(2) }
+                jsonPath("$[0].isOpen") { value(true) }   // yesterday → open-at-all
+                jsonPath("$[1].isOpen") { value(false) }  // today at 00:00:01 → not yet open
+            }
+    }
+
+    @Test
+    fun `query range clock instant is read exactly once regardless of range length`() {
+        // The production code calls LocalDateTime.now(clock) once before the date loop.
+        // Regardless of how many entries the range contains, clock#instant must be
+        // called exactly once — not once per entry.
+        val snapshot = Clock.fixed(Instant.parse("2024-03-15T10:00:00Z"), ZoneOffset.UTC)
+        `when`(clock.instant()).thenReturn(snapshot.instant())
+        `when`(clock.zone).thenReturn(ZoneOffset.UTC)
+
+        val serviceId = UUID.randomUUID()
+        val groupId   = UUID.randomUUID()
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
+        (12..15).forEach { day ->
+            `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, day))).thenReturn(
+                DisplayDataResult(OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 08:00-21:00"))
+            )
+        }
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-12&to=2024-03-15")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(4) }
+            }
+
+        // Core assertion: regardless of the 4-entry range, the clock was read only once.
+        verify(clock, times(1)).instant()
+    }
+
+    @Test
+    fun `query range three-day straddle - today in the middle keeps consistent semantics across all entries`() {
+        // Range: yesterday | today | tomorrow. Snapshot at 23:59:59 on the middle day (today).
+        // If the clock advanced past midnight mid-iteration, yesterday would become not-today
+        // (open-at-all) and tomorrow would become today (real-time) — reversing two entries.
+        // The single snapshot must prevent that.
+        val snapshotBeforeMidnight = Clock.fixed(Instant.parse("2024-03-15T23:59:59Z"), ZoneOffset.UTC)
+        val afterMidnight          = Clock.fixed(Instant.parse("2024-03-16T00:00:01Z"), ZoneOffset.UTC)
+        `when`(clock.instant())
+            .thenReturn(snapshotBeforeMidnight.instant())  // snapshot → today = 2024-03-15
+            .thenReturn(afterMidnight.instant())           // must never be used
+        `when`(clock.zone).thenReturn(ZoneOffset.UTC)
+
+        val serviceId = UUID.randomUUID()
+        val groupId   = UUID.randomUUID()
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
+        listOf(
+            LocalDate.of(2024, 3, 14), // yesterday
+            LocalDate.of(2024, 3, 15), // today (snapshot)
+            LocalDate.of(2024, 3, 16), // tomorrow
+        ).forEach { d ->
+            `when`(lookupService.getDisplayDataOrDefault(groupId, d)).thenReturn(
+                DisplayDataResult(OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 08:00-21:00"))
+            )
+        }
+
+        // Snapshot today = 2024-03-15 at 23:59:59:
+        //   entry 0 (2024-03-14 ≠ today) → open-at-all → 08:00-21:00 → true
+        //   entry 1 (2024-03-15 = today at 23:59:59) → real-time → after 21:00 → false
+        //   entry 2 (2024-03-16 ≠ today) → open-at-all → 08:00-21:00 → true
+        //
+        // Without the snapshot, if the clock ticked to 00:00:01 after entry 0 was processed:
+        //   entry 0 would have been today (2024-03-15 at 23:59:59 → closed) — same by coincidence
+        //   entry 1 would become not-today (open-at-all → true)              — WRONG
+        //   entry 2 would become today (00:00:01, before 08:00 → false)      — WRONG
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-14&to=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(3) }
+                jsonPath("$[0].isOpen") { value(true) }   // yesterday  → open-at-all
+                jsonPath("$[1].isOpen") { value(false) }  // today at 23:59:59 → after close
+                jsonPath("$[2].isOpen") { value(true) }   // tomorrow   → open-at-all
             }
     }
 
