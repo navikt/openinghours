@@ -12,14 +12,17 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
+import org.springframework.scheduling.TriggerContext
 import org.springframework.scheduling.config.CronTask
 import org.springframework.scheduling.config.ScheduledTaskHolder
+import org.springframework.scheduling.support.CronTrigger
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.Clock
+import java.time.Instant
 
 /**
  * Smoke test: verifies the full Spring application context loads successfully
@@ -144,11 +147,39 @@ class ApplicationContextTest {
 
     @Test
     fun `midnight CronTask zone resolves to the Clock bean's zone`() {
-        // The @Scheduled zone SpEL #{@clock.zone.id} must resolve at context startup.
-        // If it failed, the context would not have loaded at all.  Here we confirm the
-        // resolved zone matches the Clock bean so the cron fires at local midnight, not UTC.
-        assertThat(clock.zone.id)
-            .`as`("Scheduler cron zone must match the Clock bean — both must be Europe/Oslo")
-            .isEqualTo("Europe/Oslo")
+        // Simply asserting clock.zone.id == "Europe/Oslo" does NOT prove that the
+        // @Scheduled(zone = "#{@clock.zone.id}") SpEL is being applied to the trigger.
+        // If the SpEL stopped resolving, the zone would silently default to UTC and the
+        // old assertion would still pass.
+        //
+        // Instead, retrieve the registered CronTrigger and ask it behaviourally:
+        // given an instant 1 second before midnight in Europe/Oslo (UTC+2 in summer),
+        // the next execution must be at 22:00:00Z (= midnight Oslo), NOT 00:00:00Z (midnight UTC).
+        val cronTask = scheduledTaskHolder.scheduledTasks
+            .mapNotNull { it.task as? CronTask }
+            .firstOrNull { it.expression == "0 0 0 * * *" }
+
+        assertThat(cronTask)
+            .`as`("Midnight CronTask '0 0 0 * * *' must be registered")
+            .isNotNull
+
+        val trigger = cronTask!!.trigger as? CronTrigger
+        assertThat(trigger)
+            .`as`("CronTask trigger must be a CronTrigger")
+            .isNotNull
+
+        // 2024-06-15T21:59:59Z  =  2024-06-15T23:59:59 Europe/Oslo (CEST = UTC+2)
+        // Correct next fire (Oslo zone): 2024-06-16T00:00:00 Oslo  =  2024-06-15T22:00:00Z
+        // Wrong next fire (UTC zone):    2024-06-16T00:00:00 UTC   =  2024-06-16T00:00:00Z
+        val justBeforeMidnightOslo = Instant.parse("2024-06-15T21:59:59Z")
+        val ctx = object : TriggerContext {
+            override fun lastScheduledExecution(): Instant = justBeforeMidnightOslo
+            override fun lastActualExecution(): Instant    = justBeforeMidnightOslo
+            override fun lastCompletion(): Instant         = justBeforeMidnightOslo
+        }
+
+        assertThat(trigger!!.nextExecution(ctx))
+            .`as`("CronTrigger must fire at midnight Europe/Oslo (22:00 UTC in CEST), not midnight UTC")
+            .isEqualTo(Instant.parse("2024-06-15T22:00:00Z"))
     }
 }
