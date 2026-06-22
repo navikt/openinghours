@@ -554,7 +554,7 @@ class QueryControllerTest {
     }
 
     @Test
-    fun `query range clock is read exactly once when snapshot falls just before midnight`() {
+    fun `query range clock instant is read exactly once when snapshot falls just before midnight`() {
         // The clock is captured just before midnight so the range straddles the day boundary.
         // Combining a midnight-boundary snapshot with the exact-once call-count assertion
         // directly exercises the single-instant guarantee: even when the wall-clock would
@@ -580,6 +580,7 @@ class QueryControllerTest {
         mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-15&to=2024-03-16")
             .andExpect {
                 status { isOk() }
+                jsonPath("$.length()") { value(2) }
                 jsonPath("$[0].isOpen") { value(false) }  // today at 23:59:59 — after close
                 jsonPath("$[1].isOpen") { value(true) }   // tomorrow — open-at-all
             }
