@@ -512,6 +512,7 @@ class QueryControllerTest {
                 // non-today (2024-03-16) with non-closed hours → open-at-all → true
                 jsonPath("$[1].isOpen") { value(true) }
             }
+
     }
 
     @Test
