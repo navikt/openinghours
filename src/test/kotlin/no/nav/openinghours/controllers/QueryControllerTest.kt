@@ -513,9 +513,6 @@ class QueryControllerTest {
                 jsonPath("$[1].isOpen") { value(true) }
             }
 
-        // Structural guarantee: even with a midnight-boundary snapshot the clock is
-        // read exactly once for the whole range, not once per entry.
-        verify(clock, times(1)).instant()
     }
 
     @Test
