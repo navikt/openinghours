@@ -512,6 +512,10 @@ class QueryControllerTest {
                 // non-today (2024-03-16) with non-closed hours → open-at-all → true
                 jsonPath("$[1].isOpen") { value(true) }
             }
+
+        // Structural guarantee: even with a midnight-boundary snapshot the clock is
+        // read exactly once for the whole range, not once per entry.
+        verify(clock, times(1)).instant()
     }
 
     @Test
@@ -551,43 +555,6 @@ class QueryControllerTest {
                 jsonPath("$[0].isOpen") { value(true) }   // yesterday → open-at-all
                 jsonPath("$[1].isOpen") { value(false) }  // today at 00:00:01 → not yet open
             }
-    }
-
-    @Test
-    fun `query range clock instant is read exactly once when snapshot falls just before midnight`() {
-        // The clock is captured just before midnight so the range straddles the day boundary.
-        // Combining a midnight-boundary snapshot with the exact-once call-count assertion
-        // directly exercises the single-instant guarantee: even when the wall-clock would
-        // tick to the next day partway through the iteration, the controller must not
-        // re-read it, and every entry must be evaluated against the same frozen "today".
-        val justBeforeMidnight = Clock.fixed(Instant.parse("2024-03-15T23:59:59Z"), ZoneOffset.UTC)
-        `when`(clock.instant()).thenReturn(justBeforeMidnight.instant())
-        `when`(clock.zone).thenReturn(ZoneOffset.UTC)
-
-        val serviceId = UUID.randomUUID()
-        val groupId   = UUID.randomUUID()
-        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
-        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
-        listOf(LocalDate.of(2024, 3, 15), LocalDate.of(2024, 3, 16)).forEach { d ->
-            `when`(lookupService.getDisplayDataOrDefault(groupId, d)).thenReturn(
-                DisplayDataResult(OpeningHoursDisplayData(openingHours = "08:00-21:00", ruleName = "Weekday", rule = "??.??.???? ? 1-5 08:00-21:00"))
-            )
-        }
-
-        // Snapshot today = 2024-03-15 at 23:59:59 (after the 21:00 close):
-        //   entry 0 (2024-03-15 = today) → real-time → after 21:00 → closed
-        //   entry 1 (2024-03-16 ≠ today) → open-at-all → 08:00-21:00 → true
-        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-15&to=2024-03-16")
-            .andExpect {
-                status { isOk() }
-                jsonPath("$.length()") { value(2) }
-                jsonPath("$[0].isOpen") { value(false) }  // today at 23:59:59 — after close
-                jsonPath("$[1].isOpen") { value(true) }   // tomorrow — open-at-all
-            }
-
-        // Structural guarantee: the clock was read exactly once for the whole range,
-        // even though the snapshot was taken just one second before the day rolled over.
-        verify(clock, times(1)).instant()
     }
 
     @Test
