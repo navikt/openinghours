@@ -92,7 +92,7 @@ class QueryController(
         displayDataResult: DisplayDataResult? = null,
         serviceName: String? = null,
     ): QueryResponse {
-        val displayData = displayDataResult?.data ?: lookupService.getDisplayData(groupId!!, date)
+        val displayData = displayDataResult?.data ?: lookupService.getDisplayData(requireNotNull(groupId) { "groupId is required when displayDataResult is null" }, date)
         val warningMessage = displayDataResult?.warningMessage
         val hours = displayData.openingHours ?: "00:00-23:59"
         val today = now.toLocalDate()
@@ -110,7 +110,7 @@ class QueryController(
         val isOpen = OpeningHoursEvaluator.computeIsOpenOnDate(hours, date, today, nowTime)
 
         return QueryResponse(
-            resourceId = serviceId ?: groupId!!,
+            resourceId = serviceId ?: requireNotNull(groupId) { "groupId is required when serviceId is null" },
             serviceName = serviceName,
             date = date,
             isOpen = isOpen,
