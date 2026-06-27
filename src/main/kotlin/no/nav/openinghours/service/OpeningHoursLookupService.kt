@@ -36,13 +36,19 @@ class OpeningHoursLookupService(
     }
 
     /**
-     * Like [getDisplayData] but never throws on a no-match: instead it returns
+     * Like [getDisplayData] but never throws on a no-match or empty group: instead it returns
      * [OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA] together with a [DisplayDataResult.warningMessage]
-     * that describes the situation. Used by range queries so that the full date range is always
-     * returned even when some dates have no applicable rule.
+     * that describes the situation. Used by service queries so that a response is always returned
+     * even when the group is empty or no rule matches the requested date.
      */
     fun getDisplayDataOrDefault(groupId: UUID, date: LocalDate): DisplayDataResult {
         val group = resolver.resolve(groupId)
+        if (!evaluator.hasRules(group)) {
+            return DisplayDataResult(
+                data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
+                warningMessage = "No rules are defined for the requested date: $date. Default opening hours are used instead.",
+            )
+        }
         val data = evaluator.getDisplayData(date, group)
         return if (data != null) {
             DisplayDataResult(data)

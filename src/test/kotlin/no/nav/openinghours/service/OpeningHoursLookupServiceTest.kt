@@ -122,14 +122,42 @@ class OpeningHoursLookupServiceTest {
     }
 
     @Test
-    fun `getDisplayData returns default open-all-day when group has no rules at all`() {
+    fun `getDisplayDataOrDefault returns default open-all-day with warning when group has no rules`() {
         val group = createGroup("Empty group", emptyList())
 
-        val result = lookupService.getDisplayData(group.id, LocalDate.of(2024, 3, 16))
+        val result = lookupService.getDisplayDataOrDefault(group.id, LocalDate.of(2024, 3, 16))
 
-        assertThat(result.ruleName).isEqualTo("No Rules stated")
-        assertThat(result.openingHours).isEqualTo("00:00-23:59")
-        assertThat(result.displayHeader).isEqualTo("Default regel")
+        assertThat(result.data.ruleName).isEqualTo("No Rules stated")
+        assertThat(result.data.openingHours).isEqualTo("00:00-23:59")
+        assertThat(result.warningMessage).isNotNull()
+        assertThat(result.warningMessage).contains("No rules are defined")
+        assertThat(result.warningMessage).contains("Default opening hours are used instead")
+    }
+
+    @Test
+    fun `getDisplayDataOrDefault returns data without warning when rule matches`() {
+        val rule = createRule("Weekdays", "??.??.???? ? 1-5 08:00-16:00")
+        val group = createGroup("Office hours", listOf(rule.id))
+
+        // 2024-03-15 is a Friday — rule matches
+        val result = lookupService.getDisplayDataOrDefault(group.id, LocalDate.of(2024, 3, 15))
+
+        assertThat(result.warningMessage).isNull()
+        assertThat(result.data.openingHours).isEqualTo("08:00-16:00")
+    }
+
+    @Test
+    fun `getDisplayDataOrDefault returns default with warning when group has rules but none match`() {
+        val rule = createRule("Weekdays only", "??.??.???? ? 1-5 08:00-16:00")
+        val group = createGroup("Office hours", listOf(rule.id))
+
+        // 2024-03-16 is a Saturday — no match
+        val result = lookupService.getDisplayDataOrDefault(group.id, LocalDate.of(2024, 3, 16))
+
+        assertThat(result.data.openingHours).isEqualTo("00:00-23:59")
+        assertThat(result.warningMessage).isNotNull()
+        assertThat(result.warningMessage).contains("has rules defined")
+        assertThat(result.warningMessage).contains("none match")
     }
 }
 

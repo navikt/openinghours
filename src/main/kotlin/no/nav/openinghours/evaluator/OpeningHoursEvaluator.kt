@@ -128,6 +128,17 @@ class OpeningHoursEvaluator {
         data class Matched(val openingHours: String, val ruleName: String, val rule: String, val displayHeader: String? = null, val displayText: String? = null, val onlyShowForNavEmployees: Boolean = false, val redDay: Boolean = false) : EvalResult
     }
 
+    /** Returns true if any rule (at any nesting depth) exists in [group]. */
+    fun hasRules(group: ResolvedGroup): Boolean = entriesHaveRules(group.entries)
+
+    private fun entriesHaveRules(entries: List<ResolvedEntry>): Boolean =
+        entries.any { entry ->
+            when (entry) {
+                is ResolvedRule -> true
+                is ResolvedGroup -> entriesHaveRules(entry.entries)
+            }
+        }
+
     fun getOpeningHours(date: LocalDate, group: ResolvedGroup): String =
         when (val r = evaluate(date, group.entries)) {
             is EvalResult.Matched -> r.openingHours
