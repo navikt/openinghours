@@ -244,7 +244,7 @@ class QueryControllerTest {
         val serviceId = UUID.randomUUID()
         val groupId = UUID.randomUUID()
         val date = LocalDate.of(2024, 3, 15)
-        val expectedWarning = "No rules are defined for the requested date: $date. Default opening hours are used instead."
+        val expectedWarning = "No rules are defined for the requested date: $date. Returned default display data."
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
         `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
@@ -356,8 +356,8 @@ class QueryControllerTest {
     fun `query range returns default opening hours with warning when group has no rules`() {
         val serviceId = UUID.randomUUID()
         val groupId = UUID.randomUUID()
-        val expectedWarning15 = "No rules are defined for the requested date: 2024-03-15. Default opening hours are used instead."
-        val expectedWarning16 = "No rules are defined for the requested date: 2024-03-16. Default opening hours are used instead."
+        val expectedWarning15 = "No rules are defined for the requested date: 2024-03-15. Returned default display data."
+        val expectedWarning16 = "No rules are defined for the requested date: 2024-03-16. Returned default display data."
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
         `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
