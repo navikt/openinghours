@@ -46,7 +46,7 @@ class OpeningHoursLookupService(
         if (!evaluator.hasRules(group)) {
             return DisplayDataResult(
                 data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
-                warningMessage = "No rules are defined for the requested date: $date. Default opening hours are used instead.",
+                warningMessage = "No rules are defined for the requested date: $date. Returned default display data.",
             )
         }
         val data = evaluator.getDisplayData(date, group)
