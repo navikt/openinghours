@@ -36,7 +36,7 @@ class QueryController(
         if (groupIds.isEmpty()) {
             val result = DisplayDataResult(
                 data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
-                warningMessage = "No rules are defined for the requested date: $date. Returned default display data.",
+                warningMessage = "No opening-hours group is assigned to service $serviceId for requested date: $date. Returned default display data.",
             )
             return buildResponse(null, serviceId, date, displayDataResult = result, serviceName = serviceName)
         }
@@ -65,7 +65,7 @@ class QueryController(
             return from.datesUntil(to.plusDays(1)).map { date ->
                 val result = DisplayDataResult(
                     data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
-                    warningMessage = "No rules are defined for the requested date: $date. Returned default display data.",
+                    warningMessage = "No opening-hours group is assigned to service $serviceId for requested date: $date. Returned default display data.",
                 )
                 buildResponse(null, serviceId, date, now, result, serviceName = serviceName)
             }.toList()
