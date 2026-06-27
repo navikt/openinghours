@@ -128,15 +128,40 @@ class OpeningHoursEvaluator {
         data class Matched(val openingHours: String, val ruleName: String, val rule: String, val displayHeader: String? = null, val displayText: String? = null, val onlyShowForNavEmployees: Boolean = false, val redDay: Boolean = false) : EvalResult
     }
 
-    /** Returns true if any rule (at any nesting depth) exists in [group]. */
-    fun hasRules(group: ResolvedGroup): Boolean = entriesHaveRules(group.entries)
+    /**
+     * Public result of a single group-tree traversal.
+     * Consumers (e.g. [OpeningHoursLookupService]) can inspect the outcome and decide on
+     * warning messages without triggering a second traversal.
+     */
+    sealed class EvalOutcome {
+        /** At least one rule matched the requested date. */
+        data class Matched(val data: OpeningHoursDisplayData) : EvalOutcome()
+        /** The group tree contained no rules at all. */
+        data object NoRules : EvalOutcome()
+        /** Rules exist in the tree, but none matched the requested date. */
+        data object NoMatch : EvalOutcome()
+    }
 
-    private fun entriesHaveRules(entries: List<ResolvedEntry>): Boolean =
-        entries.any { entry ->
-            when (entry) {
-                is ResolvedRule -> true
-                is ResolvedGroup -> entriesHaveRules(entry.entries)
-            }
+    /**
+     * Evaluates [group] against [date] in a single traversal and returns a typed [EvalOutcome].
+     * Use this instead of [getDisplayData] when the caller needs to distinguish [EvalOutcome.NoRules]
+     * from [EvalOutcome.NoMatch] (e.g. to emit different warning messages) without a second pass.
+     */
+    fun evaluateForDisplay(date: LocalDate, group: ResolvedGroup): EvalOutcome =
+        when (val r = evaluate(date, group.entries)) {
+            is EvalResult.Matched -> EvalOutcome.Matched(
+                OpeningHoursDisplayData(
+                    ruleName = r.ruleName,
+                    rule = r.rule,
+                    openingHours = r.openingHours,
+                    displayHeader = r.displayHeader,
+                    displayText = r.displayText,
+                    onlyShowForNavEmployees = r.onlyShowForNavEmployees,
+                    redDay = r.redDay,
+                )
+            )
+            EvalResult.NoRules -> EvalOutcome.NoRules
+            EvalResult.NoMatch -> EvalOutcome.NoMatch
         }
 
     fun getOpeningHours(date: LocalDate, group: ResolvedGroup): String =
@@ -146,18 +171,10 @@ class OpeningHoursEvaluator {
         }
 
     fun getDisplayData(date: LocalDate, group: ResolvedGroup): OpeningHoursDisplayData? =
-        when (val r = evaluate(date, group.entries)) {
-            is EvalResult.Matched -> OpeningHoursDisplayData(
-                ruleName = r.ruleName,
-                rule = r.rule,
-                openingHours = r.openingHours,
-                displayHeader = r.displayHeader,
-                displayText = r.displayText,
-                onlyShowForNavEmployees = r.onlyShowForNavEmployees,
-                redDay = r.redDay,
-            )
-            EvalResult.NoRules -> DEFAULT_DISPLAY_DATA
-            EvalResult.NoMatch -> null
+        when (val outcome = evaluateForDisplay(date, group)) {
+            is EvalOutcome.Matched -> outcome.data
+            EvalOutcome.NoRules -> DEFAULT_DISPLAY_DATA
+            EvalOutcome.NoMatch -> null
         }
 
     fun isOpen(dateTime: LocalDateTime, ruleDsl: String): Boolean {

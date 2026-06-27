@@ -36,7 +36,7 @@ class QueryController(
         if (groupIds.isEmpty()) {
             val result = DisplayDataResult(
                 data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
-                warningMessage = "No opening-hours group is assigned to service $serviceId for requested date: $date. Returned default display data.",
+                warningMessage = "No opening-hours group is assigned to service $serviceId. Returned default display data for date: $date.",
             )
             return buildResponse(null, serviceId, date, displayDataResult = result, serviceName = serviceName)
         }
