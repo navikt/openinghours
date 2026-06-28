@@ -31,8 +31,8 @@ class QueryController(
         @PathVariable serviceId: UUID,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
     ): QueryResponse {
-        val groupIds = serviceService.getOhGroupIdsForService(serviceId)
         val serviceName = serviceService.get(serviceId).name
+        val groupIds = serviceService.getOhGroupIdsForService(serviceId)
         if (groupIds.isEmpty()) {
             val result = DisplayDataResult(
                 data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
@@ -55,8 +55,8 @@ class QueryController(
         if (from.isAfter(to)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "'from' date must not be after 'to' date")
         }
-        val groupIds = serviceService.getOhGroupIdsForService(serviceId)
         val serviceName = serviceService.get(serviceId).name
+        val groupIds = serviceService.getOhGroupIdsForService(serviceId)
         // Capture the clock once for the entire range so every entry is evaluated
         // against the same instant — prevents isOpen semantics from changing mid-iteration
         // if processing straddles midnight.
