@@ -131,7 +131,7 @@ class OpeningHoursLookupServiceTest {
         assertThat(result.data.openingHours).isEqualTo("00:00-23:59")
         assertThat(result.warningMessage).isNotNull()
         assertThat(result.warningMessage).contains("contains no rules")
-        assertThat(result.warningMessage).contains("Default opening hours are used instead")
+        assertThat(result.warningMessage).contains("Returned default display data")
     }
 
     @Test
