@@ -131,8 +131,8 @@ class QueryControllerTest {
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
         `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
-        `when`(lookupService.getDisplayData(groupId, date)).thenReturn(
-            OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Standard weekdays", rule = "??.??.???? ? 1-5 07:00-21:00")
+        `when`(lookupService.getDisplayDataOrDefault(groupId, date)).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(openingHours = "07:00-21:00", ruleName = "Standard weekdays", rule = "??.??.???? ? 1-5 07:00-21:00"))
         )
 
         mockMvc.get("/api/openinghours/query/service/$serviceId?date=2024-03-15")
@@ -147,12 +147,20 @@ class QueryControllerTest {
     }
 
     @Test
-    fun `query by service returns 404 when no group assigned`() {
+    fun `query by service returns default opening hours with warning when no group assigned`() {
         val serviceId = UUID.randomUUID()
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(emptyList())
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
 
         mockMvc.get("/api/openinghours/query/service/$serviceId?date=2024-03-15")
-            .andExpect { status { isNotFound() } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.serviceName") { value("Bidrag") }
+                jsonPath("$.warningMessage") { isString() }
+                jsonPath("$.matchedRule") { doesNotExist() }
+                jsonPath("$.openingTime") { value("00:00") }
+                jsonPath("$.closingTime") { value("23:59") }
+            }
     }
 
     @Test
@@ -204,8 +212,8 @@ class QueryControllerTest {
 
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
         `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
-        `when`(lookupService.getDisplayData(groupId, date)).thenReturn(
-            OpeningHoursDisplayData(
+        `when`(lookupService.getDisplayDataOrDefault(groupId, date)).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(
                 openingHours = "09:00-15:00",
                 ruleName = "Internal",
                 rule = "??.??.???? ? 1-5 09:00-15:00",
@@ -213,7 +221,7 @@ class QueryControllerTest {
                 displayText = "Kun for ansatte",
                 onlyShowForNavEmployees = true,
                 redDay = false,
-            )
+            ))
         )
 
         mockMvc.get("/api/openinghours/query/service/$serviceId?date=2024-03-15")
@@ -228,6 +236,33 @@ class QueryControllerTest {
                 jsonPath("$.onlyShowForNavEmployees") { value(true) }
                 jsonPath("$.redDay") { value(false) }
                 jsonPath("$.matchedRule.name") { value("Internal") }
+            }
+    }
+
+    @Test
+    fun `query by service returns default opening hours with warning when group has no rules`() {
+        val serviceId = UUID.randomUUID()
+        val groupId = UUID.randomUUID()
+        val date = LocalDate.of(2024, 3, 15)
+        val expectedWarning = "No rules are defined for the requested date: $date. Returned default display data."
+
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
+        `when`(lookupService.getDisplayDataOrDefault(groupId, date)).thenReturn(
+            DisplayDataResult(
+                data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
+                warningMessage = expectedWarning,
+            )
+        )
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId?date=2024-03-15")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.serviceName") { value("Bidrag") }
+                jsonPath("$.warningMessage") { value(expectedWarning) }
+                jsonPath("$.matchedRule") { doesNotExist() }
+                jsonPath("$.openingTime") { value("00:00") }
+                jsonPath("$.closingTime") { value("23:59") }
             }
     }
 
@@ -301,12 +336,47 @@ class QueryControllerTest {
     }
 
     @Test
-    fun `query range returns 404 when no group assigned`() {
+    fun `query range returns default opening hours with warning when no group assigned`() {
         val serviceId = UUID.randomUUID()
         `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(emptyList())
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
 
         mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-15&to=2024-03-16")
-            .andExpect { status { isNotFound() } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(2) }
+                jsonPath("$[0].warningMessage") { isString() }
+                jsonPath("$[0].matchedRule") { doesNotExist() }
+                jsonPath("$[1].warningMessage") { isString() }
+                jsonPath("$[1].matchedRule") { doesNotExist() }
+            }
+    }
+
+    @Test
+    fun `query range returns default opening hours with warning when group has no rules`() {
+        val serviceId = UUID.randomUUID()
+        val groupId = UUID.randomUUID()
+        val expectedWarning15 = "No rules are defined for the requested date: 2024-03-15. Returned default display data."
+        val expectedWarning16 = "No rules are defined for the requested date: 2024-03-16. Returned default display data."
+
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
+        `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 15))).thenReturn(
+            DisplayDataResult(data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA, warningMessage = expectedWarning15)
+        )
+        `when`(lookupService.getDisplayDataOrDefault(groupId, LocalDate.of(2024, 3, 16))).thenReturn(
+            DisplayDataResult(data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA, warningMessage = expectedWarning16)
+        )
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId/range?from=2024-03-15&to=2024-03-16")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(2) }
+                jsonPath("$[0].warningMessage") { value(expectedWarning15) }
+                jsonPath("$[0].matchedRule") { doesNotExist() }
+                jsonPath("$[1].warningMessage") { value(expectedWarning16) }
+                jsonPath("$[1].matchedRule") { doesNotExist() }
+            }
     }
 
     // ── isOpen semantics: today vs non-today ──────────────────────────────

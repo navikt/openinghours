@@ -31,13 +31,18 @@ class QueryController(
         @PathVariable serviceId: UUID,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
     ): QueryResponse {
+        val serviceName = serviceService.get(serviceId).name
         val groupIds = serviceService.getOhGroupIdsForService(serviceId)
         if (groupIds.isEmpty()) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "No opening-hours group assigned to service $serviceId")
+            val result = DisplayDataResult(
+                data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
+                warningMessage = "No opening-hours group is assigned to service $serviceId. Returned default display data for date: $date.",
+            )
+            return buildResponse(null, serviceId, date, displayDataResult = result, serviceName = serviceName)
         }
         val groupId = groupIds.first()
-        val serviceName = serviceService.get(serviceId).name
-        return buildResponse(groupId, serviceId, date, serviceName = serviceName)
+        val result = lookupService.getDisplayDataOrDefault(groupId, date)
+        return buildResponse(groupId, serviceId, date, displayDataResult = result, serviceName = serviceName)
     }
 
     @Operation(summary = "Get opening hours for a service over a date range")
@@ -47,19 +52,25 @@ class QueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
     ): List<QueryResponse> {
-        val groupIds = serviceService.getOhGroupIdsForService(serviceId)
-        if (groupIds.isEmpty()) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "No opening-hours group assigned to service $serviceId")
-        }
-        val groupId = groupIds.first()
         if (from.isAfter(to)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "'from' date must not be after 'to' date")
         }
         val serviceName = serviceService.get(serviceId).name
+        val groupIds = serviceService.getOhGroupIdsForService(serviceId)
         // Capture the clock once for the entire range so every entry is evaluated
         // against the same instant — prevents isOpen semantics from changing mid-iteration
         // if processing straddles midnight.
         val now = LocalDateTime.now(clock)
+        if (groupIds.isEmpty()) {
+            return from.datesUntil(to.plusDays(1)).map { date ->
+                val result = DisplayDataResult(
+                    data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
+                    warningMessage = "No opening-hours group is assigned to service $serviceId for requested date: $date. Returned default display data.",
+                )
+                buildResponse(null, serviceId, date, now, result, serviceName = serviceName)
+            }.toList()
+        }
+        val groupId = groupIds.first()
         return from.datesUntil(to.plusDays(1)).map { date ->
             val result = lookupService.getDisplayDataOrDefault(groupId, date)
             buildResponse(groupId, serviceId, date, now, result, serviceName = serviceName)
@@ -74,14 +85,14 @@ class QueryController(
     ): QueryResponse = buildResponse(groupId, null, date)
 
     private fun buildResponse(
-        groupId: UUID,
+        groupId: UUID?,
         serviceId: UUID?,
         date: LocalDate,
         now: LocalDateTime = LocalDateTime.now(clock),
         displayDataResult: DisplayDataResult? = null,
         serviceName: String? = null,
     ): QueryResponse {
-        val displayData = displayDataResult?.data ?: lookupService.getDisplayData(groupId, date)
+        val displayData = displayDataResult?.data ?: lookupService.getDisplayData(requireNotNull(groupId) { "groupId is required when displayDataResult is null" }, date)
         val warningMessage = displayDataResult?.warningMessage
         val hours = displayData.openingHours ?: "00:00-23:59"
         val today = now.toLocalDate()
@@ -99,7 +110,7 @@ class QueryController(
         val isOpen = OpeningHoursEvaluator.computeIsOpenOnDate(hours, date, today, nowTime)
 
         return QueryResponse(
-            resourceId = serviceId ?: groupId,
+            resourceId = serviceId ?: requireNotNull(groupId) { "groupId is required when serviceId is null" },
             serviceName = serviceName,
             date = date,
             isOpen = isOpen,

@@ -36,18 +36,21 @@ class OpeningHoursLookupService(
     }
 
     /**
-     * Like [getDisplayData] but never throws on a no-match: instead it returns
+     * Like [getDisplayData] but never throws on a no-match or empty group: instead it returns
      * [OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA] together with a [DisplayDataResult.warningMessage]
-     * that describes the situation. Used by range queries so that the full date range is always
-     * returned even when some dates have no applicable rule.
+     * that describes the situation. Uses a single group-tree traversal via
+     * [OpeningHoursEvaluator.evaluateForDisplay] to distinguish an empty group
+     * ([OpeningHoursEvaluator.EvalOutcome.NoRules]) from a group with rules where none matched ([OpeningHoursEvaluator.EvalOutcome.NoMatch]).
      */
     fun getDisplayDataOrDefault(groupId: UUID, date: LocalDate): DisplayDataResult {
         val group = resolver.resolve(groupId)
-        val data = evaluator.getDisplayData(date, group)
-        return if (data != null) {
-            DisplayDataResult(data)
-        } else {
-            DisplayDataResult(
+        return when (val outcome = evaluator.evaluateForDisplay(date, group)) {
+            is OpeningHoursEvaluator.EvalOutcome.Matched -> DisplayDataResult(outcome.data)
+            OpeningHoursEvaluator.EvalOutcome.NoRules -> DisplayDataResult(
+                data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
+                warningMessage = "Opening-hours group '$groupId' contains no rules. Returned default display data for date: $date.",
+            )
+            OpeningHoursEvaluator.EvalOutcome.NoMatch -> DisplayDataResult(
                 data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
                 warningMessage = "Group '$groupId' has rules defined, but none match the requested date: $date. Returned default display data.",
             )
