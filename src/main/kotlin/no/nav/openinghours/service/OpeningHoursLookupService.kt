@@ -48,7 +48,7 @@ class OpeningHoursLookupService(
             is OpeningHoursEvaluator.EvalOutcome.Matched -> DisplayDataResult(outcome.data)
             OpeningHoursEvaluator.EvalOutcome.NoRules -> DisplayDataResult(
                 data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
-                warningMessage = "No groups or rules are defined for the requested date: $date. Default opening hours are used instead.",
+                warningMessage = "Opening-hours group '$groupId' contains no rules. Returned default display data for date: $date.",
             )
             OpeningHoursEvaluator.EvalOutcome.NoMatch -> DisplayDataResult(
                 data = OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA,
