@@ -130,7 +130,7 @@ class OpeningHoursLookupServiceTest {
         assertThat(result.data.ruleName).isEqualTo("No Rules stated")
         assertThat(result.data.openingHours).isEqualTo("00:00-23:59")
         assertThat(result.warningMessage).isNotNull()
-        assertThat(result.warningMessage).contains("No groups or rules are defined")
+        assertThat(result.warningMessage).contains("contains no rules")
         assertThat(result.warningMessage).contains("Default opening hours are used instead")
     }
 
