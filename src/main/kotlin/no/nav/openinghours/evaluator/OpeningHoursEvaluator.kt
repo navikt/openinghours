@@ -144,8 +144,8 @@ class OpeningHoursEvaluator {
 
     /**
      * Evaluates [group] against [date] in a single traversal and returns a typed [EvalOutcome].
-     * Use this instead of [getDisplayData] when the caller needs to distinguish [EvalOutcome.NoRules]
-     * from [EvalOutcome.NoMatch] (e.g. to emit different warning messages) without a second pass.
+     * Use this instead of [getDisplayData] when the caller needs to distinguish [OpeningHoursEvaluator.EvalOutcome.NoRules]
+     * from [OpeningHoursEvaluator.EvalOutcome.NoMatch] (e.g. to emit different warning messages) without a second pass.
      */
     fun evaluateForDisplay(date: LocalDate, group: ResolvedGroup): EvalOutcome =
         when (val r = evaluate(date, group.entries)) {

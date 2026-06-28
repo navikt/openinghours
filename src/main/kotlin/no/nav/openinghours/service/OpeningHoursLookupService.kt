@@ -40,7 +40,7 @@ class OpeningHoursLookupService(
      * [OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA] together with a [DisplayDataResult.warningMessage]
      * that describes the situation. Uses a single group-tree traversal via
      * [OpeningHoursEvaluator.evaluateForDisplay] to distinguish an empty group
-     * ([EvalOutcome.NoRules]) from a group with rules where none matched ([EvalOutcome.NoMatch]).
+     * ([OpeningHoursEvaluator.EvalOutcome.NoRules]) from a group with rules where none matched ([OpeningHoursEvaluator.EvalOutcome.NoMatch]).
      */
     fun getDisplayDataOrDefault(groupId: UUID, date: LocalDate): DisplayDataResult {
         val group = resolver.resolve(groupId)
