@@ -2,6 +2,7 @@ package no.nav.openinghours.controllers
 
 import io.swagger.v3.oas.annotations.Operation
 import no.nav.openinghours.model.db.OhGroup
+import no.nav.openinghours.service.GroupAssociations
 import no.nav.openinghours.service.OhGroupService
 import org.springframework.web.bind.annotation.*
 import java.util.UUID
@@ -44,6 +45,10 @@ class OhGroupController(
     @Operation(summary = "Get the opening hours group assigned to a service")
     @GetMapping("/service/{serviceId}")
     fun getForService(@PathVariable serviceId: UUID): OhGroup = service.getOhGroupForService(serviceId)
+
+    @Operation(summary = "Get all services and groups associated with a group")
+    @GetMapping("/{id}/associations")
+    fun getAssociations(@PathVariable id: UUID): GroupAssociations = service.getAssociationsByGroupId(id)
 }
 
 data class OhGroupRequest(

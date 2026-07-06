@@ -14,6 +14,12 @@ interface ServiceOhGroupRepository : JpaRepository<ServiceOhGroup, ServiceOhGrou
     )
     fun findGroupIdByServiceId(@Param("serviceId") serviceId: UUID): UUID?
 
+    @Query(
+        value = "SELECT service_id FROM service_oh_group WHERE group_id = :groupId",
+        nativeQuery = true
+    )
+    fun findServiceIdsByGroupId(@Param("groupId") groupId: UUID): List<UUID>
+
     @Modifying
     @Query("DELETE FROM ServiceOhGroup s WHERE s.id.groupId = :groupId")
     fun deleteAllLinksByGroup(@Param("groupId") groupId: UUID): Int

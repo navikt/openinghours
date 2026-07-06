@@ -2,7 +2,9 @@ package no.nav.openinghours.service
 
 import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.OhGroupRepository
+import no.nav.openinghours.model.db.Service as ServiceEntity
 import no.nav.openinghours.model.db.ServiceOhGroupRepository
+import no.nav.openinghours.model.db.ServiceRepository
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
@@ -11,10 +13,13 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.util.UUID
 
+data class GroupAssociations(val services: List<ServiceEntity>, val groups: List<OhGroup>)
+
 @Service
 class OhGroupService(
     private val repo: OhGroupRepository,
-    private val serviceRepo: ServiceOhGroupRepository
+    private val serviceRepo: ServiceOhGroupRepository,
+    private val serviceRepository: ServiceRepository
 ) {
     private val log = LoggerFactory.getLogger(OhGroupService::class.java)
 
@@ -48,6 +53,20 @@ class OhGroupService(
             log.error("Fetch all groups failed msg={}", e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to fetch groups", e)
         }
+
+    @Transactional(readOnly = true)
+    fun getAssociationsByGroupId(groupId: UUID): GroupAssociations {
+        if (!repo.existsById(groupId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $groupId")
+        }
+        val serviceIds = serviceRepo.findServiceIdsByGroupId(groupId)
+        val services = if (serviceIds.isEmpty()) emptyList() else serviceRepository.findAllById(serviceIds)
+        val groups = repo.findAllReferencing(groupId.toString())
+        if (services.isEmpty() && groups.isEmpty()) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "No services or groups associated with group: $groupId")
+        }
+        return GroupAssociations(services = services, groups = groups)
+    }
 
     @Transactional(readOnly = true)
     fun getOhGroupForService(serviceId: UUID): OhGroup {

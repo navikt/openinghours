@@ -1,6 +1,9 @@
 package no.nav.openinghours.controllers
 
 import no.nav.openinghours.model.db.OhGroup
+import no.nav.openinghours.model.db.Service
+import no.nav.openinghours.model.db.ServiceType
+import no.nav.openinghours.service.GroupAssociations
 import no.nav.openinghours.service.OhGroupService
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
@@ -190,5 +193,49 @@ class OhGroupControllerTest {
 
         mockMvc.get("/api/openinghours/group/service/$serviceId")
             .andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `GET associations returns services and groups`() {
+        val groupId = UUID.randomUUID()
+        val service = Service.create(name = "My Service", type = ServiceType.TJENESTE, team = "Team A")
+        val childGroup = aGroup(name = "Child Group")
+        val associations = GroupAssociations(services = listOf(service), groups = listOf(childGroup))
+        `when`(ohGroupService.getAssociationsByGroupId(groupId)).thenReturn(associations)
+
+        mockMvc.get("/api/openinghours/group/$groupId/associations")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.services.length()") { value(1) }
+                jsonPath("$.services[0].name") { value("My Service") }
+                jsonPath("$.groups.length()") { value(1) }
+                jsonPath("$.groups[0].name") { value("Child Group") }
+            }
+    }
+
+    @Test
+    fun `GET associations returns 404 when group does not exist`() {
+        val groupId = UUID.randomUUID()
+        `when`(ohGroupService.getAssociationsByGroupId(groupId))
+            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $groupId"))
+
+        mockMvc.get("/api/openinghours/group/$groupId/associations")
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.message") { value("Group not found: $groupId") }
+            }
+    }
+
+    @Test
+    fun `GET associations returns 404 when no services or groups associated`() {
+        val groupId = UUID.randomUUID()
+        `when`(ohGroupService.getAssociationsByGroupId(groupId))
+            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "No services or groups associated with group: $groupId"))
+
+        mockMvc.get("/api/openinghours/group/$groupId/associations")
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.message") { value("No services or groups associated with group: $groupId") }
+            }
     }
 }
