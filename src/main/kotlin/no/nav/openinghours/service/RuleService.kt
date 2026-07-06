@@ -100,6 +100,17 @@ class RuleService(
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch all opening hours: ${e.message}", e)
         }
 
+    fun getGroupsByRuleId(ruleId: UUID): List<no.nav.openinghours.model.db.OhGroup> {
+        if (!repo.existsById(ruleId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $ruleId")
+        }
+        val groups = ohGroupRepo.findAllReferencing(ruleId.toString())
+        if (groups.isEmpty()) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "No groups associated with rule: $ruleId")
+        }
+        return groups
+    }
+
     @Transactional
     fun delete(id: UUID): Boolean {
         return try {

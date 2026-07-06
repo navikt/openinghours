@@ -1,6 +1,7 @@
 package no.nav.openinghours.controllers
 
 import io.swagger.v3.oas.annotations.Operation
+import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.Rule
 import no.nav.openinghours.service.RuleService
 import org.springframework.web.bind.annotation.*
@@ -34,6 +35,10 @@ class RuleController(
     @Operation(summary = "Get all opening hours rules")
     @GetMapping
     fun getAll(): List<Rule> = service.getAll()
+
+    @Operation(summary = "Get all groups associated with a rule")
+    @GetMapping("/{id}/groups")
+    fun getGroupsByRuleId(@PathVariable id: UUID): List<OhGroup> = service.getGroupsByRuleId(id)
 
     @Operation(summary = "Update opening hours rule by id with name, rule, header, text, and onlyShowForNavEmployees")
     @PatchMapping("/{id}")
