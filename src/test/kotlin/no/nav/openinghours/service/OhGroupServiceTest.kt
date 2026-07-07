@@ -169,4 +169,36 @@ class OhGroupServiceTest {
         assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
     }
 
+    @Test
+    fun `getAssociationsByGroupId throws NOT_FOUND for unknown group`() {
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.getAssociationsByGroupId(UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
+    @Test
+    fun `getAssociationsByGroupId returns empty lists when group has no associations`() {
+        val group = service.save("lonely-group", emptyList())
+
+        val result = service.getAssociationsByGroupId(group.id)
+
+        assertThat(result.services).isEmpty()
+        assertThat(result.groups).isEmpty()
+    }
+
+    @Test
+    fun `getAssociationsByGroupId returns linked services and referencing groups`() {
+        val group = service.save("assoc-group", emptyList())
+
+        val svc1 = serviceService.save("assoc-svc1", ServiceType.TJENESTE, "team-x", ohGroupId = group.id)
+        val svc2 = serviceService.save("assoc-svc2", ServiceType.KOMPONENT, "team-x", ohGroupId = group.id)
+        val parent = service.save("parent-group", listOf(group.id))
+
+        val result = service.getAssociationsByGroupId(group.id)
+
+        assertThat(result.services.map { it.id }).containsExactlyInAnyOrder(svc1.id, svc2.id)
+        assertThat(result.groups.map { it.id }).containsExactly(parent.id)
+    }
+
 }
