@@ -4,7 +4,9 @@ import io.swagger.v3.oas.annotations.Operation
 import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.Rule
 import no.nav.openinghours.service.RuleService
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.server.ResponseStatusException
 import java.util.*
 
 @RestController
@@ -26,9 +28,22 @@ class RuleController(
         @RequestParam(required = false, defaultValue = "false") onlyShowForNavEmployees: Boolean?
     ): Rule = service.upsert(name, rule, header, text, onlyShowForNavEmployees ?: false)
 
-    @Operation(summary = "Delete opening hours rule by id")
+    @Operation(summary = "Delete opening hours rule by id. Returns 409 with a warning if the rule is used by one or more groups; pass ?confirm=true to proceed with deletion.")
     @DeleteMapping("/{id}")
-    fun delete(@PathVariable id: UUID): Boolean {
+    fun delete(
+        @PathVariable id: UUID,
+        @RequestParam(required = false, defaultValue = "false") confirm: Boolean
+    ): Boolean {
+        if (!confirm) {
+            val groups = service.getGroupsByRuleId(id)
+            if (groups.isNotEmpty()) {
+                val names = groups.joinToString(", ") { it.name }
+                throw ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Rule is used by ${groups.size} group(s): $names. Pass ?confirm=true to delete anyway."
+                )
+            }
+        }
         return service.delete(id)
     }
 

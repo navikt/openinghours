@@ -161,6 +161,35 @@ class RuleControllerTest {
     }
 
     @Test
+    fun `DELETE rule returns 409 with group names when rule is used by groups and confirm is not set`() {
+        val id = UUID.randomUUID()
+        val groups = listOf(
+            OhGroup.create(name = "Group A", ruleGroupIds = listOf(id)),
+            OhGroup.create(name = "Group B", ruleGroupIds = listOf(id))
+        )
+        `when`(ruleService.getGroupsByRuleId(id)).thenReturn(groups)
+
+        mockMvc.delete("/api/openinghours/rule/$id")
+            .andExpect {
+                status { isConflict() }
+                jsonPath("$.message") { value("Rule is used by 2 group(s): Group A, Group B. Pass ?confirm=true to delete anyway.") }
+            }
+    }
+
+    @Test
+    fun `DELETE rule with confirm=true deletes even when rule is used by groups`() {
+        val id = UUID.randomUUID()
+        `when`(ruleService.delete(id)).thenReturn(true)
+
+        mockMvc.delete("/api/openinghours/rule/$id") {
+            param("confirm", "true")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$") { value(true) }
+        }
+    }
+
+    @Test
     fun `GET rule with invalid UUID returns 400`() {
         mockMvc.get("/api/openinghours/rule/not-a-uuid")
             .andExpect { status { isBadRequest() } }
