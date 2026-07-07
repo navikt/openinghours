@@ -301,4 +301,46 @@ class OhGroupControllerTest {
                 jsonPath("$.groups.length()") { value(0) }
             }
     }
+
+    @Test
+    fun `DELETE rule from group returns updated group`() {
+        val groupId = UUID.randomUUID()
+        val ruleId = UUID.randomUUID()
+        val updatedGroup = aGroup(id = groupId, name = "My Group")
+        `when`(ohGroupService.removeRuleFromGroup(groupId, ruleId)).thenReturn(updatedGroup)
+
+        mockMvc.delete("/api/openinghours/group/$groupId/rules/$ruleId")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.name") { value("My Group") }
+            }
+    }
+
+    @Test
+    fun `DELETE rule from group returns 404 when rule is not a member of the group`() {
+        val groupId = UUID.randomUUID()
+        val ruleId = UUID.randomUUID()
+        `when`(ohGroupService.removeRuleFromGroup(groupId, ruleId))
+            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Rule $ruleId is not a member of group $groupId"))
+
+        mockMvc.delete("/api/openinghours/group/$groupId/rules/$ruleId")
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.message") { value("Rule $ruleId is not a member of group $groupId") }
+            }
+    }
+
+    @Test
+    fun `DELETE rule from group returns 404 when group does not exist`() {
+        val groupId = UUID.randomUUID()
+        val ruleId = UUID.randomUUID()
+        `when`(ohGroupService.removeRuleFromGroup(groupId, ruleId))
+            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $groupId"))
+
+        mockMvc.delete("/api/openinghours/group/$groupId/rules/$ruleId")
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.message") { value("Group not found: $groupId") }
+            }
+    }
 }

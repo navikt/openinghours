@@ -105,6 +105,28 @@ class OhGroupService(
     }
 
     @Transactional
+    fun removeRuleFromGroup(groupId: UUID, ruleId: UUID): OhGroup {
+        val group = repo.findById(groupId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $groupId")
+        }
+        val ruleIdStr = ruleId.toString()
+        if (group.ruleGroupIds == null || ruleIdStr !in group.ruleGroupIds!!) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Rule $ruleId is not a member of group $groupId")
+        }
+        group.ruleGroupIds = group.ruleGroupIds!!
+            .filter { it != ruleIdStr }
+            .toTypedArray()
+            .ifEmpty { null }
+        return try {
+            repo.saveAndFlush(group)
+                .also { log.info("Removed rule {} from oh_group id={}", ruleId, groupId) }
+        } catch (e: Exception) {
+            log.error("Remove rule from group failed groupId={} ruleId={} msg={}", groupId, ruleId, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Remove rule from group: ${e.message}", e)
+        }
+    }
+
+    @Transactional
     fun delete(id: UUID): Boolean {
         return try {
             if (!repo.existsById(id)) return false

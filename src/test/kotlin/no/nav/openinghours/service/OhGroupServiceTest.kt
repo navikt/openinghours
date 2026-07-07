@@ -201,4 +201,44 @@ class OhGroupServiceTest {
         assertThat(result.groups.map { it.id }).containsExactly(parent.id)
     }
 
+    @Test
+    fun `removeRuleFromGroup removes the rule and returns the updated group`() {
+        val ruleId = UUID.randomUUID()
+        val otherRuleId = UUID.randomUUID()
+        val group = service.save("group-with-rules", listOf(ruleId, otherRuleId))
+
+        val updated = service.removeRuleFromGroup(group.id, ruleId)
+
+        assertThat(updated.ruleGroupUuids).doesNotContain(ruleId)
+        assertThat(updated.ruleGroupUuids).containsExactly(otherRuleId)
+    }
+
+    @Test
+    fun `removeRuleFromGroup with last rule results in empty ruleGroupIds`() {
+        val ruleId = UUID.randomUUID()
+        val group = service.save("group-one-rule", listOf(ruleId))
+
+        val updated = service.removeRuleFromGroup(group.id, ruleId)
+
+        assertThat(updated.ruleGroupUuids).isEmpty()
+    }
+
+    @Test
+    fun `removeRuleFromGroup throws NOT_FOUND when rule is not a member of the group`() {
+        val group = service.save("group-no-rule", emptyList())
+
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.removeRuleFromGroup(group.id, UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
+    @Test
+    fun `removeRuleFromGroup throws NOT_FOUND when group does not exist`() {
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.removeRuleFromGroup(UUID.randomUUID(), UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
 }
