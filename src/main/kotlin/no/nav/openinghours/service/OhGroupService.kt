@@ -2,6 +2,7 @@ package no.nav.openinghours.service
 
 import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.OhGroupRepository
+import no.nav.openinghours.model.db.RuleRepository
 import no.nav.openinghours.model.db.Service as ServiceEntity
 import no.nav.openinghours.model.db.ServiceOhGroupRepository
 import no.nav.openinghours.model.db.ServiceRepository
@@ -19,7 +20,8 @@ data class GroupAssociations(val services: List<ServiceEntity>, val groups: List
 class OhGroupService(
     private val repo: OhGroupRepository,
     private val serviceRepo: ServiceOhGroupRepository,
-    private val serviceRepository: ServiceRepository
+    private val serviceRepository: ServiceRepository,
+    private val ruleRepository: RuleRepository
 ) {
     private val log = LoggerFactory.getLogger(OhGroupService::class.java)
 
@@ -136,6 +138,9 @@ class OhGroupService(
     fun removeRuleFromGroup(groupId: UUID, ruleId: UUID): OhGroup {
         val group = repo.findById(groupId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $groupId")
+        }
+        if (!ruleRepository.existsById(ruleId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $ruleId")
         }
         val ruleIdStr = ruleId.toString()
         if (group.ruleGroupIds == null || ruleIdStr !in group.ruleGroupIds!!) {

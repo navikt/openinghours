@@ -331,6 +331,20 @@ class OhGroupControllerTest {
     }
 
     @Test
+    fun `DELETE rule from group returns 404 when rule does not exist`() {
+        val groupId = UUID.randomUUID()
+        val ruleId = UUID.randomUUID()
+        `when`(ohGroupService.removeRuleFromGroup(groupId, ruleId))
+            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $ruleId"))
+
+        mockMvc.delete("/api/openinghours/group/$groupId/rules/$ruleId")
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.message") { value("Rule not found: $ruleId") }
+            }
+    }
+
+    @Test
     fun `DELETE rule from group returns 404 when group does not exist`() {
         val groupId = UUID.randomUUID()
         val ruleId = UUID.randomUUID()

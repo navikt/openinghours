@@ -36,6 +36,7 @@ class OhGroupServiceTest {
 
     @Autowired lateinit var service: OhGroupService
     @Autowired lateinit var serviceService: ServiceService
+    @Autowired lateinit var ruleService: RuleService
     @Autowired lateinit var repo: OhGroupRepository
 
     @Test
@@ -203,34 +204,47 @@ class OhGroupServiceTest {
 
     @Test
     fun `removeRuleFromGroup removes the rule and returns the updated group`() {
-        val ruleId = UUID.randomUUID()
-        val otherRuleId = UUID.randomUUID()
-        val group = service.save("group-with-rules", listOf(ruleId, otherRuleId))
+        val rule = ruleService.upsert("rule-to-remove", "??.??.???? ? ? 08:00-16:00", null, null)
+        val otherRule = ruleService.upsert("rule-to-keep", "??.??.???? ? ? 09:00-17:00", null, null)
+        val group = service.save("group-with-rules", listOf(rule.id, otherRule.id))
 
-        val updated = service.removeRuleFromGroup(group.id, ruleId)
+        val updated = service.removeRuleFromGroup(group.id, rule.id)
 
-        assertThat(updated.ruleGroupUuids).doesNotContain(ruleId)
-        assertThat(updated.ruleGroupUuids).containsExactly(otherRuleId)
+        assertThat(updated.ruleGroupUuids).doesNotContain(rule.id)
+        assertThat(updated.ruleGroupUuids).containsExactly(otherRule.id)
     }
 
     @Test
     fun `removeRuleFromGroup with last rule results in empty ruleGroupIds`() {
-        val ruleId = UUID.randomUUID()
-        val group = service.save("group-one-rule", listOf(ruleId))
+        val rule = ruleService.upsert("sole-rule", "??.??.???? ? ? 08:00-16:00", null, null)
+        val group = service.save("group-one-rule", listOf(rule.id))
 
-        val updated = service.removeRuleFromGroup(group.id, ruleId)
+        val updated = service.removeRuleFromGroup(group.id, rule.id)
 
         assertThat(updated.ruleGroupUuids).isEmpty()
     }
 
     @Test
-    fun `removeRuleFromGroup throws NOT_FOUND when rule is not a member of the group`() {
-        val group = service.save("group-no-rule", emptyList())
+    fun `removeRuleFromGroup throws NOT_FOUND when rule does not exist`() {
+        val group = service.save("group-unknown-rule", emptyList())
 
         val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
             service.removeRuleFromGroup(group.id, UUID.randomUUID())
         }
         assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+        assertThat(ex.reason).contains("Rule not found")
+    }
+
+    @Test
+    fun `removeRuleFromGroup throws NOT_FOUND when rule is not a member of the group`() {
+        val rule = ruleService.upsert("unlinked-rule", "??.??.???? ? ? 08:00-16:00", null, null)
+        val group = service.save("group-no-rule", emptyList())
+
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.removeRuleFromGroup(group.id, rule.id)
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+        assertThat(ex.reason).contains("is not a member of group")
     }
 
     @Test
