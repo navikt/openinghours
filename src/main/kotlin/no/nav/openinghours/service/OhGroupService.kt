@@ -111,6 +111,9 @@ class OhGroupService(
         val parent = repo.findById(parentGroupId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $parentGroupId")
         }
+        if (!repo.existsById(childGroupId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $childGroupId")
+        }
         val childIdStr = childGroupId.toString()
         if (parent.ruleGroupIds == null || childIdStr !in parent.ruleGroupIds!!) {
             throw ResponseStatusException(

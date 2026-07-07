@@ -47,7 +47,11 @@ class OhGroupController(
         @RequestParam(required = false, defaultValue = "false") confirm: Boolean
     ): Boolean {
         if (!confirm) {
-            val associations = service.getAssociationsByGroupId(id)
+            val associations = try {
+                service.getAssociationsByGroupId(id)
+            } catch (e: ResponseStatusException) {
+                if (e.statusCode == HttpStatus.NOT_FOUND) return false else throw e
+            }
             val serviceCount = associations.services.size
             val groupCount = associations.groups.size
             if (serviceCount > 0 || groupCount > 0) {

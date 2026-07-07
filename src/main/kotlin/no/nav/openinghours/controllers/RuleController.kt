@@ -35,7 +35,11 @@ class RuleController(
         @RequestParam(required = false, defaultValue = "false") confirm: Boolean
     ): Boolean {
         if (!confirm) {
-            val groups = service.getGroupsByRuleId(id)
+            val groups = try {
+                service.getGroupsByRuleId(id)
+            } catch (e: ResponseStatusException) {
+                if (e.statusCode == HttpStatus.NOT_FOUND) emptyList() else throw e
+            }
             if (groups.isNotEmpty()) {
                 val names = groups.joinToString(", ") { it.name }
                 throw ResponseStatusException(
