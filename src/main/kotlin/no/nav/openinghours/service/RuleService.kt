@@ -104,11 +104,7 @@ class RuleService(
         if (!repo.existsById(ruleId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $ruleId")
         }
-        val groups = ohGroupRepo.findAllReferencing(ruleId.toString())
-        if (groups.isEmpty()) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "No groups associated with rule: $ruleId")
-        }
-        return groups
+        return ohGroupRepo.findAllReferencing(ruleId.toString())
     }
 
     @Transactional

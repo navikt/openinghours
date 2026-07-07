@@ -198,15 +198,14 @@ class RuleControllerTest {
     }
 
     @Test
-    fun `GET groups for rule returns 404 when no groups associated`() {
+    fun `GET groups for rule returns 200 with empty list when rule exists but has no groups`() {
         val ruleId = UUID.randomUUID()
-        `when`(ruleService.getGroupsByRuleId(ruleId))
-            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "No groups associated with rule: $ruleId"))
+        `when`(ruleService.getGroupsByRuleId(ruleId)).thenReturn(emptyList())
 
         mockMvc.get("/api/openinghours/rule/$ruleId/groups")
             .andExpect {
-                status { isNotFound() }
-                jsonPath("$.message") { value("No groups associated with rule: $ruleId") }
+                status { isOk() }
+                jsonPath("$.length()") { value(0) }
             }
     }
 }
