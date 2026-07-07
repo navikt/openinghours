@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.sql.SQLException
 import java.util.*
+import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.OhGroupRepository
 import org.springframework.dao.DataIntegrityViolationException
 
@@ -100,7 +101,7 @@ class RuleService(
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch all opening hours: ${e.message}", e)
         }
 
-    fun getGroupsByRuleId(ruleId: UUID): List<no.nav.openinghours.model.db.OhGroup> =
+    fun getGroupsByRuleId(ruleId: UUID): List<OhGroup> =
         try {
             if (!repo.existsById(ruleId)) {
                 throw ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $ruleId")
