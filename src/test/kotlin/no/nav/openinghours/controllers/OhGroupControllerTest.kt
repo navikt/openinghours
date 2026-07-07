@@ -227,15 +227,16 @@ class OhGroupControllerTest {
     }
 
     @Test
-    fun `GET associations returns 404 when no services or groups associated`() {
+    fun `GET associations returns 200 with empty lists when group exists but has no associations`() {
         val groupId = UUID.randomUUID()
         `when`(ohGroupService.getAssociationsByGroupId(groupId))
-            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "No services or groups associated with group: $groupId"))
+            .thenReturn(GroupAssociations(emptyList(), emptyList()))
 
         mockMvc.get("/api/openinghours/group/$groupId/associations")
             .andExpect {
-                status { isNotFound() }
-                jsonPath("$.message") { value("No services or groups associated with group: $groupId") }
+                status { isOk() }
+                jsonPath("$.services.length()") { value(0) }
+                jsonPath("$.groups.length()") { value(0) }
             }
     }
 }

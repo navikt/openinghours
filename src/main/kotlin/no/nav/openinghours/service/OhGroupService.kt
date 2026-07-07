@@ -62,9 +62,6 @@ class OhGroupService(
         val serviceIds = serviceRepo.findServiceIdsByGroupId(groupId)
         val services = if (serviceIds.isEmpty()) emptyList() else serviceRepository.findAllById(serviceIds)
         val groups = repo.findAllReferencing(groupId.toString())
-        if (services.isEmpty() && groups.isEmpty()) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "No services or groups associated with group: $groupId")
-        }
         return GroupAssociations(services = services, groups = groups)
     }
 
