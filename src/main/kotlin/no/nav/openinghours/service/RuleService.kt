@@ -100,12 +100,18 @@ class RuleService(
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch all opening hours: ${e.message}", e)
         }
 
-    fun getGroupsByRuleId(ruleId: UUID): List<no.nav.openinghours.model.db.OhGroup> {
-        if (!repo.existsById(ruleId)) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $ruleId")
+    fun getGroupsByRuleId(ruleId: UUID): List<no.nav.openinghours.model.db.OhGroup> =
+        try {
+            if (!repo.existsById(ruleId)) {
+                throw ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $ruleId")
+            }
+            ohGroupRepo.findAllReferencing(ruleId.toString())
+        } catch (e: ResponseStatusException) {
+            throw e
+        } catch (e: Exception) {
+            log.error("Fetch groups for rule failed ruleId={} msg={}", ruleId, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Fetch groups for rule: ${e.message}", e)
         }
-        return ohGroupRepo.findAllReferencing(ruleId.toString())
-    }
 
     @Transactional
     fun delete(id: UUID): Boolean {
