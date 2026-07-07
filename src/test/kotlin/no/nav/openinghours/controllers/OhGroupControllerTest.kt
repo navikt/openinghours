@@ -343,4 +343,46 @@ class OhGroupControllerTest {
                 jsonPath("$.message") { value("Group not found: $groupId") }
             }
     }
+
+    @Test
+    fun `DELETE child group from parent group returns updated group`() {
+        val parentId = UUID.randomUUID()
+        val childId = UUID.randomUUID()
+        val updatedGroup = aGroup(id = parentId, name = "Parent Group")
+        `when`(ohGroupService.removeGroupFromGroup(parentId, childId)).thenReturn(updatedGroup)
+
+        mockMvc.delete("/api/openinghours/group/$parentId/groups/$childId")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.name") { value("Parent Group") }
+            }
+    }
+
+    @Test
+    fun `DELETE child group from parent group returns 404 when child group is not a member`() {
+        val parentId = UUID.randomUUID()
+        val childId = UUID.randomUUID()
+        `when`(ohGroupService.removeGroupFromGroup(parentId, childId))
+            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Group $childId is not a member of group $parentId"))
+
+        mockMvc.delete("/api/openinghours/group/$parentId/groups/$childId")
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.message") { value("Group $childId is not a member of group $parentId") }
+            }
+    }
+
+    @Test
+    fun `DELETE child group from parent group returns 404 when parent group does not exist`() {
+        val parentId = UUID.randomUUID()
+        val childId = UUID.randomUUID()
+        `when`(ohGroupService.removeGroupFromGroup(parentId, childId))
+            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $parentId"))
+
+        mockMvc.delete("/api/openinghours/group/$parentId/groups/$childId")
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.message") { value("Group not found: $parentId") }
+            }
+    }
 }

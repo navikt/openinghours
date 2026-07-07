@@ -241,4 +241,44 @@ class OhGroupServiceTest {
         assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
     }
 
+    @Test
+    fun `removeGroupFromGroup removes the child group and returns the updated parent`() {
+        val childGroup = service.save("child-to-remove", emptyList())
+        val otherChild = service.save("other-child", emptyList())
+        val parent = service.save("parent-group", listOf(childGroup.id, otherChild.id))
+
+        val updated = service.removeGroupFromGroup(parent.id, childGroup.id)
+
+        assertThat(updated.ruleGroupUuids).doesNotContain(childGroup.id)
+        assertThat(updated.ruleGroupUuids).containsExactly(otherChild.id)
+    }
+
+    @Test
+    fun `removeGroupFromGroup with last child results in empty ruleGroupIds`() {
+        val childGroup = service.save("sole-child", emptyList())
+        val parent = service.save("parent-one-child", listOf(childGroup.id))
+
+        val updated = service.removeGroupFromGroup(parent.id, childGroup.id)
+
+        assertThat(updated.ruleGroupUuids).isEmpty()
+    }
+
+    @Test
+    fun `removeGroupFromGroup throws NOT_FOUND when child group is not a member`() {
+        val parent = service.save("parent-no-child", emptyList())
+
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.removeGroupFromGroup(parent.id, UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
+    @Test
+    fun `removeGroupFromGroup throws NOT_FOUND when parent group does not exist`() {
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.removeGroupFromGroup(UUID.randomUUID(), UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
 }

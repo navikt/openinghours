@@ -70,6 +70,11 @@ class OhGroupController(
         return service.delete(id)
     }
 
+    @Operation(summary = "Remove a child group from an opening hours group")
+    @DeleteMapping("/{parentGroupId}/groups/{childGroupId}")
+    fun removeGroup(@PathVariable parentGroupId: UUID, @PathVariable childGroupId: UUID): OhGroup =
+        service.removeGroupFromGroup(parentGroupId, childGroupId)
+
     @Operation(summary = "Remove a rule from an opening hours group")
     @DeleteMapping("/{groupId}/rules/{ruleId}")
     fun removeRule(@PathVariable groupId: UUID, @PathVariable ruleId: UUID): OhGroup =
