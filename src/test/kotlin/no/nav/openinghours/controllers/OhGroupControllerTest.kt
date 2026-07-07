@@ -173,6 +173,68 @@ class OhGroupControllerTest {
     }
 
     @Test
+    fun `DELETE group returns 409 with service and group names when group is in use and confirm is not set`() {
+        val id = UUID.randomUUID()
+        val svc = Service.create(name = "My Service", type = ServiceType.TJENESTE, team = "Team A")
+        val parentGroup = aGroup(name = "Parent Group")
+        `when`(ohGroupService.getAssociationsByGroupId(id))
+            .thenReturn(GroupAssociations(services = listOf(svc), groups = listOf(parentGroup)))
+
+        mockMvc.delete("/api/openinghours/group/$id")
+            .andExpect {
+                status { isConflict() }
+                jsonPath("$.message") {
+                    value("Group is in use by 1 service(s): My Service and 1 group(s): Parent Group. Pass ?confirm=true to delete anyway.")
+                }
+            }
+    }
+
+    @Test
+    fun `DELETE group returns 409 listing only services when no parent groups`() {
+        val id = UUID.randomUUID()
+        val svc = Service.create(name = "Svc A", type = ServiceType.TJENESTE, team = "Team A")
+        `when`(ohGroupService.getAssociationsByGroupId(id))
+            .thenReturn(GroupAssociations(services = listOf(svc), groups = emptyList()))
+
+        mockMvc.delete("/api/openinghours/group/$id")
+            .andExpect {
+                status { isConflict() }
+                jsonPath("$.message") {
+                    value("Group is in use by 1 service(s): Svc A. Pass ?confirm=true to delete anyway.")
+                }
+            }
+    }
+
+    @Test
+    fun `DELETE group returns 409 listing only parent groups when no services`() {
+        val id = UUID.randomUUID()
+        val parentGroup = aGroup(name = "Parent")
+        `when`(ohGroupService.getAssociationsByGroupId(id))
+            .thenReturn(GroupAssociations(services = emptyList(), groups = listOf(parentGroup)))
+
+        mockMvc.delete("/api/openinghours/group/$id")
+            .andExpect {
+                status { isConflict() }
+                jsonPath("$.message") {
+                    value("Group is in use by 1 group(s): Parent. Pass ?confirm=true to delete anyway.")
+                }
+            }
+    }
+
+    @Test
+    fun `DELETE group with confirm=true deletes even when group is in use`() {
+        val id = UUID.randomUUID()
+        `when`(ohGroupService.delete(id)).thenReturn(true)
+
+        mockMvc.delete("/api/openinghours/group/$id") {
+            param("confirm", "true")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$") { value(true) }
+        }
+    }
+
+    @Test
     fun `GET group for service returns linked group`() {
         val serviceId = UUID.randomUUID()
         val group = aGroup(name = "Linked")
