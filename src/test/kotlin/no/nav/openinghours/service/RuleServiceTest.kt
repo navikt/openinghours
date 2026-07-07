@@ -148,4 +148,32 @@ class RuleServiceTest {
         assertThat(updated.id).isEqualTo(seed.id)
         assertThat(updated.redDay).isFalse()
     }
+
+    @Test
+    fun `getGroupsByRuleId throws NOT_FOUND for unknown rule`() {
+        val ex = assertThrows<ResponseStatusException> {
+            ruleService.getGroupsByRuleId(UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
+    @Test
+    fun `getGroupsByRuleId returns empty list when rule exists but no groups reference it`() {
+        val rule = ruleService.upsert("unreferenced-rule", VALID_RULE, null, null)
+
+        val result = ruleService.getGroupsByRuleId(rule.id)
+
+        assertThat(result).isEmpty()
+    }
+
+    @Test
+    fun `getGroupsByRuleId returns all groups that reference the rule`() {
+        val rule = ruleService.upsert("referenced-rule", VALID_RULE, null, null)
+        val groupA = groupService.save("group-ref-a", listOf(rule.id))
+        val groupB = groupService.save("group-ref-b", listOf(rule.id))
+
+        val result = ruleService.getGroupsByRuleId(rule.id)
+
+        assertThat(result.map { it.id }).containsExactlyInAnyOrder(groupA.id, groupB.id)
+    }
 }

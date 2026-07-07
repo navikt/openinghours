@@ -1,5 +1,6 @@
 package no.nav.openinghours.controllers
 
+import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.Rule
 import no.nav.openinghours.service.RuleService
 import org.junit.jupiter.api.Test
@@ -163,6 +164,49 @@ class RuleControllerTest {
     fun `GET rule with invalid UUID returns 400`() {
         mockMvc.get("/api/openinghours/rule/not-a-uuid")
             .andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `GET groups for rule returns list of groups`() {
+        val ruleId = UUID.randomUUID()
+        val groups = listOf(
+            OhGroup.create(name = "Group A", ruleGroupIds = listOf(ruleId)),
+            OhGroup.create(name = "Group B", ruleGroupIds = listOf(ruleId))
+        )
+        `when`(ruleService.getGroupsByRuleId(ruleId)).thenReturn(groups)
+
+        mockMvc.get("/api/openinghours/rule/$ruleId/groups")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(2) }
+                jsonPath("$[0].name") { value("Group A") }
+                jsonPath("$[1].name") { value("Group B") }
+            }
+    }
+
+    @Test
+    fun `GET groups for rule returns 404 when rule does not exist`() {
+        val ruleId = UUID.randomUUID()
+        `when`(ruleService.getGroupsByRuleId(ruleId))
+            .thenThrow(ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $ruleId"))
+
+        mockMvc.get("/api/openinghours/rule/$ruleId/groups")
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.message") { value("Rule not found: $ruleId") }
+            }
+    }
+
+    @Test
+    fun `GET groups for rule returns 200 with empty list when rule exists but has no groups`() {
+        val ruleId = UUID.randomUUID()
+        `when`(ruleService.getGroupsByRuleId(ruleId)).thenReturn(emptyList())
+
+        mockMvc.get("/api/openinghours/rule/$ruleId/groups")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(0) }
+            }
     }
 }
 
