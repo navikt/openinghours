@@ -1,5 +1,6 @@
-# ignore build files
+# ignore build files, but include the pre-built JAR
 target/
+!target/openinghours-*.jar
 build/
 
 # ignore ide modeules
