@@ -5,7 +5,7 @@ COPY target/openinghours-*.jar app.jar
 RUN java -Djarmode=tools -jar app.jar extract --layers --launcher --destination . --force
 
 # --- Stage 2: Runtime ---
-FROM eclipse-temurin:21-jre
+FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/jre:openjdk-21
 WORKDIR /app
 EXPOSE 8081
 
