@@ -1,19 +1,11 @@
-# --- Stage 1: Build ---
-FROM maven:3.9-eclipse-temurin-21 AS builder
-WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
-COPY src ./src
-RUN mvn clean package -DskipTests=true
-
-# --- Stage 2: Extract Spring Boot layers ---
+# --- Stage 1: Extract Spring Boot layers ---
 FROM eclipse-temurin:21-jre AS extractor
 WORKDIR /app
-COPY --from=builder /app/target/openinghours-*.jar app.jar
-RUN java -Djarmode=layertools -jar app.jar extract
+COPY target/openinghours-*.jar app.jar
+RUN java -Djarmode=tools -jar app.jar extract --layers --launcher --destination . --force
 
-# --- Stage 3: Runtime ---
-FROM cgr.dev/chainguard/jre:latest
+# --- Stage 2: Runtime ---
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 EXPOSE 8081
 

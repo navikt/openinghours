@@ -2,6 +2,7 @@ package no.nav.openinghours.service
 
 import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.OhGroupRepository
+import no.nav.openinghours.model.db.RuleRepository
 import no.nav.openinghours.model.db.Service as ServiceEntity
 import no.nav.openinghours.model.db.ServiceOhGroupRepository
 import no.nav.openinghours.model.db.ServiceRepository
@@ -19,7 +20,8 @@ data class GroupAssociations(val services: List<ServiceEntity>, val groups: List
 class OhGroupService(
     private val repo: OhGroupRepository,
     private val serviceRepo: ServiceOhGroupRepository,
-    private val serviceRepository: ServiceRepository
+    private val serviceRepository: ServiceRepository,
+    private val ruleRepository: RuleRepository
 ) {
     private val log = LoggerFactory.getLogger(OhGroupService::class.java)
 
@@ -101,6 +103,65 @@ class OhGroupService(
         } catch (e: Exception) {
             log.error("Update oh_group failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update group: ${e.message}", e)
+        }
+    }
+
+    @Transactional
+    fun removeGroupFromGroup(parentGroupId: UUID, childGroupId: UUID): OhGroup {
+        val parent = repo.findById(parentGroupId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $parentGroupId")
+        }
+        if (!repo.existsById(childGroupId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $childGroupId")
+        }
+        val childIdStr = childGroupId.toString()
+        if (parent.ruleGroupIds == null || childIdStr !in parent.ruleGroupIds!!) {
+            throw ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Group $childGroupId is not a member of group $parentGroupId"
+            )
+        }
+        if (ruleRepository.existsById(childGroupId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $childGroupId")
+        }
+        parent.ruleGroupIds = parent.ruleGroupIds!!
+            .filter { it != childIdStr }
+            .toTypedArray()
+            .ifEmpty { null }
+        return try {
+            repo.saveAndFlush(parent)
+                .also { log.info("Removed child group {} from oh_group id={}", childGroupId, parentGroupId) }
+        } catch (e: Exception) {
+            log.error(
+                "Remove group from group failed parentGroupId={} childGroupId={} msg={}",
+                parentGroupId, childGroupId, e.message, e
+            )
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Remove group from group: ${e.message}", e)
+        }
+    }
+
+    @Transactional
+    fun removeRuleFromGroup(groupId: UUID, ruleId: UUID): OhGroup {
+        val group = repo.findById(groupId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $groupId")
+        }
+        if (!ruleRepository.existsById(ruleId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: $ruleId")
+        }
+        val ruleIdStr = ruleId.toString()
+        if (group.ruleGroupIds == null || ruleIdStr !in group.ruleGroupIds!!) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Rule $ruleId is not a member of group $groupId")
+        }
+        group.ruleGroupIds = group.ruleGroupIds!!
+            .filter { it != ruleIdStr }
+            .toTypedArray()
+            .ifEmpty { null }
+        return try {
+            repo.saveAndFlush(group)
+                .also { log.info("Removed rule {} from oh_group id={}", ruleId, groupId) }
+        } catch (e: Exception) {
+            log.error("Remove rule from group failed groupId={} ruleId={} msg={}", groupId, ruleId, e.message, e)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Remove rule from group: ${e.message}", e)
         }
     }
 

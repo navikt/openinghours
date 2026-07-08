@@ -4,6 +4,7 @@ import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.Rule
 import no.nav.openinghours.service.RuleService
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -29,6 +30,9 @@ class RuleControllerTest {
 
     @MockitoBean
     private lateinit var ruleService: RuleService
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> anyArg(): T = Mockito.any<T>() as T
 
     private fun aRule(id: UUID = UUID.randomUUID(), name: String = "Weekdays", rule: String = "??.??.???? ? 1-5 08:00-16:00") =
         Rule.create(id = id, name = name, rule = rule, header = "Header", text = "Text", onlyShowForNavEmployees = false, redDay = false)
@@ -158,6 +162,40 @@ class RuleControllerTest {
                 status { isOk() }
                 jsonPath("$") { value(false) }
             }
+    }
+
+    @org.junit.jupiter.api.BeforeEach
+    fun defaultStubs() {
+        `when`(ruleService.getGroupsByRuleId(anyArg())).thenReturn(emptyList())
+    }
+
+    @Test
+    fun `DELETE rule returns 409 with group names when rule is used by groups and confirm is not set`() {
+        val id = UUID.randomUUID()
+        val groups = listOf(
+            OhGroup.create(name = "Group A", ruleGroupIds = listOf(id)),
+            OhGroup.create(name = "Group B", ruleGroupIds = listOf(id))
+        )
+        `when`(ruleService.getGroupsByRuleId(id)).thenReturn(groups)
+
+        mockMvc.delete("/api/openinghours/rule/$id")
+            .andExpect {
+                status { isConflict() }
+                jsonPath("$.message") { value("Rule is used by 2 group(s): Group A, Group B. Pass ?confirm=true to delete anyway.") }
+            }
+    }
+
+    @Test
+    fun `DELETE rule with confirm=true deletes even when rule is used by groups`() {
+        val id = UUID.randomUUID()
+        `when`(ruleService.delete(id)).thenReturn(true)
+
+        mockMvc.delete("/api/openinghours/rule/$id") {
+            param("confirm", "true")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$") { value(true) }
+        }
     }
 
     @Test
