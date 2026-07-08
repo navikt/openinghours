@@ -4,6 +4,7 @@ import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.Rule
 import no.nav.openinghours.service.RuleService
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -29,6 +30,9 @@ class RuleControllerTest {
 
     @MockitoBean
     private lateinit var ruleService: RuleService
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> anyArg(): T = Mockito.any<T>() as T
 
     private fun aRule(id: UUID = UUID.randomUUID(), name: String = "Weekdays", rule: String = "??.??.???? ? 1-5 08:00-16:00") =
         Rule.create(id = id, name = name, rule = rule, header = "Header", text = "Text", onlyShowForNavEmployees = false, redDay = false)
@@ -162,7 +166,7 @@ class RuleControllerTest {
 
     @org.junit.jupiter.api.BeforeEach
     fun defaultStubs() {
-        `when`(ruleService.getGroupsByRuleId(org.mockito.ArgumentMatchers.any(UUID::class.java))).thenReturn(emptyList())
+        `when`(ruleService.getGroupsByRuleId(anyArg())).thenReturn(emptyList())
     }
 
     @Test
