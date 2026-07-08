@@ -121,6 +121,9 @@ class OhGroupService(
                 "Group $childGroupId is not a member of group $parentGroupId"
             )
         }
+        if (ruleRepository.existsById(childGroupId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $childGroupId")
+        }
         parent.ruleGroupIds = parent.ruleGroupIds!!
             .filter { it != childIdStr }
             .toTypedArray()

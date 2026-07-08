@@ -151,6 +151,7 @@ class OhGroupControllerTest {
     @Test
     fun `DELETE group returns true`() {
         val id = UUID.randomUUID()
+        `when`(ohGroupService.getAssociationsByGroupId(id)).thenReturn(GroupAssociations(emptyList(), emptyList()))
         `when`(ohGroupService.delete(id)).thenReturn(true)
 
         mockMvc.delete("/api/openinghours/group/$id")
@@ -163,6 +164,7 @@ class OhGroupControllerTest {
     @Test
     fun `DELETE group returns false for unknown id`() {
         val id = UUID.randomUUID()
+        `when`(ohGroupService.getAssociationsByGroupId(id)).thenReturn(GroupAssociations(emptyList(), emptyList()))
         `when`(ohGroupService.delete(id)).thenReturn(false)
 
         mockMvc.delete("/api/openinghours/group/$id")
