@@ -160,6 +160,11 @@ class RuleControllerTest {
             }
     }
 
+    @org.junit.jupiter.api.BeforeEach
+    fun defaultStubs() {
+        `when`(ruleService.getGroupsByRuleId(org.mockito.ArgumentMatchers.any(UUID::class.java))).thenReturn(emptyList())
+    }
+
     @Test
     fun `DELETE rule returns 409 with group names when rule is used by groups and confirm is not set`() {
         val id = UUID.randomUUID()
