@@ -56,6 +56,18 @@ class GlobalExceptionHandler(
         return ResponseEntity.status(statusCode).body(body)
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    fun handleTypeMismatch(ex: MethodArgumentTypeMismatchException): ResponseEntity<Map<String, Any>> {
+        val statusCode = HttpStatus.BAD_REQUEST
+        val message = ex.cause?.message ?: ex.message ?: "Invalid value for parameter '${ex.name}'"
+        val body = mutableMapOf<String, Any>(
+            "status" to statusCode.value(),
+            "error" to statusCode.toString(),
+            "message" to message
+        )
+        return ResponseEntity.status(statusCode).body(body)
+    }
+
     @ExceptionHandler(ConstraintViolationException::class)
     fun handleConstraintViolation(ex: ConstraintViolationException): ResponseEntity<Map<String, Any>> {
         val statusCode = HttpStatus.BAD_REQUEST
