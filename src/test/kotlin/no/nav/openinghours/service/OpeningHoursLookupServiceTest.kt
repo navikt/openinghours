@@ -159,5 +159,53 @@ class OpeningHoursLookupServiceTest {
         assertThat(result.warningMessage).contains("has rules defined")
         assertThat(result.warningMessage).contains("none match")
     }
+
+    @Test
+    fun `getDisplayDataOrDefault returns matching rule without warning when rule matches`() {
+        val rule = createRule(
+            name = "Weekday hours",
+            rule = "??.??.???? ? 1-5 08:00-16:00",
+            header = "Weekday",
+            text = "Normal hours"
+        )
+        val group = createGroup("Office", listOf(rule.id))
+
+        // 2024-03-15 is a Friday — rule matches
+        val result = lookupService.getDisplayDataOrDefault(group.id, LocalDate.of(2024, 3, 15))
+
+        assertThat(result.data.ruleName).isEqualTo("Weekday hours")
+        assertThat(result.data.openingHours).isEqualTo("08:00-16:00")
+        assertThat(result.data.displayHeader).isEqualTo("Weekday")
+        assertThat(result.data.displayText).isEqualTo("Normal hours")
+        assertThat(result.warningMessage).isNull()
+    }
+
+    @Test
+    fun `getDisplayDataOrDefault returns default data with warning when group has rules but none match`() {
+        // Rule only matches weekdays (Mon-Fri)
+        val rule = createRule("Weekdays only", "??.??.???? ? 1-5 08:00-16:00")
+        val group = createGroup("Office hours", listOf(rule.id))
+
+        // 2024-03-16 is a Saturday — rule exists but does NOT match
+        val result = lookupService.getDisplayDataOrDefault(group.id, LocalDate.of(2024, 3, 16))
+
+        assertThat(result.data).isEqualTo(no.nav.openinghours.evaluator.OpeningHoursEvaluator.DEFAULT_DISPLAY_DATA)
+        assertThat(result.warningMessage).isNotNull()
+        assertThat(result.warningMessage).contains("has rules defined")
+        assertThat(result.warningMessage).contains("none match")
+        assertThat(result.warningMessage).contains(group.id.toString())
+    }
+
+    @Test
+    fun `getDisplayDataOrDefault returns default open-all-day without warning when group has no rules`() {
+        val group = createGroup("Empty group", emptyList())
+
+        val result = lookupService.getDisplayDataOrDefault(group.id, LocalDate.of(2024, 3, 16))
+
+        assertThat(result.data.ruleName).isEqualTo("No Rules stated")
+        assertThat(result.data.openingHours).isEqualTo("00:00-23:59")
+        assertThat(result.data.displayHeader).isEqualTo("Default regel")
+        assertThat(result.warningMessage).isNull()
+    }
 }
 
