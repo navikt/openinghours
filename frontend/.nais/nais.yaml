@@ -1,0 +1,63 @@
+apiVersion: nais.io/v1alpha1
+kind: Application
+metadata:
+  name: openinghours-frontend
+  namespace: navdig
+  labels:
+    team: navdig
+spec:
+  image: {{image}}
+  port: 3000
+  ingresses:
+    - https://oppetidskalender.ansatt.nav.no
+  liveness:
+    path: /internal/health
+    initialDelay: 10
+  readiness:
+    path: /internal/health
+    initialDelay: 10
+  replicas:
+    min: 2
+    max: 4
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 256Mi
+  # API-nøkkelen til backend. Ligger kun i BFF-prosessen, aldri i klientbundelen.
+  envFrom:
+    - secret: openinghours-frontend-secret
+  env:
+    - name: BACKEND_URL
+      value: http://openinghours
+    # Kalenderen skal etter planen åpnes for publikum. Fram til da er hele appen
+    # intern: alt krever innlogging, og maskeringen av interne åpningstider er
+    # hvilende. Å åpne den er tre samtidige endringer:
+    #   1. ingress → https://<navn>.nav.no
+    #   2. sidecar.autoLogin → false
+    #   3. PUBLIC_ACCESS → "true"
+    - name: PUBLIC_ACCESS
+      value: "false"
+  azure:
+    application:
+      enabled: true
+      # Alle Nav-ansatte skal kunne se kalenderen. Tilgangsstyringen ligger i
+      # selve domenet: ansatt.nav.no slipper bare gjennom autentiserte brukere
+      # på godkjente enheter.
+      allowAllUsers: true
+      tenant: nav.no
+    sidecar:
+      # Wonderwall terminerer Entra ID-flyten før requesten når appen, så alle
+      # innkommende forespørsler er innlogget. Appen har derfor ingen
+      # uinnlogget tilstand å håndtere.
+      enabled: true
+      autoLogin: true
+  accessPolicy:
+    outbound:
+      rules:
+        - application: openinghours
+  observability:
+    logging:
+      destinations:
+        - id: loki

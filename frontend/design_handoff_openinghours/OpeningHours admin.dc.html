@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/aksel-design-system-nav-71e0d16a-00d1-4188-92e4-1c83abdaef41/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/aksel-design-system-nav-71e0d16a-00d1-4188-92e4-1c83abdaef41/tokens/colors.css">
+<link rel="stylesheet" href="_ds/aksel-design-system-nav-71e0d16a-00d1-4188-92e4-1c83abdaef41/tokens/typography.css">
+<link rel="stylesheet" href="_ds/aksel-design-system-nav-71e0d16a-00d1-4188-92e4-1c83abdaef41/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/aksel-design-system-nav-71e0d16a-00d1-4188-92e4-1c83abdaef41/tokens/radius.css">
+<link rel="stylesheet" href="_ds/aksel-design-system-nav-71e0d16a-00d1-4188-92e4-1c83abdaef41/tokens/shadow.css">
+<link rel="stylesheet" href="_ds/aksel-design-system-nav-71e0d16a-00d1-4188-92e4-1c83abdaef41/tokens/breakpoints.css">
+<link rel="stylesheet" href="_ds/aksel-design-system-nav-71e0d16a-00d1-4188-92e4-1c83abdaef41/tokens/base.css">
+<link rel="stylesheet" href="_ds/aksel-design-system-nav-71e0d16a-00d1-4188-92e4-1c83abdaef41/styles.css">
+<script src="_ds/aksel-design-system-nav-71e0d16a-00d1-4188-92e4-1c83abdaef41/_ds_bundle.js"></script>
+<style>
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--ax-bg-sunken); font-family: var(--ax-font-family); color: var(--ax-text-neutral); }
+* { box-sizing: border-box; }
+a { color: var(--ax-text-accent); text-decoration: underline; text-underline-offset: 2px; }
+a:hover { color: var(--ax-color-accent-700); text-decoration-thickness: 2px; }
+</style>
+</helmet>
+
+<div style="max-width: 1360px; margin: 0 auto; padding: 56px 40px 96px; display: flex; flex-direction: column; gap: 72px;">
+
+<header style="display: flex; flex-direction: column; gap: 20px;">
+  <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+    <span style="font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ax-color-accent-700); background: var(--ax-bg-accent-soft); padding: 5px 10px; border-radius: 4px;">Designforslag · del 2 av 2</span>
+    <span style="font-size: 13px; color: var(--ax-color-neutral-600);">Lo-fi wireframes · Aksel-komponenter, dempet farge</span>
+    <a href="OpeningHours designforslag.dc.html" style="font-size: 13px;">Del 1: kalender og tjenesteoversikt</a>
+  </div>
+  <h1 style="margin: 0; font-size: 52px; line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; color: var(--ax-color-accent-900);">Administrasjon</h1>
+  <p style="margin: 0; font-size: 21px; line-height: 1.5; color: var(--ax-color-neutral-700); max-width: 64ch; text-wrap: pretty;">Regler, grupper og tjenester — for få, avanserte brukere med Azure AD-pålogging. Prinsippet er trygghet foran hastighet: du skal alltid se konsekvensen av en endring før den skjer, og du skal aldri måtte skrive et regeluttrykk i blinde.</p>
+  <nav style="display: flex; flex-wrap: wrap; gap: 8px 20px; padding-top: 12px; border-top: 1px solid var(--ax-border-neutral-subtle);">
+    <a href="#a-oversikt" style="font-size: 15px;">1. Adminoversikt</a>
+    <a href="#a-regler" style="font-size: 15px;">2. Regler — liste</a>
+    <a href="#a-regel" style="font-size: 15px;">3. Regel — skjema og veiviser</a>
+    <a href="#a-grupper" style="font-size: 15px;">4. Grupper — trestruktur</a>
+    <a href="#a-tjenester" style="font-size: 15px;">5. Tjenester</a>
+    <a href="#a-sletting" style="font-size: 15px;">6. Sletting i bruk</a>
+    <a href="#a-feil" style="font-size: 15px;">7. Feilmeldinger</a>
+    <a href="#a-komponenter" style="font-size: 15px;">8. Komponentmapping</a>
+  </nav>
+</header>
+
+<section id="a-oversikt" style="display: flex; flex-direction: column; gap: 24px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; font-size: 32px; line-height: 1.2; font-weight: 600; color: var(--ax-color-accent-900);">1. Adminoversikt</h2>
+    <p style="margin: 0; font-size: 17px; line-height: 1.6; color: var(--ax-color-neutral-700); max-width: 68ch; text-wrap: pretty;">Landingssiden for innloggede. Den svarer på «er noe galt?» før den tilbyr «hva vil du endre?» — derfor ligger avvikene øverst, ikke snarveiene.</p>
+  </div>
+  <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; overflow: hidden;">
+    <div style="padding: 11px 18px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ax-color-neutral-700);">Wireframe · /admin · desktop</div>
+    <div style="padding: 28px; display: flex; gap: 28px; align-items: flex-start;">
+      <nav style="flex: none; width: 210px; display: flex; flex-direction: column; gap: 2px;">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+          <span style="font-size: 15px; font-weight: {{ n.fw }}; color: {{ n.fg }}; background: {{ n.bg }}; border-left: 3px solid {{ n.mark }}; padding: 10px 14px; border-radius: 0 4px 4px 0;">{{ n.label }}</span>
+        </sc-for>
+        <span style="font-size: 13px; color: var(--ax-color-neutral-600); margin-top: 16px; padding: 0 14px; line-height: 1.5;">Sidemenyen er admins eneste navigasjon. Den offentlige kalenderen nås fra toppen.</span>
+      </nav>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+        <div>
+          <h3 style="margin: 0 0 6px; font-size: 30px; line-height: 1.2; font-weight: 600;">Administrasjon</h3>
+          <p style="margin: 0; font-size: 16px; color: var(--ax-color-neutral-700);">Innlogget som Kari Nordmann · team dagpenger</p>
+        </div>
+        <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Alert" variant="warning" hint-size="100%,110px">2 tjenester mangler åpningstidsgruppe, og 1 gruppe har en regel som aldri treffer. Se listen under.</x-import>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
+          <sc-for list="{{ stats }}" as="s" hint-placeholder-count="3">
+            <div style="border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 34px; font-weight: 600; line-height: 1.1;">{{ s.n }}</span>
+              <span style="font-size: 15px; color: var(--ax-color-neutral-700);">{{ s.label }}</span>
+              <span style="font-size: 14px; margin-top: 6px;"><a href="#a-regler">{{ s.link }}</a></span>
+            </div>
+          </sc-for>
+        </div>
+        <div>
+          <h4 style="margin: 0 0 12px; font-size: 20px; font-weight: 600;">Trenger oppmerksomhet</h4>
+          <div style="border: 1px solid var(--ax-border-neutral-subtle); border-radius: 4px; overflow: hidden;">
+            <sc-for list="{{ attention }}" as="a" hint-placeholder-count="3">
+              <div style="display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) minmax(0, 0.9fr); gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--ax-border-neutral-subtle); align-items: center;">
+                <span style="display: inline-flex; align-items: center; gap: 7px; justify-self: start; background: var(--ax-bg-warning-soft); color: var(--ax-color-warning-700); border: 1px solid var(--ax-border-warning-subtle); border-radius: 4px; padding: 5px 10px; font-size: 14px; font-weight: 600;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="flex: none;"><path d="M12 3 22.5 20.5h-21zM11 9h2v6h-2zM11 16.5h2v2h-2z"></path></svg>
+                  {{ a.kind }}
+                </span>
+                <span style="font-size: 15px; line-height: 1.5;">{{ a.text }}</span>
+                <span style="font-size: 14px; justify-self: end;"><a href="#a-tjenester">{{ a.action }}</a></span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div>
+          <h4 style="margin: 0 0 12px; font-size: 20px; font-weight: 600;">Siste endringer</h4>
+          <sc-for list="{{ history }}" as="h" hint-placeholder-count="4">
+            <div style="display: flex; gap: 16px; align-items: baseline; padding: 11px 0; border-top: 1px solid var(--ax-border-neutral-subtle);">
+              <span style="flex: none; width: 130px; font-size: 14px; color: var(--ax-color-neutral-600);">{{ h.when }}</span>
+              <span style="flex: 1; min-width: 0; font-size: 15px; line-height: 1.5;">{{ h.what }}</span>
+              <span style="flex: none; font-size: 14px; color: var(--ax-color-neutral-600);">{{ h.who }}</span>
+            </div>
+          </sc-for>
+          <p style="margin: 14px 0 0; font-size: 14px; line-height: 1.6; color: var(--ax-color-neutral-700);">Endringsloggen er lesbar, ikke teknisk: «endret klokkeslett fra 15:00 til 15:30», ikke en diff av regelstrengen. Full historikk ligger på hver regel og gruppe.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="a-regler" style="display: flex; flex-direction: column; gap: 24px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; font-size: 32px; line-height: 1.2; font-weight: 600; color: var(--ax-color-accent-900);">2. Regler — listevisning</h2>
+    <p style="margin: 0; font-size: 17px; line-height: 1.6; color: var(--ax-color-neutral-700); max-width: 68ch; text-wrap: pretty;">Regeluttrykket står i tabellen, men i lesbar form: hver rad viser både strengen og en setning som forklarer den. Kolonnen «Brukt i» er den viktigste — den forteller om regelen er trygg å endre.</p>
+  </div>
+  <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; overflow: hidden;">
+    <div style="padding: 11px 18px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ax-color-neutral-700);">Wireframe · /admin/regler · desktop</div>
+    <div style="padding: 28px;">
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 24px;">
+        <div>
+          <h3 style="margin: 0 0 4px; font-size: 30px; line-height: 1.2; font-weight: 600;">Regler</h3>
+          <p style="margin: 0; font-size: 16px; color: var(--ax-color-neutral-700);">24 regler · en regel kan brukes i flere grupper</p>
+        </div>
+        <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Button" hint-size="130px,48px">Ny regel</x-import>
+      </div>
+      <div style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px;">
+        <div style="flex: 1; min-width: 240px;">
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.TextField" label="Søk i navn og uttrykk" placeholder="F.eks. helg" hint-size="100%,72px"></x-import>
+        </div>
+        <div style="width: 200px;">
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Select" label="Flagg" hint-size="100%,72px">
+            <option value="alle">Alle regler</option>
+            <option value="rod">Rød dag</option>
+            <option value="intern">Kun for Nav-ansatte</option>
+            <option value="ubrukt">Ikke i bruk</option>
+          </x-import>
+        </div>
+      </div>
+      <div style="border: 1px solid var(--ax-border-neutral-subtle); border-radius: 4px; overflow: hidden;">
+        <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 2.2fr) minmax(0, 1.1fr) minmax(0, 1.2fr) minmax(0, 0.7fr); gap: 16px; padding: 12px 18px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 13px; font-weight: 600; color: var(--ax-color-neutral-700);">
+          <span>Navn</span><span>Regeluttrykk</span><span>Flagg</span><span>Brukt i</span><span></span>
+        </div>
+        <sc-for list="{{ rules }}" as="r" hint-placeholder-count="6">
+          <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 2.2fr) minmax(0, 1.1fr) minmax(0, 1.2fr) minmax(0, 0.7fr); gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--ax-border-neutral-subtle); align-items: start;">
+            <a href="#a-regel" style="font-size: 16px; font-weight: 600;">{{ r.name }}</a>
+            <span style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+              <code style="font-family: ui-monospace, monospace; font-size: 13px; line-height: 1.4; background: var(--ax-color-neutral-100); border-radius: 4px; padding: 5px 8px; word-break: break-word;">{{ r.expr }}</code>
+              <span style="font-size: 13px; line-height: 1.45; color: var(--ax-color-neutral-600);">{{ r.plain }}</span>
+            </span>
+            <span style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <sc-for list="{{ r.flags }}" as="f" hint-placeholder-count="0">
+                <span style="font-size: 13px; font-weight: 600; color: {{ f.fg }}; background: {{ f.bg }}; border: 1px solid {{ f.bd }}; border-radius: 999px; padding: 3px 9px;">{{ f.label }}</span>
+              </sc-for>
+            </span>
+            <span style="font-size: 14px; line-height: 1.5; color: {{ r.useFg }};">{{ r.usedIn }}</span>
+            <span style="font-size: 14px; justify-self: end; display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+              <a href="#a-regel">Rediger</a>
+              <a href="#a-sletting">Slett</a>
+            </span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin: 18px 0 0; font-size: 14px; line-height: 1.6; color: var(--ax-color-neutral-700); max-width: 82ch;">Regler som ikke er i bruk merkes tydelig — det er den vanligste kilden til forvirring når noen skal endre en åpningstid og ikke skjønner hvorfor endringen ikke vises. «Brukt i» lenker til hver gruppe.</p>
+    </div>
+  </div>
+</section>
+
+<section id="a-regel" style="display: flex; flex-direction: column; gap: 24px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; font-size: 32px; line-height: 1.2; font-weight: 600; color: var(--ax-color-accent-900);">3. Regel — skjema med veiviser</h2>
+    <p style="margin: 0; font-size: 17px; line-height: 1.6; color: var(--ax-color-neutral-700); max-width: 68ch; text-wrap: pretty;">Skjemaets vanskeligste oppgave er å skrive et gyldig regeluttrykk. Løsningen er fire felt side om side som til sammen <em>er</em> uttrykket: du fyller ut felt, strengen skrives for deg, og strengen er samtidig redigerbar for den som kan syntaksen. Forhåndsvisningen til høyre svarer på det eneste spørsmålet som betyr noe: «hva gir denne regelen for en gitt dato?»</p>
+  </div>
+  <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; overflow: hidden;">
+    <div style="padding: 11px 18px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ax-color-neutral-700);">Wireframe · /admin/regler/ny · desktop · felt og strengen er koblet</div>
+    <div style="padding: 28px; display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 460px; display: flex; flex-direction: column; gap: 24px;">
+        <div>
+          <a href="#a-regler" style="font-size: 14px;">Tilbake til regler</a>
+          <h3 style="margin: 8px 0 0; font-size: 30px; line-height: 1.2; font-weight: 600;">Ny regel</h3>
+        </div>
+        <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.TextField" label="Navn på regelen" description="Brukes i grupper og i endringsloggen. Beskriv hva regelen gjør, ikke når den ble laget." value="{{ f.name }}" onChange="{{ setName }}" hint-size="100%,96px"></x-import>
+
+        <div style="border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; padding: 22px; display: flex; flex-direction: column; gap: 18px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 18px; font-weight: 600;">Når gjelder regelen?</span>
+            <span style="font-size: 15px; line-height: 1.55; color: var(--ax-color-neutral-700);">Fyll ut feltene du trenger. Et felt du lar stå tomt betyr «alle» og skrives som <code style="font-family: ui-monospace, monospace; font-size: 13px;">*</code>.</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: end;">
+            <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.TextField" label="Dato" description="17.05.2026 eller 17.05 hvert år" placeholder="Alle" value="{{ f.date }}" onChange="{{ setDate }}" hint-size="100%,104px"></x-import>
+            <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.TextField" label="Dag i måneden" description="1, 15, siste" placeholder="Alle" value="{{ f.dom }}" onChange="{{ setDom }}" hint-size="100%,104px"></x-import>
+            <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Select" label="Ukedag" description="Enkeltdag eller intervall" value="{{ f.wd }}" onChange="{{ setWd }}" hint-size="100%,104px">
+              <option value="*">Alle</option>
+              <option value="man-fre">man-fre</option>
+              <option value="man-tor">man-tor</option>
+              <option value="fre">fre</option>
+              <option value="lør-søn">lør-søn</option>
+            </x-import>
+            <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.TextField" label="Klokkeslett" description="08:00-15:30, flere med komma" placeholder="stengt" value="{{ f.time }}" onChange="{{ setTime }}" hint-size="100%,104px"></x-import>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 18px; border-top: 1px solid var(--ax-border-neutral-subtle);">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+              <span style="font-size: 15px; font-weight: 600;">Regeluttrykk</span>
+              <span style="font-size: 14px; color: var(--ax-color-neutral-600);">Feltene over skriver denne strengen. Du kan også redigere den direkte.</span>
+            </div>
+            <code style="display: block; font-family: ui-monospace, monospace; font-size: 15px; line-height: 1.5; background: var(--ax-color-neutral-100); border: 1px solid {{ v.exprBd }}; border-radius: 4px; padding: 12px 14px; word-break: break-word;">{{ v.expr }}</code>
+            <span style="display: inline-flex; align-items: center; gap: 7px; align-self: flex-start; font-size: 14px; font-weight: 600; color: {{ v.fg }};">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="flex: none;"><path fill-rule="evenodd" d="{{ v.ico }}"></path></svg>
+              {{ v.msg }}
+            </span>
+            <span style="font-size: 14px; line-height: 1.55; color: var(--ax-color-neutral-700);">{{ v.plain }}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid var(--ax-border-neutral-subtle);">
+            <span style="font-size: 15px; font-weight: 600;">Eller start fra et vanlig mønster</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <sc-for list="{{ presets }}" as="p" hint-placeholder-count="5">
+                <button type="button" onClick="{{ p.apply }}" style="font-family: var(--ax-font-family); font-size: 14px; color: var(--ax-text-neutral); border: 1px solid var(--ax-border-neutral); border-radius: 999px; padding: 7px 14px; cursor: pointer; background: var(--ax-bg-raised);" style-hover="background: var(--ax-color-neutral-100);">{{ p.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.TextField" label="Overskrift til brukeren" description="Valgfri. Vises som displayHeader i kalenderen." placeholder="F.eks. Stengt 17. mai" hint-size="100%,96px"></x-import>
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Textarea" label="Forklarende tekst" description="Valgfri. Vises som displayText. Skriv til brukeren i du-form, og si når tjenesten åpner igjen." placeholder="Tjenesten er stengt på røde dager. Neste åpningsdag står i kalenderen." hint-size="100%,150px"></x-import>
+          <div style="display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; padding: 18px 20px;">
+            <span style="font-size: 16px; font-weight: 600;">Flagg</span>
+            <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Checkbox" hint-size="100%,32px">Rød dag — dagen markeres som helligdag i kalenderen</x-import>
+            <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Checkbox" hint-size="100%,32px">Kun for Nav-ansatte — dagen skjules for uinnloggede</x-import>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; padding-top: 4px;">
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Button" hint-size="140px,48px">Lagre regelen</x-import>
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Button" variant="tertiary" hint-size="100px,48px">Avbryt</x-import>
+        </div>
+      </div>
+
+      <aside style="flex: none; width: 340px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; padding: 22px; display: flex; flex-direction: column; gap: 14px; background: var(--ax-bg-raised);">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600);">Forhåndsvisning</span>
+            <span style="font-size: 15px; line-height: 1.5; color: var(--ax-color-neutral-700);">Velg en dato og se hva regelen gir.</span>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <sc-for list="{{ testDates }}" as="t" hint-placeholder-count="4">
+              <button type="button" onClick="{{ t.pick }}" aria-pressed="{{ t.on }}" style="font-family: var(--ax-font-family); font-size: 14px; font-weight: {{ t.fw }}; border: 1px solid {{ t.bd }}; background: {{ t.bg }}; color: {{ t.fg }}; border-radius: 999px; padding: 7px 13px; cursor: pointer;">{{ t.label }}</button>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 4px; background: {{ pv.bg }}; border: 1px solid {{ pv.bd }};">
+            <span style="font-size: 15px; color: var(--ax-color-neutral-700);">{{ pv.dateLine }}</span>
+            <span style="display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; color: {{ pv.fg }};">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="flex: none;"><path fill-rule="evenodd" d="{{ pv.ico }}"></path></svg>
+              <span style="font-size: 18px; font-weight: 600;">{{ pv.status }}</span>
+            </span>
+            <span style="font-size: 15px; line-height: 1.55; color: var(--ax-color-neutral-700);">{{ pv.explain }}</span>
+          </div>
+          <span style="font-size: 13px; line-height: 1.5; color: var(--ax-color-neutral-600);">Forhåndsvisningen viser regelen alene. Hva brukeren faktisk ser avhenger av rekkefølgen i gruppen — test det på gruppesiden.</span>
+        </div>
+        <div style="border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; padding: 22px; display: flex; flex-direction: column; gap: 10px; background: var(--ax-bg-raised);">
+          <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600);">Brukt i 2 grupper</span>
+          <a href="#a-grupper" style="font-size: 15px;">Selvbetjening ordinær</a>
+          <a href="#a-grupper" style="font-size: 15px;">Innsyn og innsikt</a>
+          <span style="font-size: 13px; line-height: 1.5; color: var(--ax-color-neutral-700); padding-top: 6px; border-top: 1px solid var(--ax-border-neutral-subtle);">En endring her slår ut i begge gruppene, og i alle tjenestene som bruker dem. Antallet berørte tjenester bekreftes i lagringsdialogen.</span>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; padding: 28px 32px;">
+    <h3 style="margin: 0 0 20px; font-size: 20px; font-weight: 600;">Spesifikasjon · regelskjema</h3>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 32px;">
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Toveis kobling</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Feltene og strengen er samme data. Endrer du et felt, skrives strengen på nytt. Endrer du strengen, fylles feltene på nytt så lenge uttrykket kan tolkes. Kan det ikke tolkes, blir feltene låst med teksten «Uttrykket er skrevet manuelt. Nullstill feltene for å redigere dem igjen» og en knapp som gjenoppretter koblingen.</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Validering</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Skjer mens du skriver, med 300 ms forsinkelse, og aldri mens markøren står i feltet du fortsatt fyller ut. Gyldig uttrykk gir en grønn kvitteringslinje med den samme setningen som vises i regellisten. Ugyldig gir én konkret feilmelding, ikke en syntaksdump.</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Feilmeldinger for uttrykket</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">«Klokkeslettet må skrives som 08:00-15:30.» · «Sluttidspunktet må være etter starttidspunktet.» · «To av intervallene overlapper. Del dem i to regler, eller slå dem sammen.» · «17.05.2026 er en dato, ikke en ukedag. Flytt den til feltet Dato.»</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Live forhåndsvisning</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Fire forhåndsvalgte datoer dekker de typiske tilfellene — i dag, en helgedag, 17. mai, og en dato du selv velger. Panelet viser status, klokkeslett og en setning som forklarer <em>hvorfor</em> regelen traff eller ikke traff. «Traff ikke» er en gyldig og nyttig visning, ikke en tom tilstand.</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Mønsterknappene</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Fem vanlige mønstre fyller alle fire feltene med ett klikk: ordinær arbeidsuke, arbeidsuke med lunsjpause, kortere fredag, stengt i helgen, stengt en bestemt dato. De erstatter ikke veiviseren, de gir den et startpunkt — for de fleste reglene er justering av et ferdig mønster nok.</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Lagring</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Er regelen i bruk, viser lagringen en bekreftelse med konsekvensen først: «Regelen brukes i 2 grupper og påvirker 7 tjenester. Lagre endringen?» Ubrukte regler lagres uten mellomsteg. Etter lagring: en `Alert` med «Regelen er lagret» og lenke til gruppene den brukes i.</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Tastatur og skjermleser</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Vanlig skjematabulering — ingen egen tastaturmodell. Kvitteringslinjen og valideringsfeilen ligger i et <span style="font-family: ui-monospace, monospace; font-size: 13px;">aria-live="polite"</span>-område knyttet til uttrykksfeltet med <span style="font-family: ui-monospace, monospace; font-size: 13px;">aria-describedby</span>. Forhåndsvisningen annonseres ved datobytte: «12. mai 2026: åpent 08:00 til 15:30».</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Mobil</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Fire felt side om side blir fire felt i kolonne. Forhåndsvisningen flyttes under uttrykket, som et sammenleggbart panel som er åpent som standard. Skjemaet er ikke en primær mobiloppgave, men det skal være mulig å rette en åpningstid fra telefonen.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="a-grupper" style="display: flex; flex-direction: column; gap: 24px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; font-size: 32px; line-height: 1.2; font-weight: 600; color: var(--ax-color-accent-900);">4. Grupper — trestruktur</h2>
+    <p style="margin: 0; font-size: 17px; line-height: 1.6; color: var(--ax-color-neutral-700); max-width: 68ch; text-wrap: pretty;">Rekkefølgen <em>er</em> prioriteten, så prioriteten skal være synlig som et tall — ikke bare underforstått av posisjonen. Hver rad har nummer, innrykk og dra-håndtak. Panelet til høyre viser hvilket medlem som faktisk vinner for en valgt dato, som er den eneste måten å forstå et tre med undergrupper på.</p>
+  </div>
+  <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; overflow: hidden;">
+    <div style="padding: 11px 18px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ax-color-neutral-700);">Wireframe · /admin/grupper/selvbetjening-ordinaer · desktop</div>
+    <div style="padding: 28px; display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 480px; display: flex; flex-direction: column; gap: 20px;">
+        <div>
+          <a href="#a-oversikt" style="font-size: 14px;">Tilbake til grupper</a>
+          <h3 style="margin: 8px 0 4px; font-size: 30px; line-height: 1.2; font-weight: 600;">Selvbetjening ordinær</h3>
+          <p style="margin: 0; font-size: 16px; color: var(--ax-color-neutral-700);">7 medlemmer · brukt av 7 tjenester</p>
+        </div>
+        <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Alert" variant="info" size="small" hint-size="100%,80px">Første medlem som treffer datoen vinner. Flytt et medlem opp for å gi det høyere prioritet.</x-import>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <sc-for list="{{ tree }}" as="t" hint-placeholder-count="7">
+            <div style="display: flex; align-items: center; gap: 12px; margin-left: {{ t.indent }}; padding: 12px 14px; border: 1px solid {{ t.bd }}; border-left: 3px solid {{ t.mark }}; border-radius: 4px; background: {{ t.bg }};">
+              <span style="flex: none; width: 22px; color: var(--ax-color-neutral-500); cursor: grab;" aria-label="Flytt {{ t.name }}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 5h2v2H9zm4 0h2v2h-2zM9 9h2v2H9zm4 0h2v2h-2zM9 13h2v2H9zm4 0h2v2h-2zM9 17h2v2H9zm4 0h2v2h-2z"></path></svg>
+              </span>
+              <span style="flex: none; width: 30px; font-size: 15px; font-weight: 700; color: var(--ax-color-neutral-700); font-variant-numeric: tabular-nums;">{{ t.prio }}</span>
+              <span style="flex: none; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: {{ t.kindFg }}; background: {{ t.kindBg }}; border-radius: 999px; padding: 3px 9px;">{{ t.kind }}</span>
+              <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+                <span style="font-size: 16px; font-weight: 600;">{{ t.name }}</span>
+                <span style="font-size: 13px; line-height: 1.45; color: var(--ax-color-neutral-600);">{{ t.sub }}</span>
+              </span>
+              <span style="flex: none; display: flex; gap: 10px; font-size: 14px;">
+                <a href="#a-grupper">Opp</a>
+                <a href="#a-grupper">Ned</a>
+                <a href="#a-grupper">Fjern</a>
+              </span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; padding-top: 4px;">
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Button" variant="secondary" hint-size="150px,48px">Legg til regel</x-import>
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Button" variant="secondary" hint-size="170px,48px">Legg til undergruppe</x-import>
+        </div>
+      </div>
+
+      <aside style="flex: none; width: 320px; border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; padding: 22px; display: flex; flex-direction: column; gap: 14px; background: var(--ax-bg-raised);">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600);">Hva treffer denne datoen?</span>
+          <span style="font-size: 15px; line-height: 1.5; color: var(--ax-color-neutral-700);">Test rekkefølgen mot en dato.</span>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <sc-for list="{{ groupDates }}" as="g" hint-placeholder-count="3">
+            <button type="button" onClick="{{ g.pick }}" aria-pressed="{{ g.on }}" style="font-family: var(--ax-font-family); font-size: 14px; font-weight: {{ g.fw }}; border: 1px solid {{ g.bd }}; background: {{ g.bg }}; color: {{ g.fg }}; border-radius: 999px; padding: 7px 13px; cursor: pointer;">{{ g.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <sc-for list="{{ trace }}" as="tr" hint-placeholder-count="4">
+            <div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 4px; background: {{ tr.bg }}; border: 1px solid {{ tr.bd }};">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="{{ tr.fg }}" aria-hidden="true" style="flex: none; margin-top: 2px;"><path fill-rule="evenodd" d="{{ tr.ico }}"></path></svg>
+              <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 15px; font-weight: {{ tr.fw }}; line-height: 1.4;">{{ tr.name }}</span>
+                <span style="font-size: 13px; line-height: 1.45; color: var(--ax-color-neutral-600);">{{ tr.verdict }}</span>
+              </span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding-top: 12px; border-top: 1px solid var(--ax-border-neutral-subtle); display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); font-weight: 600;">Resultat</span>
+          <span style="font-size: 17px; font-weight: 600; color: {{ result.fg }};">{{ result.text }}</span>
+          <span style="font-size: 14px; line-height: 1.5; color: var(--ax-color-neutral-700);">{{ result.sub }}</span>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; padding: 28px 32px;">
+    <h3 style="margin: 0 0 20px; font-size: 20px; font-weight: 600;">Spesifikasjon · grupper</h3>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 32px;">
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Hierarkiet</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Innrykk på 32 px per nivå, og en venstre 3 px kantstrek som markerer at raden hører til gruppen over. Undergrupper viser antall medlemmer i underlinjen og kan slås sammen. Maksimalt tre nivåer vises utvidet; dypere nivåer krever at du åpner undergruppen som egen side — et tre du ikke kan overskue er farligere enn ett klikk mer.</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Prioritetsnummeret</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Fortløpende nummer i den rekkefølgen reglene evalueres, på tvers av nivåer — en regel inne i en undergruppe med nummer 3 får 3.1, 3.2. Nummeret er ikke redigerbart; det er en konsekvens av rekkefølgen, og skrives ut på nytt umiddelbart etter hver flytting.</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Omorganisering</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Tre veier til samme handling: dra i håndtaket, «Opp»/«Ned»-lenkene i raden, eller tastatur. Dra-og-slipp er aldri den eneste måten. Under draing vises en innsettingslinje, og et medlem kan slippes inn i en undergruppe når du holder over den i 500 ms. Endringen lagres først når du trykker «Lagre rekkefølgen» — en utilsiktet dra skal ikke endre produksjon.</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Tastatur for flytting</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Håndtaket er fokuserbart. Mellomrom løfter medlemmet («Løftet Ordinær åpningstid, prioritet 2 av 7»), piltastene flytter det, mellomrom slipper det, Escape avbryter og setter det tilbake. Ctrl + pil høyre gjør medlemmet til barn av raden over; Ctrl + pil venstre flytter det ut ett nivå.</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Skjermleser</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Treet er en <span style="font-family: ui-monospace, monospace; font-size: 13px;">&lt;ol&gt;</span> med nøstede lister, ikke <span style="font-family: ui-monospace, monospace; font-size: 13px;">role="tree"</span> — det er en ordnet liste, og rekkefølgen er meningen. Hver rad annonserer «prioritet 2 av 7, regel, Ordinær åpningstid». Hver flytting bekreftes i et live-område: «Flyttet til prioritet 1 av 7».</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Legge til og fjerne</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">«Legg til regel» åpner en modal med søkbar liste over regler, der de som allerede er i gruppen er merket. Nye medlemmer legges nederst — aldri øverst, som ville endret prioriteten til alt annet uten at du ba om det. «Fjern» tar medlemmet ut av gruppen, det sletter ikke regelen, og lenken sier nettopp «Fjern», ikke «Slett».</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Sirkelreferanse</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">En gruppe kan ikke inneholde seg selv, direkte eller indirekte. Slike valg er utilgjengelige i «Legg til undergruppe» med forklaringen «Kan ikke legges til: det ville laget en sirkel». Kommer konflikten fra API-et likevel, vises «Denne undergruppen inneholder allerede Selvbetjening ordinær. Velg en annen gruppe.»</p></div>
+      <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Regel som aldri treffer</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Ligger en regel etter en bredere regel som alltid treffer først, merkes raden «Treffer aldri — regelen over dekker alle datoene denne dekker». Det er en advarsel, ikke en feil: rekkefølgen kan være tilsiktet. Advarselen vises også på adminoversikten.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="a-tjenester" style="display: flex; flex-direction: column; gap: 24px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; font-size: 32px; line-height: 1.2; font-weight: 600; color: var(--ax-color-accent-900);">5. Tjenester</h2>
+    <p style="margin: 0; font-size: 17px; line-height: 1.6; color: var(--ax-color-neutral-700); max-width: 68ch; text-wrap: pretty;">Tjenesteskjemaet er ordinær CRUD. Det ene som fortjener oppmerksomhet er koblingen til åpningstidsgruppe: den er tjenestens hele oppførsel i kalenderen, og en frikobling gjør tjenesten uopplyst for brukeren.</p>
+  </div>
+  <div style="display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: start;">
+    <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; overflow: hidden;">
+      <div style="padding: 11px 18px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ax-color-neutral-700);">Wireframe · /admin/tjenester</div>
+      <div style="padding: 24px;">
+        <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+          <h3 style="margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600;">Tjenester</h3>
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Button" size="small" hint-size="130px,40px">Ny tjeneste</x-import>
+        </div>
+        <div style="border: 1px solid var(--ax-border-neutral-subtle); border-radius: 4px; overflow: hidden;">
+          <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(88px, 0.8fr) minmax(0, 1.5fr) minmax(64px, 0.6fr); gap: 12px; padding: 12px 16px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 13px; font-weight: 600; color: var(--ax-color-neutral-700);">
+            <span>Tjeneste</span><span>Type</span><span>Åpningstidsgruppe</span><span></span>
+          </div>
+          <sc-for list="{{ adminServices }}" as="s" hint-placeholder-count="6">
+            <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(88px, 0.8fr) minmax(0, 1.5fr) minmax(64px, 0.6fr); gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--ax-border-neutral-subtle); align-items: center;">
+              <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+                <a href="#a-tjenester" style="font-size: 15px; font-weight: 600;">{{ s.name }}</a>
+                <span style="font-size: 13px; color: var(--ax-color-neutral-600);">{{ s.team }}</span>
+              </span>
+              <span style="font-size: 13px; color: var(--ax-color-neutral-700); background: var(--ax-color-neutral-100); border-radius: 999px; padding: 3px 9px; justify-self: start;">{{ s.type }}</span>
+              <span style="font-size: 14px; line-height: 1.45; color: {{ s.grpFg }}; font-weight: {{ s.grpFw }};">{{ s.group }}</span>
+              <span style="font-size: 14px; justify-self: end;"><a href="#a-tjenester">Rediger</a></span>
+            </div>
+          </sc-for>
+        </div>
+        <p style="margin: 16px 0 0; font-size: 14px; line-height: 1.6; color: var(--ax-color-neutral-700);">Tjenester uten gruppe sorteres øverst og merkes «Ingen gruppe» i advarselsfarge med ikon. Det er listens viktigste jobb: å gjøre hullene synlige uten at du må lete.</p>
+      </div>
+    </div>
+
+    <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; overflow: hidden;">
+      <div style="padding: 11px 18px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ax-color-neutral-700);">Wireframe · rediger tjeneste</div>
+      <div style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+        <h3 style="margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600;">Dagpengesøknad</h3>
+        <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.TextField" label="Navn" value="Dagpengesøknad" hint-size="100%,72px"></x-import>
+        <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.TextField" label="Team" value="Team dagpenger" hint-size="100%,72px"></x-import>
+        <div style="border: 1px solid var(--ax-border-accent-subtle); border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; background: var(--ax-bg-accent-soft);">
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Select" label="Åpningstidsgruppe" description="Gruppen bestemmer alt kalenderen viser for denne tjenesten. En tjeneste kan kobles til én gruppe." hint-size="100%,120px">
+            <option value="sel">Selvbetjening ordinær</option>
+            <option value="innsyn">Innsyn og innsikt</option>
+            <option value="ingen">Ingen gruppe</option>
+          </x-import>
+          <a href="#a-grupper" style="font-size: 14px;">Se gruppens regler og rekkefølge</a>
+        </div>
+        <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Alert" variant="warning" size="small" hint-size="100%,90px">Velger du «Ingen gruppe», kan vi ikke vise åpningstider for Dagpengesøknad. Brukeren får en advarsel i kalenderen i stedet.</x-import>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Button" hint-size="150px,48px">Lagre tjenesten</x-import>
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Button" variant="tertiary" hint-size="100px,48px">Avbryt</x-import>
+          <button type="button" style="display: inline-flex; align-items: center; justify-content: center; background: var(--ax-color-danger-500); color: #fff; border: none; font-family: var(--ax-font-family); font-size: 18px; font-weight: 600; border-radius: 8px; padding: 12px 20px; cursor: pointer;" style-hover="background: var(--ax-color-danger-600);">Slett tjenesten</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="a-sletting" style="display: flex; flex-direction: column; gap: 24px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; font-size: 32px; line-height: 1.2; font-weight: 600; color: var(--ax-color-accent-900);">6. Sletting av noe som er i bruk</h2>
+    <p style="margin: 0; font-size: 17px; line-height: 1.6; color: var(--ax-color-neutral-700); max-width: 68ch; text-wrap: pretty;">API-et svarer med konflikt og en liste over hvor elementet brukes. Dialogen viser den listen <em>før</em> du bekrefter, og tilbyr veien videre. Er noe i bruk, er sletting sperret — ikke bare frarådet.</p>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start;">
+    <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; overflow: hidden;">
+      <div style="padding: 11px 18px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ax-color-neutral-700);">Dialog · regelen er i bruk (409 fra API-et)</div>
+      <div style="padding: 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: var(--ax-shadow-dialog);">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="var(--ax-color-danger-600)" aria-hidden="true" style="flex: none; margin-top: 2px;"><path d="M12 3 22.5 20.5h-21zM11 9h2v6h-2zM11 16.5h2v2h-2z"></path></svg>
+          <h3 style="margin: 0; font-size: 24px; line-height: 1.25; font-weight: 600;">Regelen kan ikke slettes ennå</h3>
+        </div>
+        <p style="margin: 0; font-size: 16px; line-height: 1.6;">«Ordinær åpningstid» brukes i 2 grupper, som til sammen brukes av 7 tjenester. Sletter du regelen, mister disse tjenestene åpningstidene sine.</p>
+        <div style="border: 1px solid var(--ax-border-neutral-subtle); border-radius: 4px; overflow: hidden;">
+          <div style="padding: 10px 16px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 13px; font-weight: 600; color: var(--ax-color-neutral-700);">Brukes her</div>
+          <sc-for list="{{ usage }}" as="u" hint-placeholder-count="4">
+            <div style="display: flex; align-items: baseline; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--ax-border-neutral-subtle);">
+              <span style="flex: none; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ax-color-neutral-700); background: var(--ax-color-neutral-100); border-radius: 999px; padding: 3px 9px;">{{ u.kind }}</span>
+              <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                <a href="#a-grupper" style="font-size: 15px; font-weight: 600;">{{ u.name }}</a>
+                <span style="font-size: 13px; line-height: 1.45; color: var(--ax-color-neutral-600);">{{ u.sub }}</span>
+              </span>
+            </div>
+          </sc-for>
+        </div>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6; color: var(--ax-color-neutral-700);">Fjern regelen fra gruppene først. Da kan du slette den uten at noe endrer seg for brukerne.</p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Button" hint-size="200px,48px">Gå til gruppene</x-import>
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Button" variant="tertiary" hint-size="100px,48px">Avbryt</x-import>
+        </div>
+        <span style="font-size: 14px; color: var(--ax-color-neutral-600);">Det finnes ingen «slett likevel»-knapp i denne tilstanden.</span>
+      </div>
+    </div>
+
+    <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; overflow: hidden;">
+      <div style="padding: 11px 18px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ax-color-neutral-700);">Dialog · regelen er ikke i bruk</div>
+      <div style="padding: 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: var(--ax-shadow-dialog);">
+        <h3 style="margin: 0; font-size: 24px; line-height: 1.25; font-weight: 600;">Vil du slette «Sommeråpningstid 2024»?</h3>
+        <p style="margin: 0; font-size: 16px; line-height: 1.6;">Regelen er ikke i bruk i noen grupper. Ingen tjenester påvirkes.</p>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6; color: var(--ax-color-neutral-700);">Slettingen kan ikke angres.</p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button type="button" style="display: inline-flex; align-items: center; justify-content: center; background: var(--ax-color-danger-500); color: #fff; border: none; font-family: var(--ax-font-family); font-size: 18px; font-weight: 600; border-radius: 8px; padding: 12px 20px; cursor: pointer;" style-hover="background: var(--ax-color-danger-600);">Slett regelen</button>
+          <x-import component-from-global-scope="AkselDesignSystemNav_71e0d1.Button" variant="tertiary" hint-size="100px,48px">Avbryt</x-import>
+        </div>
+        <div style="padding-top: 16px; border-top: 1px solid var(--ax-border-neutral-subtle); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px;">
+          <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Dialogmønster</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Overskriften stiller spørsmålet og navngir elementet. Konsekvensen står i første avsnitt, ikke i knappeteksten. Knappen sier hva som skjer — «Slett regelen», aldri «OK». Avbryt er tertiær og har fokus når dialogen åpnes.</p></div>
+          <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Tilgjengelighet</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Aksels <span style="font-family: ui-monospace, monospace; font-size: 13px;">Modal</span> med <span style="font-family: ui-monospace, monospace; font-size: 13px;">aria-labelledby</span> på overskriften. Fokus fanges i dialogen, Escape avbryter, og fokus går tilbake til «Slett»-lenken i raden. Konfliktlisten er en vanlig <span style="font-family: ui-monospace, monospace; font-size: 13px;">&lt;ul&gt;</span> og kan leses element for element.</p></div>
+          <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Sletting av gruppe</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Samme mønster, men konfliktlisten viser både tjenester som er koblet til gruppen og foreldregrupper som inneholder den. Reglene i gruppen slettes aldri sammen med den — dialogen sier eksplisitt «De 7 reglene i gruppen blir ikke slettet».</p></div>
+          <div><div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-600); margin-bottom: 6px;">Etter sletting</div><p style="margin: 0; font-size: 15px; line-height: 1.6;">Tilbake til listen med en <span style="font-family: ui-monospace, monospace; font-size: 13px;">Alert variant="success"</span>: «Regelen «Sommeråpningstid 2024» er slettet.» Ingen angremulighet loves, siden API-et ikke har det.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="a-feil" style="display: flex; flex-direction: column; gap: 24px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; font-size: 32px; line-height: 1.2; font-weight: 600; color: var(--ax-color-accent-900);">7. Feilmeldinger fra API-et</h2>
+    <p style="margin: 0; font-size: 17px; line-height: 1.6; color: var(--ax-color-neutral-700); max-width: 68ch; text-wrap: pretty;">Hver HTTP-tilstand oversettes til én setning som navngir problemet og én som sier hva du kan gjøre. Teknisk melding og korrelasjons-ID legges under «Vis teknisk informasjon» — tilgjengelig når du skal melde saken videre, skjult ellers.</p>
+  </div>
+  <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; overflow: hidden;">
+    <div style="display: grid; grid-template-columns: minmax(0, 0.5fr) minmax(0, 1.1fr) minmax(0, 2.4fr); gap: 20px; padding: 14px 24px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-700);">
+      <span>Status</span><span>Situasjon</span><span>Tekst i grensesnittet</span>
+    </div>
+    <sc-for list="{{ errors }}" as="e" hint-placeholder-count="7">
+      <div style="display: grid; grid-template-columns: minmax(0, 0.5fr) minmax(0, 1.1fr) minmax(0, 2.4fr) ; gap: 20px; padding: 16px 24px; border-bottom: 1px solid var(--ax-border-neutral-subtle); align-items: start;">
+        <span style="font-family: ui-monospace, monospace; font-size: 14px; font-weight: 600; color: var(--ax-color-neutral-700);">{{ e.code }}</span>
+        <span style="font-size: 15px; line-height: 1.5;">{{ e.when }}</span>
+        <span style="font-size: 15px; line-height: 1.6; color: var(--ax-color-neutral-700);">{{ e.text }}</span>
+      </div>
+    </sc-for>
+    <div style="padding: 18px 24px; background: var(--ax-color-neutral-50); font-size: 14px; line-height: 1.6; color: var(--ax-color-neutral-700);">Ingen av meldingene bruker ordene «ugyldig», «feilet» eller «systemfeil» alene, og ingen av dem legger skylden på brukeren. Alle nevner en handling — prøv igjen, fjern først, last inn på nytt, meld saken.</div>
+  </div>
+</section>
+
+<section id="a-komponenter" style="display: flex; flex-direction: column; gap: 24px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; font-size: 32px; line-height: 1.2; font-weight: 600; color: var(--ax-color-accent-900);">8. Komponentmapping for admin</h2>
+    <p style="margin: 0; font-size: 17px; line-height: 1.6; color: var(--ax-color-neutral-700); max-width: 68ch; text-wrap: pretty;">Admin krever to nye komponenter utover del 1. Begge er strukturelle, ikke visuelle, og bygges av Aksels tokens.</p>
+  </div>
+  <div style="background: var(--ax-bg-raised); border: 1px solid var(--ax-border-neutral-subtle); border-radius: 8px; overflow: hidden;">
+    <div style="display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 2fr); gap: 24px; padding: 14px 24px; background: var(--ax-color-neutral-50); border-bottom: 1px solid var(--ax-border-neutral-subtle); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ax-color-neutral-700);">
+      <span>Element i designet</span><span>Aksel-komponent</span><span>Merknad</span>
+    </div>
+    <sc-for list="{{ axAdmin }}" as="r" hint-placeholder-count="12">
+      <div style="display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 2fr); gap: 24px; padding: 15px 24px; border-bottom: 1px solid var(--ax-border-neutral-subtle); align-items: baseline;">
+        <span style="font-size: 15px; font-weight: 600;">{{ r.el }}</span>
+        <span style="font-family: ui-monospace, monospace; font-size: 13px; color: {{ r.axFg }};">{{ r.ax }}</span>
+        <span style="font-size: 15px; line-height: 1.55; color: var(--ax-color-neutral-700);">{{ r.note }}</span>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440}}">
+class Component extends DCLogic {
+  state = {
+    name: "Ordinær åpningstid",
+    date: "", dom: "", wd: "man-tor", time: "08:00-11:30, 12:15-15:30",
+    test: 0, gdate: 0
+  };
+
+  renderVals() {
+    const ICO = {
+      ok: "M9.55 17.6 4.4 12.45l1.4-1.4 3.75 3.7L18.2 5.9l1.4 1.4z",
+      minus: "M5 11h14v2H5z",
+      warn: "M12 3 22.5 20.5h-21zM11 9h2v6h-2zM11 16.5h2v2h-2z",
+      flag: "M6 3h2v18H6zm3 1h10l-2.6 4 2.6 4H9z",
+      dash: "M7 11h10v2H7z"
+    };
+    const F = {
+      neutral: { bg: "var(--ax-color-neutral-100)", fg: "var(--ax-color-neutral-700)", bd: "var(--ax-color-neutral-200)" },
+      red: { bg: "var(--ax-bg-danger-soft)", fg: "var(--ax-color-danger-600)", bd: "var(--ax-border-danger-subtle)" },
+      blue: { bg: "var(--ax-bg-accent-soft)", fg: "var(--ax-color-accent-700)", bd: "var(--ax-border-accent-subtle)" }
+    };
+    const flag = (label, k) => ({ key: label, label, bg: F[k].bg, fg: F[k].fg, bd: F[k].bd });
+
+    const nav = [
+      { key: "n1", label: "Oversikt", fw: "600", fg: "var(--ax-color-accent-700)", bg: "var(--ax-bg-accent-soft)", mark: "var(--ax-color-accent-500)" },
+      { key: "n2", label: "Regler", fw: "400", fg: "var(--ax-color-neutral-700)", bg: "transparent", mark: "transparent" },
+      { key: "n3", label: "Grupper", fw: "400", fg: "var(--ax-color-neutral-700)", bg: "transparent", mark: "transparent" },
+      { key: "n4", label: "Tjenester", fw: "400", fg: "var(--ax-color-neutral-700)", bg: "transparent", mark: "transparent" }
+    ];
+    const stats = [
+      { key: "s1", n: "47", label: "tjenester", link: "Se alle tjenester" },
+      { key: "s2", n: "12", label: "åpningstidsgrupper", link: "Se alle grupper" },
+      { key: "s3", n: "24", label: "regler, 3 ikke i bruk", link: "Se ubrukte regler" }
+    ];
+    const attention = [
+      { key: "at1", kind: "Ingen gruppe", text: "Sykepengesøknad har ingen åpningstidsgruppe", action: "Koble til gruppe" },
+      { key: "at2", kind: "Ingen gruppe", text: "Aa-registeret oppslag har ingen åpningstidsgruppe", action: "Koble til gruppe" },
+      { key: "at3", kind: "Treffer aldri", text: "«Sommeråpning» i gruppen Innsyn og innsikt ligger etter en regel som dekker de samme datoene", action: "Se rekkefølgen" }
+    ];
+    const history = [
+      { key: "h1", when: "I dag, 09:14", what: "Endret klokkeslett i «Ordinær åpningstid» fra 15:00 til 15:30", who: "Kari Nordmann" },
+      { key: "h2", when: "I går, 15:02", what: "Flyttet «Røde dager 2026» til prioritet 1 i Selvbetjening ordinær", who: "Ola Hansen" },
+      { key: "h3", when: "22. august", what: "Koblet Foreldrepengesøknad til gruppen Selvbetjening ordinær", who: "Kari Nordmann" },
+      { key: "h4", when: "19. august", what: "Opprettet regelen «Kortere fredag»", who: "Ola Hansen" }
+    ];
+
+    const rules = [
+      { key: "r1", name: "Ordinær åpningstid", expr: "*  *  man-tor  08:00-11:30, 12:15-15:30", plain: "Mandag til torsdag, åpent 08:00–11:30 og 12:15–15:30", flags: [], usedIn: "2 grupper", useFg: "var(--ax-color-neutral-700)" },
+      { key: "r2", name: "Kortere fredag", expr: "*  *  fre  08:00-11:30, 12:15-14:00", plain: "Fredager, åpent 08:00–11:30 og 12:15–14:00", flags: [], usedIn: "2 grupper", useFg: "var(--ax-color-neutral-700)" },
+      { key: "r3", name: "Helg, stengt", expr: "*  *  lør-søn  stengt", plain: "Lørdag og søndag, stengt hele dagen", flags: [], usedIn: "4 grupper", useFg: "var(--ax-color-neutral-700)" },
+      { key: "r4", name: "Røde dager 2026", expr: "01.05.2026, 14.05.2026, 17.05.2026  *  *  stengt", plain: "13 datoer i 2026, stengt hele dagen", flags: [flag("Rød dag", "red")], usedIn: "6 grupper", useFg: "var(--ax-color-neutral-700)" },
+      { key: "r5", name: "Intern testperiode", expr: "01.09.2026-30.09.2026  *  man-fre  07:00-17:00", plain: "1.–30. september 2026, hverdager 07:00–17:00", flags: [flag("Kun for Nav-ansatte", "blue")], usedIn: "1 gruppe", useFg: "var(--ax-color-neutral-700)" },
+      { key: "r6", name: "Sommeråpningstid 2024", expr: "01.07.2024-31.07.2024  *  man-fre  09:00-14:00", plain: "1.–31. juli 2024, hverdager 09:00–14:00", flags: [flag("Ikke i bruk", "neutral")], usedIn: "Ikke i bruk", useFg: "var(--ax-color-warning-700)" }
+    ];
+
+    const wd = this.state.wd, time = this.state.time.trim();
+    const p = (x) => (x && x.trim() ? x.trim() : "*");
+    const expr = [p(this.state.date), p(this.state.dom), p(wd), time || "stengt"].join("  ");
+    const WDT = { "*": "Alle dager", "man-fre": "Mandag til fredag", "man-tor": "Mandag til torsdag", "fre": "Fredager", "lør-søn": "Lørdag og søndag" };
+    const parts = time ? time.split(",").map((s) => s.trim()).filter(Boolean) : [];
+    const timeOk = parts.every((s) => /^\d{2}:\d{2}-\d{2}:\d{2}$/.test(s));
+    const valid = !time || timeOk;
+    const dateTxt = this.state.date.trim() ? this.state.date.trim() + ", " : "";
+    const plain = !time
+      ? dateTxt + WDT[wd].toLowerCase() + ": stengt hele dagen"
+      : timeOk
+        ? dateTxt + WDT[wd] + ", åpent " + parts.map((s) => s.replace("-", "–")).join(" og ")
+        : "";
+    const v = {
+      expr,
+      exprBd: valid ? "var(--ax-border-neutral-subtle)" : "var(--ax-color-danger-500)",
+      fg: valid ? "var(--ax-color-success-700)" : "var(--ax-color-danger-600)",
+      ico: valid ? ICO.ok : ICO.warn,
+      msg: valid ? "Uttrykket er gyldig" : "Klokkeslettet må skrives som 08:00-15:30",
+      plain: valid ? plain : "Rett klokkeslettet for å se hva regelen gir."
+    };
+
+    const preset = (label, o) => ({ key: label, label, apply: () => this.setState(o) });
+    const presets = [
+      preset("Ordinær arbeidsuke", { date: "", dom: "", wd: "man-fre", time: "08:00-15:30" }),
+      preset("Arbeidsuke med lunsjpause", { date: "", dom: "", wd: "man-tor", time: "08:00-11:30, 12:15-15:30" }),
+      preset("Kortere fredag", { date: "", dom: "", wd: "fre", time: "08:00-14:00" }),
+      preset("Stengt i helgen", { date: "", dom: "", wd: "lør-søn", time: "" }),
+      preset("Stengt en bestemt dato", { date: "17.05.2026", dom: "", wd: "*", time: "" })
+    ];
+
+    const TESTS = [
+      { label: "I dag, 25. aug", wd: 2, iso: "25. august 2026, tirsdag" },
+      { label: "Fre 28. aug", wd: 5, iso: "28. august 2026, fredag" },
+      { label: "Lør 29. aug", wd: 6, iso: "29. august 2026, lørdag" },
+      { label: "17. mai 2027", wd: 1, iso: "17. mai 2027, mandag" }
+    ];
+    const covers = (n) => wd === "*" ? true : wd === "man-fre" ? n <= 5 : wd === "man-tor" ? n <= 4 : wd === "fre" ? n === 5 : n >= 6;
+    const t = TESTS[this.state.test];
+    const hit = covers(t.wd) && !this.state.date.trim();
+    const openHit = hit && !!time && timeOk;
+    const pv = openHit
+      ? { bg: "var(--ax-bg-success-soft)", bd: "var(--ax-border-success-subtle)", fg: "var(--ax-color-success-700)", ico: ICO.ok, status: "Åpent " + parts.map((s) => s.replace("-", "–")).join(" og "), explain: "Regelen treffer denne datoen. " + WDT[wd] + " er dekket av feltet Ukedag.", dateLine: t.iso }
+      : hit
+        ? { bg: "var(--ax-color-neutral-50)", bd: "var(--ax-border-neutral-subtle)", fg: "var(--ax-color-neutral-700)", ico: ICO.minus, status: "Stengt hele dagen", explain: "Regelen treffer datoen, og klokkeslettfeltet er tomt. Tomt klokkeslett betyr stengt.", dateLine: t.iso }
+        : { bg: "var(--ax-color-neutral-50)", bd: "var(--ax-border-neutral-subtle)", fg: "var(--ax-color-neutral-600)", ico: ICO.dash, status: "Regelen treffer ikke", explain: this.state.date.trim() ? "Datofeltet er satt til " + this.state.date.trim() + ", som ikke er denne datoen. En annen regel i gruppen bestemmer dagen." : "Ukedagen er ikke dekket av feltet Ukedag. En annen regel i gruppen bestemmer dagen.", dateLine: t.iso };
+    const testDates = TESTS.map((x, i) => ({
+      key: x.label, label: x.label, pick: () => this.setState({ test: i }),
+      on: i === this.state.test,
+      fw: i === this.state.test ? "600" : "400",
+      bd: i === this.state.test ? "var(--ax-color-accent-500)" : "var(--ax-border-neutral)",
+      bg: i === this.state.test ? "var(--ax-bg-accent-soft)" : "var(--ax-bg-raised)",
+      fg: i === this.state.test ? "var(--ax-color-accent-700)" : "var(--ax-color-neutral-700)"
+    }));
+
+    const node = (prio, kind, name, sub, depth, active) => ({
+      key: prio + name, prio, kind, name, sub,
+      indent: (depth * 32) + "px",
+      bd: "var(--ax-border-neutral-subtle)",
+      bg: active ? "var(--ax-bg-accent-soft)" : "var(--ax-bg-raised)",
+      mark: kind === "Gruppe" ? "var(--ax-color-accent-500)" : "var(--ax-color-neutral-300, var(--ax-color-neutral-200))",
+      kindBg: kind === "Gruppe" ? "var(--ax-bg-accent-soft)" : "var(--ax-color-neutral-100)",
+      kindFg: kind === "Gruppe" ? "var(--ax-color-accent-700)" : "var(--ax-color-neutral-700)"
+    });
+    const tree = [
+      node("1", "Regel", "Røde dager 2026", "13 datoer, stengt · rød dag", 0, false),
+      node("2", "Gruppe", "Felles unntak", "2 medlemmer · brukt i 3 grupper", 0, false),
+      node("2.1", "Regel", "Planlagt vedlikehold", "Andre søndag i måneden, stengt", 1, false),
+      node("2.2", "Regel", "Helg, stengt", "Lørdag og søndag, stengt", 1, false),
+      node("3", "Regel", "Kortere fredag", "Fredager 08:00–11:30 og 12:15–14:00", 0, false),
+      node("4", "Regel", "Ordinær åpningstid", "Mandag til torsdag 08:00–11:30 og 12:15–15:30", 0, true),
+      node("5", "Regel", "Sommeråpning", "1.–31. juli, hverdager 09:00–14:00 · treffer aldri", 0, false)
+    ];
+
+    const GD = [
+      { label: "Tir 25. aug", steps: [["Røde dager 2026", 0], ["Felles unntak", 0], ["Kortere fredag", 0], ["Ordinær åpningstid", 1]], result: "Åpent 08:00–11:30 og 12:15–15:30", sub: "Prioritet 4 vant. Regelen «Sommeråpning» ble aldri vurdert." },
+      { label: "Søn 30. aug", steps: [["Røde dager 2026", 0], ["Felles unntak → Helg, stengt", 1]], result: "Stengt hele dagen", sub: "Prioritet 2.2 vant, inne i undergruppen Felles unntak." },
+      { label: "17. mai 2026", steps: [["Røde dager 2026", 1]], result: "Stengt hele dagen · rød dag", sub: "Prioritet 1 vant. Ingen andre medlemmer ble vurdert." }
+    ];
+    const g = GD[this.state.gdate];
+    const groupDates = GD.map((x, i) => ({
+      key: x.label, label: x.label, pick: () => this.setState({ gdate: i }),
+      on: i === this.state.gdate,
+      fw: i === this.state.gdate ? "600" : "400",
+      bd: i === this.state.gdate ? "var(--ax-color-accent-500)" : "var(--ax-border-neutral)",
+      bg: i === this.state.gdate ? "var(--ax-bg-accent-soft)" : "var(--ax-bg-raised)",
+      fg: i === this.state.gdate ? "var(--ax-color-accent-700)" : "var(--ax-color-neutral-700)"
+    }));
+    const trace = g.steps.map(([name, won]) => won
+      ? { key: name, name, verdict: "Treffer — denne vinner", fg: "var(--ax-color-success-700)", ico: ICO.ok, bg: "var(--ax-bg-success-soft)", bd: "var(--ax-border-success-subtle)", fw: "600" }
+      : { key: name, name, verdict: "Treffer ikke datoen", fg: "var(--ax-color-neutral-500)", ico: ICO.dash, bg: "var(--ax-color-neutral-50)", bd: "var(--ax-border-neutral-subtle)", fw: "400" });
+    const result = { text: g.result, sub: g.sub, fg: g.result.indexOf("Åpent") === 0 ? "var(--ax-color-success-700)" : "var(--ax-color-neutral-900)" };
+
+    const asv = (name, team, type, group, none) => ({
+      key: name, name, team, type, group,
+      grpFg: none ? "var(--ax-color-warning-700)" : "var(--ax-color-neutral-700)",
+      grpFw: none ? "600" : "400"
+    });
+    const adminServices = [
+      asv("Sykepengesøknad", "Team sykefravær", "Tjeneste", "Ingen gruppe", true),
+      asv("Aa-registeret oppslag", "Team arbeidsgiver", "Komponent", "Ingen gruppe", true),
+      asv("Dagpengesøknad", "Team dagpenger", "Tjeneste", "Selvbetjening ordinær", false),
+      asv("Foreldrepengesøknad", "Team familie", "Tjeneste", "Selvbetjening ordinær", false),
+      asv("Innsyn i sak", "Team innsyn", "Tjeneste", "Innsyn og innsikt", false),
+      asv("Meldekort", "Team dagpenger", "Tjeneste", "Selvbetjening ordinær", false)
+    ];
+
+    const usage = [
+      { key: "u1", kind: "Gruppe", name: "Selvbetjening ordinær", sub: "Prioritet 4 av 7 · brukt av 5 tjenester" },
+      { key: "u2", kind: "Gruppe", name: "Innsyn og innsikt", sub: "Prioritet 2 av 4 · brukt av 2 tjenester" },
+      { key: "u3", kind: "Tjeneste", name: "Dagpengesøknad, Meldekort, Foreldrepengesøknad", sub: "Via Selvbetjening ordinær" },
+      { key: "u4", kind: "Tjeneste", name: "Innsyn i sak, Utbetalingsoversikt", sub: "Via Innsyn og innsikt" }
+    ];
+
+    const errors = [
+      { key: "e400", code: "400", when: "Ugyldig regeluttrykk", text: "«Klokkeslettet må skrives som 08:00-15:30.» Feilen vises ved feltet, ikke som varsel på siden." },
+      { key: "e401", code: "401", when: "Sesjonen er utløpt", text: "«Du er ikke lenger innlogget. Logg inn på nytt for å lagre endringene.» Skjemaets innhold beholdes gjennom ny pålogging." },
+      { key: "e403", code: "403", when: "Mangler tilgang", text: "«Du har ikke tilgang til å endre regler for dette teamet. Kontakt teamets eier for tilgang.»" },
+      { key: "e404", code: "404", when: "Elementet finnes ikke", text: "«Regelen finnes ikke lenger. Den kan ha blitt slettet av noen andre.» Med lenke tilbake til listen." },
+      { key: "e409", code: "409", when: "I bruk, eller endret av andre", text: "Ved sletting: konfliktdialogen i seksjon 6. Ved lagring: «Noen andre har endret denne regelen mens du redigerte. Last inn på nytt for å se den nyeste versjonen.» Endringene dine vises ved siden av." },
+      { key: "e422", code: "422", when: "Sirkelreferanse i gruppetre", text: "«Denne undergruppen inneholder allerede Selvbetjening ordinær. Velg en annen gruppe.»" },
+      { key: "e500", code: "500 / 503", when: "Tjenesten svarer ikke", text: "«Vi klarte ikke å lagre endringen. Prøv igjen om litt. Hvis det fortsetter, meld saken i #openinghours.» Med «Prøv igjen»-knapp og korrelasjons-ID under «Vis teknisk informasjon»." }
+    ];
+
+    const axAdmin = [
+      { key: "x1", el: "Regelveiviser (fire felt + streng)", ax: "Egen: Regelbygger", axFg: "var(--ax-color-danger-600)", note: "Aksel har ingen tilsvarende. Bygget av TextField, Select og en kodevisning, med toveis kobling mellom feltene og strengen." },
+      { key: "x2", el: "Gruppetre med dra-rekkefølge", ax: "Egen: Prioritetsliste", axFg: "var(--ax-color-danger-600)", note: "Nøstet ol med dra-håndtak, prioritetsnummer og tastaturflytting. Ingen motpart i Aksel; bruker Aksels fokusramme og spacing." },
+      { key: "x3", el: "Live forhåndsvisning", ax: "Box, Heading, BodyLong", axFg: "var(--ax-color-neutral-700)", note: "Vanlig panel. Statusmerket er samme egendefinerte komponent som i kalenderen (del 1)." },
+      { key: "x4", el: "Sidemeny i admin", ax: "InternalHeader + egen sidemeny", axFg: "var(--ax-color-neutral-700)", note: "Aksel har ingen ferdig admin-sidemeny. Enkel liste med aktiv markering, bygget av tokens." },
+      { key: "x5", el: "Regel- og tjenestetabeller", ax: "Table", axFg: "var(--ax-color-neutral-700)", note: "Med sortering. Radhandlinger som Link, ikke ikonknapper — teksten «Slett» er tryggere enn et ikon." },
+      { key: "x6", el: "Bekreftelsesdialoger", ax: "Modal", axFg: "var(--ax-color-neutral-700)", note: "Fokusfelle og Escape følger med. Konfliktlisten er en ul inne i dialogen." },
+      { key: "x7", el: "Skjemafelt", ax: "TextField, Textarea, Select, Checkbox", axFg: "var(--ax-color-neutral-700)", note: "Alle med description for hjelpetekst og error for validering. Ingen egne feltvarianter." },
+      { key: "x8", el: "Legg til medlem", ax: "Modal + Search + Checkbox", axFg: "var(--ax-color-neutral-700)", note: "Søkbar liste. Medlemmer som allerede er i gruppen er avkrysset og deaktivert." },
+      { key: "x9", el: "Mønsterknapper", ax: "Chips.Toggle", axFg: "var(--ax-color-neutral-700)", note: "Chips, ikke knapper: de setter en tilstand i skjemaet og er ikke handlinger med bivirkning." },
+      { key: "x10", el: "Flagg i regellisten", ax: "Tag", axFg: "var(--ax-color-neutral-700)", note: "Tag uten ikon holder her — flaggene er ikke status, og fargen bærer ingen mening alene." },
+      { key: "x11", el: "Varsler og kvitteringer", ax: "Alert", axFg: "var(--ax-color-neutral-700)", note: "success etter lagring og sletting, warning for avvik, error for feilede kall, info for prioritetsforklaringen." },
+      { key: "x12", el: "Teknisk informasjon", ax: "ReadMore", axFg: "var(--ax-color-neutral-700)", note: "Skjuler korrelasjons-ID og API-melding bak «Vis teknisk informasjon»." },
+      { key: "x13", el: "Endringslogg", ax: "Table eller Timeline", axFg: "var(--ax-color-neutral-700)", note: "Aksels Timeline er laget for datoperioder, ikke hendelser. Enkel liste er riktigere her." }
+    ];
+
+    return {
+      nav, stats, attention, history, rules, v, presets, pv, testDates,
+      tree, groupDates, trace, result, adminServices, usage, errors, axAdmin,
+      f: { name: this.state.name, date: this.state.date, dom: this.state.dom, wd: this.state.wd, time: this.state.time },
+      setName: (e) => this.setState({ name: e.target.value }),
+      setDate: (e) => this.setState({ date: e.target.value }),
+      setDom: (e) => this.setState({ dom: e.target.value }),
+      setWd: (e) => this.setState({ wd: e.target.value }),
+      setTime: (e) => this.setState({ time: e.target.value })
+    };
+  }
+}
+</script>
+</body>
+</html>

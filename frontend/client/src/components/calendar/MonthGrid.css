@@ -1,0 +1,34 @@
+.oh-grid-wrapper {
+  min-width: 0;
+  flex: 1;
+}
+
+/* minmax(0, 1fr) er nødvendig: uten den vokser sporene med innholdet
+   og rutenettet legger seg over detaljpanelet. */
+.oh-grid,
+.oh-grid__headers {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.oh-grid__headers {
+  margin-bottom: 6px;
+}
+
+.oh-grid__header {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  padding: 0 2px;
+}
+
+@media (max-width: 900px) {
+  .oh-grid__header {
+    font-size: 0;
+  }
+
+  .oh-grid__header::first-letter {
+    font-size: 0.8125rem;
+  }
+}

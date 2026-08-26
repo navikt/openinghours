@@ -1,0 +1,60 @@
+/* Statusmerke — bakgrunn, ikon og tekst. Kun Aksel-tokens, ingen nye farger. */
+
+.oh-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.oh-status__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.oh-status--small {
+  font-size: 0.8125rem;
+}
+
+.oh-status--medium {
+  font-size: 1rem;
+}
+
+.oh-status--open {
+  color: var(--ax-text-success, var(--a-text-success));
+}
+
+.oh-status--closed {
+  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+}
+
+.oh-status--redDay {
+  color: var(--ax-text-danger, var(--a-text-danger));
+}
+
+.oh-status--warning {
+  color: var(--ax-text-warning, var(--a-text-warning));
+}
+
+.oh-status--masked {
+  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+}
+
+/* Nå-indikator */
+.oh-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.oh-now--open {
+  color: var(--ax-text-success, var(--a-text-success));
+}
+
+.oh-now--closed {
+  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+}

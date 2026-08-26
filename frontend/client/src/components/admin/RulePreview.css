@@ -1,0 +1,19 @@
+.oh-preview {
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: 8px;
+  padding: var(--ax-space-16);
+  background: var(--ax-bg-raised);
+}
+
+.oh-preview__result {
+  margin-top: var(--ax-space-16);
+  padding: var(--ax-space-12);
+  border-radius: 4px;
+  background: var(--ax-bg-sunken);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-4);
+  /* «Traff ikke» er en gyldig visning, ikke en tom tilstand. Fast minstehøyde
+     hindrer at panelet hopper når du bytter dato. */
+  min-height: 7rem;
+}

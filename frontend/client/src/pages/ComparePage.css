@@ -1,0 +1,109 @@
+/* Sammenlign tjenester — samme sporgeometri som ukevisningen, men med
+   tjenestenavn i venstre kolonne i stedet for dag. */
+
+.oh-compare__controls {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.oh-compare__date {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oh-compare__shortcuts {
+  display: flex;
+  gap: 12px;
+  font-size: 0.875rem;
+}
+
+.oh-compare__shortcuts button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.oh-compare__picker {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  flex: 1;
+}
+
+.oh-compare__picker legend {
+  font-weight: 600;
+  padding: 0 0 8px;
+}
+
+.oh-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oh-compare__head,
+.oh-compare__row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.oh-compare__head {
+  padding: 0 12px;
+}
+
+.oh-compare__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oh-compare__row {
+  min-height: 64px;
+  padding: 8px 12px;
+  border: 1px solid var(--ax-border-neutral-subtle, var(--a-border-subtle));
+  border-radius: 6px;
+  background: var(--ax-bg-default, var(--a-surface-default));
+}
+
+.oh-compare__name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.oh-compare__track {
+  min-width: 0;
+}
+
+.oh-compare__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+@media (max-width: 720px) {
+  .oh-compare__head,
+  .oh-compare__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  /* Tidsaksen gir ingen mening over en full bredde-kolonne på mobil. */
+  .oh-compare__head {
+    display: none;
+  }
+}

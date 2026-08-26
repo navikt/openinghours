@@ -1,0 +1,88 @@
+.oh-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 118px;
+  min-width: 0;
+  padding: 8px 8px 10px;
+  border: 1px solid var(--ax-border-neutral-subtle, var(--a-border-subtle));
+  border-radius: 4px;
+  background: var(--ax-bg-raised, var(--a-surface-default));
+  cursor: pointer;
+  text-align: left;
+}
+
+.oh-day:focus-visible {
+  outline: 3px solid var(--ax-border-focus, var(--a-border-focus));
+  outline-offset: 1px;
+}
+
+.oh-day--outside {
+  opacity: 0.55;
+  cursor: default;
+  background: transparent;
+  border-color: transparent;
+}
+
+.oh-day__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.oh-day__number {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+/* Dagens dato bruker ingen egen farge — den ville konkurrert med statusfargen. */
+.oh-day__today {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--ax-bg-neutral-strong, var(--a-surface-neutral-strong));
+  color: var(--ax-text-neutral-contrast, #fff);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.oh-day--today {
+  border-width: 2px;
+  border-color: var(--ax-border-neutral-strong, var(--a-border-strong));
+}
+
+.oh-day--selected {
+  border-width: 3px;
+  border-color: var(--ax-border-focus, var(--a-border-focus));
+  padding: 6px 6px 8px;
+}
+
+.oh-day__detail {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  overflow-wrap: anywhere;
+}
+
+.oh-day--closed {
+  background: var(--ax-bg-neutral-soft, var(--a-surface-subtle));
+}
+
+.oh-day--redDay {
+  background: var(--ax-bg-danger-soft, var(--a-surface-danger-subtle));
+}
+
+.oh-day--warning {
+  background: var(--ax-bg-warning-soft, var(--a-surface-warning-subtle));
+}
+
+.oh-day--masked {
+  background: var(--ax-bg-neutral-soft, var(--a-surface-subtle));
+}
+
+.oh-day--loading {
+  background: var(--ax-bg-neutral-soft, var(--a-surface-subtle));
+  cursor: default;
+}

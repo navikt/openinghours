@@ -1,0 +1,11 @@
+/* Gruppekoblingen er tjenestens hele oppførsel i kalenderen, så den løftes
+   visuelt ut av resten av skjemaet. */
+.oh-serviceform__group {
+  padding: var(--ax-space-16);
+  border: 1px solid var(--ax-border-accent);
+  border-radius: 8px;
+  background: var(--ax-bg-accent-moderate);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-8, 0.5rem);
+}

@@ -1,0 +1,102 @@
+/* Årsoversikt — tolv minimåneder. Rutene er små, så status markeres med
+   bakgrunn + tekstvekt + understrek, aldri farge alene. */
+
+.oh-year {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 20px;
+}
+
+.oh-year__month {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.oh-year__title {
+  margin: 0;
+}
+
+.oh-year__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.oh-year__weekday {
+  text-align: center;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  text-decoration: none;
+  padding-bottom: 2px;
+}
+
+.oh-year__blank {
+  aspect-ratio: 1;
+}
+
+.oh-year__day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 0.6875rem;
+  line-height: 1;
+  cursor: pointer;
+  background: var(--ax-bg-neutral-soft, var(--a-surface-subtle));
+  color: var(--ax-text-neutral, var(--a-text-default));
+}
+
+.oh-year__day:hover {
+  border-color: var(--ax-border-neutral, var(--a-border-strong));
+}
+
+.oh-year__day:focus-visible {
+  outline: 2px solid var(--ax-border-focus, var(--a-border-focus));
+  outline-offset: 1px;
+}
+
+.oh-year__day--open {
+  background: var(--ax-bg-success-soft, var(--a-surface-success-subtle));
+}
+
+.oh-year__day--closed {
+  background: var(--ax-bg-neutral-moderate, var(--a-surface-neutral-subtle));
+  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+}
+
+/* Rød dag: farge + fet + understrek, slik at den skiller seg fra «stengt»
+   også for brukere som ikke oppfatter fargeforskjellen. */
+.oh-year__day--redDay {
+  background: var(--ax-bg-danger-soft, var(--a-surface-danger-subtle));
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.oh-year__day--warning {
+  background: var(--ax-bg-warning-soft, var(--a-surface-warning-subtle));
+  font-style: italic;
+}
+
+.oh-year__day--masked {
+  background: var(--ax-bg-info-soft, var(--a-surface-info-subtle));
+}
+
+.oh-year__day--unknown {
+  background: transparent;
+  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+}
+
+.oh-year__day--today {
+  border-color: var(--ax-border-accent, var(--a-border-focus));
+  border-width: 2px;
+}
+
+.oh-year__day--selected {
+  box-shadow: inset 0 0 0 2px var(--ax-border-accent, var(--a-border-focus));
+}

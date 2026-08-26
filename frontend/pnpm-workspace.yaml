@@ -1,0 +1,10 @@
+packages:
+  - client
+  - server
+
+# esbuild trenger postinstall for å hente riktig plattformbinær. Det er en
+# transitiv avhengighet av Vite, og uten godkjenning stopper pnpm hver kommando.
+onlyBuiltDependencies:
+  - esbuild
+allowBuilds:
+  esbuild: set this to true or false

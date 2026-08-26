@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+*.log
+.DS_Store
+design_handoff_openinghours
+.github
+.nais
+Dockerfile

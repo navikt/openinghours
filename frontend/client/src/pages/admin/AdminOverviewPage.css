@@ -1,0 +1,33 @@
+.oh-keyfigure {
+  display: block;
+  padding: var(--ax-space-20, 1.25rem);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: 8px;
+  background: var(--ax-bg-raised);
+  color: var(--ax-text-neutral);
+  text-decoration: none;
+}
+
+.oh-keyfigure:hover .oh-keyfigure__label {
+  text-decoration: underline;
+}
+
+.oh-keyfigure__value {
+  display: block;
+  font-size: 2rem;
+  font-weight: var(--ax-font-weight-bold);
+  line-height: 1.1;
+}
+
+.oh-keyfigure__label {
+  display: block;
+  color: var(--ax-text-accent);
+}
+
+.oh-keyfigure__note {
+  display: block;
+  margin-top: var(--ax-space-4);
+  font-size: 0.8125rem;
+  color: var(--ax-text-warning);
+  font-weight: var(--ax-font-weight-bold);
+}

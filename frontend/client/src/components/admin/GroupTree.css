@@ -1,0 +1,66 @@
+.oh-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Nøstede lister rykkes inn og får en kantstrek som viser tilhørighet. */
+.oh-tree .oh-tree {
+  margin-left: 32px;
+  padding-left: var(--ax-space-12);
+  border-left: 3px solid var(--ax-border-neutral-subtle);
+}
+
+.oh-tree__item {
+  margin-bottom: var(--ax-space-4);
+}
+
+.oh-tree__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ax-space-12);
+  padding: var(--ax-space-12);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-left-width: 3px;
+  border-radius: 4px;
+  background: var(--ax-bg-default);
+}
+
+.oh-tree__item--group > .oh-tree__row {
+  border-left-color: var(--ax-border-accent);
+}
+
+.oh-tree__priority {
+  flex: 0 0 30px;
+  font-weight: 700;
+  /* Sifrene skal stå under hverandre, ellers hopper navnene sidelengs. */
+  font-variant-numeric: tabular-nums;
+}
+
+.oh-tree__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.oh-tree__name {
+  font-size: 1rem;
+  font-weight: var(--ax-font-weight-bold);
+}
+
+.oh-tree__warning {
+  color: var(--ax-text-warning);
+}
+
+.oh-tree__actions {
+  flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .oh-tree__row {
+    flex-wrap: wrap;
+  }
+
+  .oh-tree .oh-tree {
+    margin-left: var(--ax-space-12);
+  }
+}

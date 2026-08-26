@@ -1,0 +1,35 @@
+.oh-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.oh-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.oh-filters__search {
+  flex: 1;
+  min-width: 260px;
+}
+
+.oh-overview__count {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.oh-overview__links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@media (max-width: 640px) {
+  .oh-filters > * {
+    width: 100%;
+  }
+}

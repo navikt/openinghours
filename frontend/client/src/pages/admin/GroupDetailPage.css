@@ -1,0 +1,27 @@
+.oh-groupdetail {
+  display: flex;
+  gap: var(--ax-space-32);
+  align-items: flex-start;
+}
+
+.oh-groupdetail__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.oh-groupdetail__side {
+  flex: 0 0 320px;
+  position: sticky;
+  top: var(--ax-space-16);
+}
+
+@media (max-width: 960px) {
+  .oh-groupdetail {
+    display: block;
+  }
+
+  .oh-groupdetail__side {
+    position: static;
+    margin-top: var(--ax-space-24, 1.5rem);
+  }
+}
