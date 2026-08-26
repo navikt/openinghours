@@ -4,7 +4,7 @@ packages:
 
 # esbuild trenger postinstall for å hente riktig plattformbinær. Det er en
 # transitiv avhengighet av Vite, og uten godkjenning stopper pnpm hver kommando.
-onlyBuiltDependencies:
-  - esbuild
+# pnpm 11 bruker `allowBuilds` med boolsk verdi — ikke `onlyBuiltDependencies`,
+# som blir ignorert og gir ERR_PNPM_IGNORED_BUILDS på et rent installasjonsmiljø.
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
