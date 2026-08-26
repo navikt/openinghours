@@ -1,9 +1,13 @@
 # --- Stage 1: Bygg klient og BFF ---
 # Chainguard-image via Navs pull-through, samme registry som backend bruker.
 FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/node:latest-dev AS builder
+# Chainguard-imaget kjører som ikke-root, og da får ikke corepack skrevet
+# pnpm-shimen til /usr/bin (EACCES ved unlink). Byggesteget kastes bort, så
+# root her påvirker ikke sluttimaget — runtime under er en egen FROM med
+# imagets egen ikke-root-bruker.
+USER root
 WORKDIR /app
 
-ENV PNPM_HOME=/usr/local/bin
 RUN corepack enable && corepack prepare pnpm@11.20.0 --activate
 
 # Manifestene først: da gjenbrukes avhengighetslaget når bare kildekoden endres.
