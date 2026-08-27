@@ -3,7 +3,7 @@
 # keeps new build artifacts (jacoco, failsafe, site, ...) out of the context
 # automatically, instead of needing a new line here each time.
 target/*
-!target/*.jar
+!target/openinghours-*.jar
 build/
 
 # ignore ide modeules
