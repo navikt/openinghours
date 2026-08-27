@@ -1,10 +1,9 @@
-# ignore build files, but include the pre-built JAR
-target/classes/
-target/generated-sources/
-target/generated-test-sources/
-target/maven-archiver/
-target/maven-status/
-target/test-classes/
+# ignore everything Maven writes to target/, except the runnable Spring Boot JAR
+# that the Dockerfile copies (target/openinghours-*.jar). Deny-all + re-include
+# keeps new build artifacts (jacoco, failsafe, site, ...) out of the context
+# automatically, instead of needing a new line here each time.
+target/*
+!target/*.jar
 build/
 
 # ignore ide modeules
