@@ -172,6 +172,7 @@ class OpeningHoursEvaluatorTest {
             displayText = "Kun for NAV-ansatte",
             onlyShowForNavEmployees = true,
             redDay = true,
+            unstableOpeningHours = true,
         )
         val g = group("root", r)
 
@@ -182,6 +183,28 @@ class OpeningHoursEvaluatorTest {
         assertThat(data.displayText).isEqualTo("Kun for NAV-ansatte")
         assertThat(data.onlyShowForNavEmployees).isTrue()
         assertThat(data.redDay).isTrue()
+        assertThat(data.unstableOpeningHours).isTrue()
+    }
+
+    @Test
+    fun `getDisplayData propagates unstableOpeningHours from the matched rule only`() {
+        // First-match-wins: the flagged rule does not apply on a Saturday, so the
+        // unflagged catch-all must win and report unstableOpeningHours = false.
+        val flagged = ResolvedRule(
+            name = "weekday-flaky",
+            rule = "??.??.???? ? 1-5 09:00-15:00",
+            unstableOpeningHours = true,
+        )
+        val catchAll = ResolvedRule(name = "always", rule = "??.??.???? ? ? 10:00-14:00")
+        val g = group("root", flagged, catchAll)
+
+        val friday = evaluator.getDisplayData(LocalDate.of(2024, 3, 15), g)
+        assertThat(friday!!.ruleName).isEqualTo("weekday-flaky")
+        assertThat(friday.unstableOpeningHours).isTrue()
+
+        val saturday = evaluator.getDisplayData(LocalDate.of(2024, 3, 16), g)
+        assertThat(saturday!!.ruleName).isEqualTo("always")
+        assertThat(saturday.unstableOpeningHours).isFalse()
     }
 
     @Test
@@ -194,6 +217,7 @@ class OpeningHoursEvaluatorTest {
         assertThat(data.displayText).isNull()
         assertThat(data.onlyShowForNavEmployees).isFalse()
         assertThat(data.redDay).isFalse()
+        assertThat(data.unstableOpeningHours).isFalse()
     }
 
     @Test

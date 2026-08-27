@@ -46,9 +46,29 @@ class OpeningHoursTreeResolverTest {
         text: String? = null,
         onlyShowForNavEmployees: Boolean = false,
         redDay: Boolean = false,
+        unstableOpeningHours: Boolean = false,
     ): Rule {
         val id = UUID.randomUUID()
-        return ruleRepo.saveAndFlush(Rule.create(id, name, rule, header, text, onlyShowForNavEmployees, redDay))
+        return ruleRepo.saveAndFlush(
+            Rule.create(id, name, rule, header, text, onlyShowForNavEmployees, redDay, unstableOpeningHours)
+        )
+    }
+
+    @Test
+    fun `unstableOpeningHours field is carried through resolver`() {
+        val flagged = createRule(
+            name = "flaky-rule",
+            rule = "??.??.???? ? ? 08:00-16:00",
+            unstableOpeningHours = true,
+        )
+        val plain = createRule(name = "steady-rule", rule = "??.??.???? ? ? 08:00-16:00")
+        val group = createGroup("unstable-group", listOf(flagged.id, plain.id))
+
+        val resolved = resolver.resolve(group.id)
+        val entries = resolved.entries.filterIsInstance<ResolvedRule>()
+
+        assertThat(entries.single { it.name == "flaky-rule" }.unstableOpeningHours).isTrue()
+        assertThat(entries.single { it.name == "steady-rule" }.unstableOpeningHours).isFalse()
     }
 
     private fun createGroup(name: String, childIds: List<UUID> = emptyList()): OhGroup =

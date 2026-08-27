@@ -54,6 +54,7 @@ data class DailyCacheResponse(
     val displayHeader: String?,
     val displayText: String?,
     val onlyShowForNavEmployees: Boolean,
+    val unstableOpeningHours: Boolean,
     val redDay: Boolean,
     val isOpen: Boolean,
 )
@@ -67,6 +68,7 @@ private fun ServiceCacheEntry.toResponse(serviceId: UUID, nowTime: LocalTime) = 
     displayHeader = displayData.displayHeader,
     displayText = displayData.displayText,
     onlyShowForNavEmployees = displayData.onlyShowForNavEmployees,
+    unstableOpeningHours = displayData.unstableOpeningHours,
     redDay = displayData.redDay,
     isOpen = OpeningHoursEvaluator.computeIsOpen(displayData.openingHours ?: "00:00-23:59", nowTime),
 )

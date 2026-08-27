@@ -119,6 +119,9 @@ class QueryController(
             displayHeader = displayData.displayHeader,
             displayText = displayData.displayText,
             onlyShowForNavEmployees = displayData.onlyShowForNavEmployees,
+            // Reflects the matched rule's manual flag as-is. Unlike redDay it is never
+            // OR-ed with a derived value — instability is purely user-declared.
+            unstableOpeningHours = displayData.unstableOpeningHours,
             // redDay is true when the matched rule marks the day as a red day OR when the
             // queried date is an official Norwegian public holiday (helligdag / rød dag).
             redDay = displayData.redDay || norwegianPublicHolidays.isPublicHoliday(date),
@@ -139,6 +142,7 @@ data class QueryResponse(
     val displayHeader: String?,
     val displayText: String?,
     val onlyShowForNavEmployees: Boolean,
+    val unstableOpeningHours: Boolean,
     val redDay: Boolean,
     @field:com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     val matchedRule: MatchedRule?,

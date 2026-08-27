@@ -11,6 +11,7 @@ data class ResolvedRule(
     val displayText: String? = null,
     val onlyShowForNavEmployees: Boolean = false,
     val redDay: Boolean = false,
+    val unstableOpeningHours: Boolean = false,
 ) : ResolvedEntry
 
 data class ResolvedGroup(
