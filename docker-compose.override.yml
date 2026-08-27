@@ -1,0 +1,17 @@
+# Local development overrides.
+#
+# Builds are done OUTSIDE compose: "docker compose build" hits a BuildKit context
+# bug on Windows ("changes out of order") that a plain "docker build" does not.
+# The !reset tag removes the build: section inherited from docker-compose.yml, so
+# compose only ever runs the prebuilt image below.
+#
+# Build the image first (Dockerfile.local is based on public eclipse-temurin
+# instead of NAV's internal registry), then start the stack:
+#
+#   mvn -DskipTests package
+#   docker build -f Dockerfile.local -t openinghours:local .
+#   docker compose up -d
+services:
+  app:
+    build: !reset null
+    image: openinghours:local
