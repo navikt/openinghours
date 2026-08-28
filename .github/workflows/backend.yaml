@@ -1,5 +1,14 @@
-name: Build and deploy
-on: [push, workflow_dispatch]
+name: Backend
+
+# Monorepo: bygger og deployer bare når backend faktisk er endret. Uten
+# sti-filteret ville hver frontend-commit trigget et fullt Maven-bygg med
+# Postgres-service.
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yaml'
+  workflow_dispatch:
 
 permissions:
   actions: read
@@ -42,6 +51,7 @@ jobs:
           cache: maven
 
       - name: Build and test
+        working-directory: backend
         run: mvn package
 
       - name: Setup ORAS
@@ -57,7 +67,13 @@ jobs:
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
           project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
           build_secrets: NODE_AUTH_TOKEN=${{ secrets.READER_TOKEN }}
-          dockerfile: Dockerfile
+          # Uten image_suffix beholder backend image-navnet «openinghours»,
+          # slik at eksisterende deploys ikke brytes.
+          docker_context: backend
+          # Egen cache-scope: backend og frontend deler GitHub-cachen, og uten
+          # skillet ville de overskrevet hverandres lag.
+          cache_from: type=gha,scope=backend
+          cache_to: type=gha,mode=max,scope=backend
 
   deploy-prod:
     needs: build
@@ -70,5 +86,5 @@ jobs:
         uses: nais/deploy/actions/deploy@v2
         env:
           CLUSTER: prod-gcp
-          RESOURCE: .nais/nais.yaml
+          RESOURCE: backend/.nais/nais.yaml
           VAR: image=${{ needs.build.outputs.image }}

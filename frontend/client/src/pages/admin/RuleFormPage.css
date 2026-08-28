@@ -1,0 +1,46 @@
+.oh-ruleform {
+  display: flex;
+  gap: var(--ax-space-32);
+  align-items: flex-start;
+}
+
+.oh-ruleform__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.oh-ruleform__side {
+  flex: 0 0 340px;
+  position: sticky;
+  top: var(--ax-space-16);
+}
+
+.oh-ruleform__flags {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-4);
+  padding: var(--ax-space-16);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: 8px;
+}
+
+.oh-ruleform__usage {
+  padding: var(--ax-space-16);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-4);
+}
+
+@media (max-width: 960px) {
+  .oh-ruleform {
+    display: block;
+  }
+
+  /* Forhåndsvisningen flyttes under uttrykket på smale skjermer. */
+  .oh-ruleform__side {
+    position: static;
+    margin-top: var(--ax-space-24, 1.5rem);
+  }
+}

@@ -1,0 +1,65 @@
+.oh-wizard {
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: 8px;
+  padding: 22px;
+}
+
+.oh-wizard__locked {
+  margin-bottom: var(--ax-space-16);
+  padding: var(--ax-space-12);
+  border-radius: 4px;
+  background: var(--ax-bg-warning-soft);
+}
+
+.oh-wizard__fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ax-space-16);
+  /* Aksel rendrer label → description → input. Descriptions med ulikt antall
+     linjer ville ellers gitt inputer på ulik høyde. */
+  align-items: end;
+}
+
+.oh-wizard__expr {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--ax-space-8, 0.5rem);
+  margin-top: var(--ax-space-20, 1.25rem);
+}
+
+.oh-wizard__expr-input {
+  flex: 1;
+}
+
+.oh-wizard__expr-input input {
+  font-family: 'Roboto Mono', ui-monospace, monospace;
+  font-size: 15px;
+}
+
+.oh-wizard__receipt {
+  margin-top: var(--ax-space-4);
+  min-height: 1.5rem;
+}
+
+.oh-wizard__icon {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+}
+
+.oh-wizard__icon--ok {
+  color: var(--ax-text-success);
+}
+
+.oh-wizard__icon--error {
+  color: var(--ax-text-danger);
+}
+
+.oh-wizard__patterns {
+  margin-top: var(--ax-space-20, 1.25rem);
+}
+
+@media (max-width: 720px) {
+  .oh-wizard__fields {
+    grid-template-columns: 1fr;
+  }
+}

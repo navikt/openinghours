@@ -1,0 +1,97 @@
+/* Ukevisning — fast tregeometri: dagkolonne / spor / regelkolonne. */
+
+.oh-week {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oh-week__head,
+.oh-week__row {
+  display: grid;
+  grid-template-columns: 174px minmax(0, 1fr) var(--oh-week-rule, 0px);
+  gap: 16px;
+  align-items: center;
+}
+
+.oh-week--with-rules {
+  --oh-week-rule: 200px;
+}
+
+.oh-week__head {
+  padding: 0 12px;
+}
+
+.oh-week__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oh-week__row {
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 12px;
+  border: 1px solid var(--ax-border-neutral-subtle, var(--a-border-subtle));
+  border-radius: 6px;
+  background: var(--ax-bg-default, var(--a-surface-default));
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.oh-week__row:hover {
+  background: var(--ax-bg-neutral-soft, var(--a-surface-subtle));
+}
+
+.oh-week__row:focus-visible {
+  outline: 3px solid var(--ax-border-focus, var(--a-border-focus));
+  outline-offset: 2px;
+}
+
+.oh-week__row--today {
+  border-color: var(--ax-border-accent, var(--a-border-focus));
+  border-width: 2px;
+}
+
+.oh-week__row--selected {
+  box-shadow: inset 0 0 0 2px var(--ax-border-accent, var(--a-border-focus));
+}
+
+.oh-week__day {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.oh-week__track {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.oh-week__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.oh-week__rule {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+}
+
+/* Under 720 px faller ukevisningen tilbake til agendalisten, så sporet
+   trenger ikke egen mobiltilpasning her. */

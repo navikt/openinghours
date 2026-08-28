@@ -1,0 +1,72 @@
+.oh-admin {
+  display: flex;
+  gap: var(--ax-space-32);
+  align-items: flex-start;
+}
+
+.oh-admin__nav {
+  flex: 0 0 210px;
+  position: sticky;
+  top: var(--ax-space-16);
+}
+
+.oh-admin__nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.oh-admin__link {
+  display: block;
+  padding: var(--ax-space-12) var(--ax-space-16);
+  /* 3 px aksentkant markerer aktiv rad. Den ligger alltid der, gjennomsiktig,
+     slik at teksten ikke hopper sidelengs når du bytter side. */
+  border-left: 3px solid transparent;
+  color: var(--ax-text-neutral);
+  text-decoration: none;
+  font-size: var(--ax-font-size-medium);
+}
+
+.oh-admin__link:hover {
+  background: var(--ax-bg-neutral-moderate);
+  text-decoration: underline;
+}
+
+.oh-admin__link--active {
+  border-left-color: var(--ax-border-accent);
+  background: var(--ax-bg-accent-moderate);
+  font-weight: var(--ax-font-weight-bold);
+}
+
+.oh-admin__content {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .oh-admin {
+    display: block;
+  }
+
+  .oh-admin__nav {
+    position: static;
+    margin-bottom: var(--ax-space-16);
+    overflow-x: auto;
+  }
+
+  .oh-admin__nav ul {
+    display: flex;
+    gap: var(--ax-space-4);
+  }
+
+  .oh-admin__link {
+    white-space: nowrap;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+  }
+
+  .oh-admin__link--active {
+    border-left: none;
+    border-bottom-color: var(--ax-border-accent);
+  }
+}

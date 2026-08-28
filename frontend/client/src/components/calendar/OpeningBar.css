@@ -1,0 +1,59 @@
+/* Åpningsstrek — fast vindu 07:00–17:00, absolutt posisjonerte segmenter. */
+
+.oh-bar {
+  position: relative;
+  width: 100%;
+  background: var(--ax-bg-neutral-moderate, var(--a-surface-neutral-subtle));
+  overflow: hidden;
+}
+
+.oh-bar--cell {
+  height: 6px;
+  border-radius: 3px;
+}
+
+.oh-bar--track {
+  height: 34px;
+  border-radius: 4px;
+  border: 1px solid var(--ax-border-neutral-subtle, var(--a-border-subtle));
+}
+
+.oh-bar__segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--ax-bg-success-strong, var(--a-surface-success));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.oh-bar--cell .oh-bar__segment {
+  border-radius: 3px;
+}
+
+.oh-bar--track .oh-bar__segment {
+  border-radius: 3px;
+}
+
+.oh-bar__time {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ax-text-success-contrast, #fff);
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+/* Tidsakse — etikettene deler geometri med segmentene. */
+.oh-axis {
+  position: relative;
+  height: 18px;
+}
+
+.oh-axis__label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.6875rem;
+  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  white-space: nowrap;
+}

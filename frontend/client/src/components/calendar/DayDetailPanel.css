@@ -1,0 +1,51 @@
+.oh-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: none;
+  width: 300px;
+}
+
+.oh-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.oh-panel__message {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 4px;
+  background: var(--ax-bg-neutral-soft, var(--a-surface-subtle));
+}
+
+.oh-panel__rule {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--ax-border-neutral-subtle, var(--a-border-subtle));
+  padding-top: 12px;
+}
+
+.oh-panel__expression {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ax-bg-neutral-soft, var(--a-surface-subtle));
+  border-radius: 4px;
+  padding: 4px 4px 4px 8px;
+}
+
+.oh-panel__expression code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+  .oh-panel {
+    width: 100%;
+  }
+}
