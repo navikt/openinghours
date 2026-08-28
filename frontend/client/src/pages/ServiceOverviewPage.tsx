@@ -123,6 +123,9 @@ export function ServiceOverviewPage() {
         <BodyShort size="small" aria-live="polite">
           Viser {filtered.length} av {services.data?.length ?? 0} tjenester · {timestamp}
         </BodyShort>
+        <BodyShort size="small" textColor="subtle">
+          Sortert etter {sortBy === 'team' ? 'team' : 'navn'}
+        </BodyShort>
       </div>
 
       {services.isPending && <DelayedLoader />}
