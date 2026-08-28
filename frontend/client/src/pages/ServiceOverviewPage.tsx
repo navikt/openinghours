@@ -1,19 +1,21 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   BodyLong,
   BodyShort,
   Heading,
+  Link,
   Search,
   Select,
   Skeleton,
   Table,
   Tag,
 } from '@navikt/ds-react';
+import { ExternalLinkIcon } from '@navikt/aksel-icons';
 import { useSearchParams } from 'react-router-dom';
 import type { ServiceType } from '../api/types';
 import { useDailyStatus, useServices, useSession } from '../hooks/queries';
 import { formatHours, HOURS_ALWAYS_OPEN, HOURS_CLOSED } from '../lib/rule';
+import { AppLink } from '../components/common/AppLink';
 import { StatusBadge } from '../components/calendar/StatusBadge';
 import { EmptyState, ErrorState } from '../components/common/ErrorState';
 import { DelayedLoader } from '../components/common/DelayedLoader';
@@ -121,6 +123,9 @@ export function ServiceOverviewPage() {
         <BodyShort size="small" aria-live="polite">
           Viser {filtered.length} av {services.data?.length ?? 0} tjenester · {timestamp}
         </BodyShort>
+        <BodyShort size="small" textColor="subtle">
+          Sortert etter {sortBy === 'team' ? 'team' : 'navn'}
+        </BodyShort>
       </div>
 
       {services.isPending && <DelayedLoader />}
@@ -160,7 +165,7 @@ export function ServiceOverviewPage() {
               return (
                 <Table.Row key={service.id}>
                   <Table.HeaderCell scope="row">
-                    <Link to={`/t/${service.id}`}>{service.name}</Link>
+                    <AppLink to={`/t/${service.id}`}>{service.name}</AppLink>
                   </Table.HeaderCell>
                   <Table.DataCell>
                     <Tag variant="neutral" size="small">
@@ -180,14 +185,16 @@ export function ServiceOverviewPage() {
                     <Table.DataCell>
                       <div className="oh-overview__links">
                         {service.monitorlink && (
-                          <a href={service.monitorlink} target="_blank" rel="noreferrer">
+                          <Link href={service.monitorlink} target="_blank" rel="noreferrer">
                             Overvåkning
-                          </a>
+                            <ExternalLinkIcon aria-label="Åpnes i ny fane" />
+                          </Link>
                         )}
                         {service.logglink && (
-                          <a href={service.logglink} target="_blank" rel="noreferrer">
+                          <Link href={service.logglink} target="_blank" rel="noreferrer">
                             Logger
-                          </a>
+                            <ExternalLinkIcon aria-label="Åpnes i ny fane" />
+                          </Link>
                         )}
                         {!service.monitorlink && !service.logglink && '—'}
                       </div>

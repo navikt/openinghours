@@ -1,0 +1,6 @@
+/* Knappen står i en flex-rad sammen med headerens egne elementer, som fyller
+   hele høyden. Uten sentreringen strekker den seg fra topp til bunn. */
+.oh-header__login {
+  align-self: center;
+  margin-right: var(--ax-space-8);
+}

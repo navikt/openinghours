@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   BodyShort,
   Button,
@@ -14,6 +13,7 @@ import { useCreateGroup, useGroups, useRules, useServiceGroupLinks } from '../..
 import { DelayedLoader } from '../../components/common/DelayedLoader';
 import { EmptyState, ErrorState } from '../../components/common/ErrorState';
 import { buildRegistry, buildTree } from '../../lib/tree';
+import { AppLink } from '../../components/common/AppLink';
 
 export function GroupsPage() {
   const groups = useGroups();
@@ -74,7 +74,7 @@ export function GroupsPage() {
               return (
                 <Table.Row key={group.id}>
                   <Table.DataCell>
-                    <Link to={`/admin/grupper/${group.id}`}>{group.name}</Link>
+                    <AppLink to={`/admin/grupper/${group.id}`}>{group.name}</AppLink>
                   </Table.DataCell>
                   <Table.DataCell>
                     {members === 0 ? (

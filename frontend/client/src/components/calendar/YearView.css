@@ -27,7 +27,7 @@
   text-align: center;
   font-size: 0.625rem;
   font-weight: 600;
-  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  color: var(--ax-text-neutral-subtle);
   text-decoration: none;
   padding-bottom: 2px;
 }
@@ -47,56 +47,56 @@
   font-size: 0.6875rem;
   line-height: 1;
   cursor: pointer;
-  background: var(--ax-bg-neutral-soft, var(--a-surface-subtle));
-  color: var(--ax-text-neutral, var(--a-text-default));
+  background: var(--ax-bg-neutral-soft);
+  color: var(--ax-text-neutral);
 }
 
 .oh-year__day:hover {
-  border-color: var(--ax-border-neutral, var(--a-border-strong));
+  border-color: var(--ax-border-neutral);
 }
 
 .oh-year__day:focus-visible {
-  outline: 2px solid var(--ax-border-focus, var(--a-border-focus));
+  outline: 2px solid var(--ax-border-focus);
   outline-offset: 1px;
 }
 
 .oh-year__day--open {
-  background: var(--ax-bg-success-soft, var(--a-surface-success-subtle));
+  background: var(--ax-bg-success-soft);
 }
 
 .oh-year__day--closed {
-  background: var(--ax-bg-neutral-moderate, var(--a-surface-neutral-subtle));
-  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  background: var(--ax-bg-neutral-moderate);
+  color: var(--ax-text-neutral-subtle);
 }
 
 /* Rød dag: farge + fet + understrek, slik at den skiller seg fra «stengt»
    også for brukere som ikke oppfatter fargeforskjellen. */
 .oh-year__day--redDay {
-  background: var(--ax-bg-danger-soft, var(--a-surface-danger-subtle));
+  background: var(--ax-bg-danger-soft);
   font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .oh-year__day--warning {
-  background: var(--ax-bg-warning-soft, var(--a-surface-warning-subtle));
+  background: var(--ax-bg-warning-soft);
   font-style: italic;
 }
 
 .oh-year__day--masked {
-  background: var(--ax-bg-info-soft, var(--a-surface-info-subtle));
+  background: var(--ax-bg-info-soft);
 }
 
 .oh-year__day--unknown {
   background: transparent;
-  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  color: var(--ax-text-neutral-subtle);
 }
 
 .oh-year__day--today {
-  border-color: var(--ax-border-accent, var(--a-border-focus));
+  border-color: var(--ax-border-accent);
   border-width: 2px;
 }
 
 .oh-year__day--selected {
-  box-shadow: inset 0 0 0 2px var(--ax-border-accent, var(--a-border-focus));
+  box-shadow: inset 0 0 0 2px var(--ax-border-accent);
 }

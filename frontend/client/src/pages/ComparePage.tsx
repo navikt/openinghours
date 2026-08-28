@@ -1,11 +1,22 @@
-import { useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Alert, BodyShort, Chips, Detail, Heading, Skeleton } from '@navikt/ds-react';
+import { useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import {
+  Alert,
+  BodyShort,
+  Button,
+  Chips,
+  DatePicker,
+  Detail,
+  Heading,
+  Skeleton,
+  useDatepicker,
+} from '@navikt/ds-react';
 import { ArrowLeftIcon } from '@navikt/aksel-icons';
 import { useServices, useServicesOnDate, useSession } from '../hooks/queries';
-import { addDays, formatDateLong, todayIso } from '../lib/date';
+import { addDays, dateToIso, formatDateLong, isoToDate, todayIso } from '../lib/date';
 import { deriveStatus, statusAriaLabel } from '../lib/status';
 import { useNow } from '../hooks/useNow';
+import { AppLink } from '../components/common/AppLink';
 import { OpeningBar, TimeAxis } from '../components/calendar/OpeningBar';
 import { StatusBadge } from '../components/calendar/StatusBadge';
 import { DelayedLoader } from '../components/common/DelayedLoader';
@@ -44,8 +55,23 @@ export function ComparePage() {
     setParams(next, { replace: true });
   };
 
-  const toggle = (id: string) => {
-    const next = selectedIds.includes(id)
+  const { datepickerProps, inputProps, setSelected } = useDatepicker({
+    defaultSelected: isoToDate(date),
+    onDateChange: (picked) => picked && setParam('dato', dateToIso(picked)),
+  });
+
+  /*
+   * Datoen er URL-en, ikke kalenderens interne tilstand. Snarveiknappene under
+   * skriver rett til URL-en, og uten denne synkroniseringen ville feltet blitt
+   * stående på gårsdagens verdi mens tabellen viste en annen dag.
+   * `setSelected` er bevisst utelatt fra avhengighetene — den er ustabil mellom
+   * renders og ville gitt en evig løkke.
+   */
+  useEffect(() => {
+    setSelected(isoToDate(date));
+  }, [date]);
+
+  const toggle = (id: string) => {    const next = selectedIds.includes(id)
       ? selectedIds.filter((s) => s !== id)
       : [...selectedIds, id].slice(0, MAX_SERVICES);
     setParam('tjenester', next.join(','));
@@ -56,9 +82,9 @@ export function ComparePage() {
 
   return (
     <div className="oh-page">
-      <Link to="/" className="oh-back navds-link">
+      <AppLink to="/" className="oh-back">
         <ArrowLeftIcon aria-hidden /> Tilbake til alle tjenester
-      </Link>
+      </AppLink>
 
       <Heading level="1" size="xlarge">
         Sammenlign tjenester
@@ -69,34 +95,27 @@ export function ComparePage() {
 
       <div className="oh-compare__controls">
         <div className="oh-compare__date">
-          <label className="navds-form-field__label" htmlFor="oh-compare-date">
-            Dato
-          </label>
-          <input
-            id="oh-compare-date"
-            type="date"
-            className="navds-text-field__input"
-            value={date}
-            onChange={(e) => setParam('dato', e.target.value || today)}
-          />
+          <DatePicker {...datepickerProps}>
+            <DatePicker.Input {...inputProps} id="oh-compare-date" label="Dato" size="small" />
+          </DatePicker>
           <div className="oh-compare__shortcuts">
-            <button type="button" className="navds-link" onClick={() => setParam('dato', today)}>
+            <Button variant="tertiary" size="small" onClick={() => setParam('dato', today)}>
               I dag
-            </button>
-            <button
-              type="button"
-              className="navds-link"
+            </Button>
+            <Button
+              variant="tertiary"
+              size="small"
               onClick={() => setParam('dato', addDays(date, -1))}
             >
               Dagen før
-            </button>
-            <button
-              type="button"
-              className="navds-link"
+            </Button>
+            <Button
+              variant="tertiary"
+              size="small"
               onClick={() => setParam('dato', addDays(date, 1))}
             >
               Dagen etter
-            </button>
+            </Button>
           </div>
         </div>
 

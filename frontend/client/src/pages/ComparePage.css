@@ -11,21 +11,14 @@
 .oh-compare__date {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--ax-space-4);
+  /* Spesifikasjonen setter datofeltet til 200 px i kontrollraden. */
+  width: 200px;
 }
 
 .oh-compare__shortcuts {
   display: flex;
-  gap: 12px;
-  font-size: 0.875rem;
-}
-
-.oh-compare__shortcuts button {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  cursor: pointer;
+  gap: var(--ax-space-4);
 }
 
 .oh-compare__picker {
@@ -71,9 +64,9 @@
 .oh-compare__row {
   min-height: 64px;
   padding: 8px 12px;
-  border: 1px solid var(--ax-border-neutral-subtle, var(--a-border-subtle));
+  border: 1px solid var(--ax-border-neutral-subtle);
   border-radius: 6px;
-  background: var(--ax-bg-default, var(--a-surface-default));
+  background: var(--ax-bg-default);
 }
 
 .oh-compare__name {

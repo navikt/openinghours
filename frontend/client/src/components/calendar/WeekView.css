@@ -35,9 +35,9 @@
   width: 100%;
   min-height: 64px;
   padding: 8px 12px;
-  border: 1px solid var(--ax-border-neutral-subtle, var(--a-border-subtle));
+  border: 1px solid var(--ax-border-neutral-subtle);
   border-radius: 6px;
-  background: var(--ax-bg-default, var(--a-surface-default));
+  background: var(--ax-bg-default);
   text-align: left;
   cursor: pointer;
   font: inherit;
@@ -45,21 +45,21 @@
 }
 
 .oh-week__row:hover {
-  background: var(--ax-bg-neutral-soft, var(--a-surface-subtle));
+  background: var(--ax-bg-neutral-soft);
 }
 
 .oh-week__row:focus-visible {
-  outline: 3px solid var(--ax-border-focus, var(--a-border-focus));
+  outline: 3px solid var(--ax-border-focus);
   outline-offset: 2px;
 }
 
 .oh-week__row--today {
-  border-color: var(--ax-border-accent, var(--a-border-focus));
+  border-color: var(--ax-border-accent);
   border-width: 2px;
 }
 
 .oh-week__row--selected {
-  box-shadow: inset 0 0 0 2px var(--ax-border-accent, var(--a-border-focus));
+  box-shadow: inset 0 0 0 2px var(--ax-border-accent);
 }
 
 .oh-week__day {
@@ -90,7 +90,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 0.75rem;
-  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  color: var(--ax-text-neutral-subtle);
 }
 
 /* Under 720 px faller ukevisningen tilbake til agendalisten, så sporet

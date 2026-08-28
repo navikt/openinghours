@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom';
 import { BodyShort, Button, HStack, Tag } from '@navikt/ds-react';
 import { ArrowDownIcon, ArrowUpIcon } from '@navikt/aksel-icons';
 import type { TreeNode } from '../../lib/tree';
 import { formatRule } from '../../lib/rule';
 import './GroupTree.css';
+import { AppLink } from '../common/AppLink';
 
 interface Props {
   nodes: TreeNode[];
@@ -39,13 +39,13 @@ export function GroupTree({ nodes, unreachable, onMove, onRemove }: Props) {
                 {node.missing ? (
                   <span className="oh-tree__name">Ukjent medlem ({node.id})</span>
                 ) : node.kind === 'group' ? (
-                  <Link className="oh-tree__name" to={`/admin/grupper/${node.id}`}>
+                  <AppLink className="oh-tree__name" to={`/admin/grupper/${node.id}`}>
                     {node.name}
-                  </Link>
+                  </AppLink>
                 ) : (
-                  <Link className="oh-tree__name" to={`/admin/regler/${node.id}`}>
+                  <AppLink className="oh-tree__name" to={`/admin/regler/${node.id}`}>
                     {node.name}
-                  </Link>
+                  </AppLink>
                 )}
               </HStack>
 

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   Alert,
   BodyShort,
@@ -19,6 +18,7 @@ import {
 } from '../../hooks/admin';
 import { DeleteDialog } from './DeleteDialog';
 import './ServiceFormModal.css';
+import { AppLink } from '../common/AppLink';
 
 interface Props {
   /** `null` betyr ny tjeneste. */
@@ -135,9 +135,9 @@ export function ServiceFormModal({ service, groups, currentGroupId, onClose }: P
               </Select>
               {groupId && (
                 <BodyShort size="small">
-                  <Link to={`/admin/grupper/${groupId}`} onClick={onClose}>
+                  <AppLink to={`/admin/grupper/${groupId}`} onClick={onClose}>
                     Se gruppens regler og rekkefølge
-                  </Link>
+                  </AppLink>
                 </BodyShort>
               )}
             </div>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, BodyShort, Button, HStack, Heading, VStack } from '@navikt/ds-react';
 import { ApiError } from '../../api/client';
 import {
@@ -18,6 +18,7 @@ import { DelayedLoader } from '../../components/common/DelayedLoader';
 import { ErrorState } from '../../components/common/ErrorState';
 import { buildRegistry, buildTree, moveItem, unreachableMembers } from '../../lib/tree';
 import './GroupDetailPage.css';
+import { AppLink } from '../../components/common/AppLink';
 
 export function GroupDetailPage() {
   const { groupId = '' } = useParams();
@@ -97,7 +98,7 @@ export function GroupDetailPage() {
     <VStack gap="5">
       <div>
         <BodyShort size="small">
-          <Link to="/admin/grupper">Tilbake til grupper</Link>
+          <AppLink to="/admin/grupper">Tilbake til grupper</AppLink>
         </BodyShort>
         <Heading level="1" size="large">
           {group.data.name}

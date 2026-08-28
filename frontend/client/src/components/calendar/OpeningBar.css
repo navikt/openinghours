@@ -3,7 +3,7 @@
 .oh-bar {
   position: relative;
   width: 100%;
-  background: var(--ax-bg-neutral-moderate, var(--a-surface-neutral-subtle));
+  background: var(--ax-bg-neutral-moderate);
   overflow: hidden;
 }
 
@@ -15,14 +15,14 @@
 .oh-bar--track {
   height: 34px;
   border-radius: 4px;
-  border: 1px solid var(--ax-border-neutral-subtle, var(--a-border-subtle));
+  border: 1px solid var(--ax-border-neutral-subtle);
 }
 
 .oh-bar__segment {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: var(--ax-bg-success-strong, var(--a-surface-success));
+  background: var(--ax-bg-success-strong);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -54,6 +54,6 @@
   position: absolute;
   transform: translateX(-50%);
   font-size: 0.6875rem;
-  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  color: var(--ax-text-neutral-subtle);
   white-space: nowrap;
 }

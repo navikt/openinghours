@@ -1,6 +1,6 @@
 body {
   margin: 0;
-  background: var(--ax-bg-sunken, var(--a-bg-subtle));
+  background: var(--ax-bg-sunken);
 }
 
 .oh-main {
@@ -8,11 +8,11 @@ body {
 }
 
 a {
-  color: var(--ax-text-accent, var(--a-text-action));
+  color: var(--ax-text-accent);
 }
 
 :focus-visible {
-  outline: 3px solid var(--ax-border-focus, var(--a-border-focus));
+  outline: 3px solid var(--ax-border-focus);
   outline-offset: 1px;
 }
 

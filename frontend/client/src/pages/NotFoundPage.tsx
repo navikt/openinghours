@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { BodyLong, Heading, Link as AkselLink } from '@navikt/ds-react';
+import { BodyLong, Heading } from '@navikt/ds-react';
+import { AppLink } from '../components/common/AppLink';
 
 export function NotFoundPage() {
   return (
@@ -8,9 +8,7 @@ export function NotFoundPage() {
         Fant ikke siden
       </Heading>
       <BodyLong spacing>Adressen finnes ikke, eller tjenesten kan ha blitt slettet.</BodyLong>
-      <AkselLink as={Link} to="/">
-        Gå til oversikten over tjenester
-      </AkselLink>
+      <AppLink to="/">Gå til oversikten over tjenester</AppLink>
     </div>
   );
 }

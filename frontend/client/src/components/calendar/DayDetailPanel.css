@@ -18,14 +18,14 @@
   gap: 4px;
   padding: 12px;
   border-radius: 4px;
-  background: var(--ax-bg-neutral-soft, var(--a-surface-subtle));
+  background: var(--ax-bg-neutral-soft);
 }
 
 .oh-panel__rule {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  border-top: 1px solid var(--ax-border-neutral-subtle, var(--a-border-subtle));
+  border-top: 1px solid var(--ax-border-neutral-subtle);
   padding-top: 12px;
 }
 
@@ -33,7 +33,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  background: var(--ax-bg-neutral-soft, var(--a-surface-subtle));
+  background: var(--ax-bg-neutral-soft);
   border-radius: 4px;
   padding: 4px 4px 4px 8px;
 }

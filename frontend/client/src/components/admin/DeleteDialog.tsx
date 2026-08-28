@@ -2,6 +2,7 @@ import { BodyLong, BodyShort, Button, Heading, Modal, Tag, VStack } from '@navik
 import { Link } from 'react-router-dom';
 import { ExclamationmarkTriangleIcon } from '@navikt/aksel-icons';
 import './DeleteDialog.css';
+import { AppLink } from '../common/AppLink';
 
 export interface Conflict {
   id: string;
@@ -91,7 +92,7 @@ export function DeleteDialog({
                       {conflict.kind}
                     </Tag>
                     {conflict.href ? (
-                      <Link to={conflict.href}>{conflict.name}</Link>
+                      <AppLink to={conflict.href}>{conflict.name}</AppLink>
                     ) : (
                       <span>{conflict.name}</span>
                     )}

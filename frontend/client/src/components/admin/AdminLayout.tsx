@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { Alert, BodyShort, Heading } from '@navikt/ds-react';
+import { Alert, BodyShort, Heading, Link } from '@navikt/ds-react';
 import { useSession } from '../../hooks/queries';
 import { DelayedLoader } from '../common/DelayedLoader';
 import './AdminLayout.css';
@@ -32,7 +32,7 @@ export function AdminLayout() {
         <BodyShort spacing>
           Kalenderen er åpen for alle, men endringer krever at du logger inn som Nav-ansatt.
         </BodyShort>
-        <a href="/oauth2/login">Logg inn som ansatt</a>
+        <Link href="/oauth2/login">Logg inn som ansatt</Link>
       </Alert>
     );
   }

@@ -31,6 +31,7 @@ import { ErrorState } from '../../components/common/ErrorState';
 import { EMPTY_FIELDS, buildRule, toFields, type RuleFields } from '../../lib/rulebuild';
 import { validateRule } from '../../lib/validate';
 import './RuleFormPage.css';
+import { AppLink } from '../../components/common/AppLink';
 
 const DEFAULT_EXPR = buildRule(EMPTY_FIELDS);
 
@@ -155,7 +156,7 @@ export function RuleFormPage() {
     <VStack gap="5">
       <div>
         <BodyShort size="small">
-          <Link to="/admin/regler">Tilbake til regler</Link>
+          <AppLink to="/admin/regler">Tilbake til regler</AppLink>
         </BodyShort>
         <Heading level="1" size="large">
           {isNew ? 'Ny regel' : name || 'Rediger regel'}
@@ -171,7 +172,7 @@ export function RuleFormPage() {
               {usedIn.data?.map((group, i) => (
                 <span key={group.id}>
                   {i > 0 && ', '}
-                  <Link to={`/admin/grupper/${group.id}`}>{group.name}</Link>
+                  <AppLink to={`/admin/grupper/${group.id}`}>{group.name}</AppLink>
                 </span>
               ))}
               .
@@ -265,9 +266,9 @@ export function RuleFormPage() {
                 </Heading>
                 <VStack gap="1">
                   {usedIn.data?.map((group) => (
-                    <Link key={group.id} to={`/admin/grupper/${group.id}`}>
+                    <AppLink key={group.id} to={`/admin/grupper/${group.id}`}>
                       {group.name}
-                    </Link>
+                    </AppLink>
                   ))}
                 </VStack>
                 <BodyShort size="small" textColor="subtle">

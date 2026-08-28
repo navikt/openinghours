@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  dateToIso,
   formatMonthName,
   formatWeek,
+  isoToDate,
   isoWeekday,
   isoWeekNumber,
   lastOfMonth,
@@ -159,5 +161,28 @@ describe('monthsOfYear', () => {
 describe('formatMonthName', () => {
   it('gir månedsnavn med stor forbokstav uten årstall', () => {
     expect(formatMonthName('2025-05')).toBe('Mai');
+  });
+});
+
+describe('isoToDate og dateToIso', () => {
+  it('gir samme dato tilbake', () => {
+    expect(dateToIso(isoToDate('2026-05-17'))).toBe('2026-05-17');
+  });
+
+  it('bygger en lokal dato, ikke en UTC-dato', () => {
+    // Kjernen i hvorfor toISOString() ikke kan brukes: feltene må leses lokalt,
+    // ellers bikker datoen én dag for klienter vest for Greenwich.
+    const d = isoToDate('2026-05-17');
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(4);
+    expect(d.getDate()).toBe(17);
+  });
+
+  it('nullpadder måned og dag', () => {
+    expect(dateToIso(new Date(2026, 0, 5))).toBe('2026-01-05');
+  });
+
+  it('overlever et årsskifte ved midnatt', () => {
+    expect(dateToIso(isoToDate('2027-01-01'))).toBe('2027-01-01');
   });
 });

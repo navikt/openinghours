@@ -21,7 +21,10 @@ export function createApp(config: Config) {
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:'],
           connectSrc: ["'self'"],
-          fontSrc: ["'self'", 'data:'],
+          // Aksel laster Source Sans 3 fra Navs CDN — både legacy- og
+          // darkside-bundelen peker dit. Uten dette blokkeres fonten, og hele
+          // appen faller tilbake til Arial uten at noe annet ser galt ut.
+          fontSrc: ["'self'", 'data:', 'https://cdn.nav.no'],
           objectSrc: ["'none'"],
           frameAncestors: ["'none'"],
         },
