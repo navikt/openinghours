@@ -62,6 +62,11 @@ Legg dem i `frontend/.env` (ikke sjekk inn filen).
 
 Standardverdien for `API_KEY` matcher `../backend/env.local`.
 
+I produksjon hentes `API_KEY` fra secreten `openinghours-app-swagger-secret` — samme
+secret som backend bruker. Det er med vilje: backend godtar nøyaktig én gyldig nøkkel,
+så en egen frontend-secret måtte hatt identisk verdi. Rotering må derfor gjøres for
+begge appene samtidig.
+
 ## Kommandoer
 
 ```bash

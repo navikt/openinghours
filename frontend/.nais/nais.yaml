@@ -25,9 +25,12 @@ spec:
     requests:
       cpu: 50m
       memory: 256Mi
-  # API-nøkkelen til backend. Ligger kun i BFF-prosessen, aldri i klientbundelen.
+  # API_KEY til backend. Ligger kun i BFF-prosessen, aldri i klientbundelen.
+  # Vi gjenbruker backendens egen secret med vilje: backend godtar nøyaktig én
+  # gyldig nøkkel (streng-sammenligning i ApiKeyAuthenticationFilter), så en egen
+  # frontend-secret måtte uansett hatt identisk verdi og kunne kommet ut av sync.
   envFrom:
-    - secret: openinghours-frontend-secret
+    - secret: openinghours-app-swagger-secret
   env:
     - name: BACKEND_URL
       value: http://openinghours
