@@ -69,7 +69,6 @@ export function ComparePage() {
    */
   useEffect(() => {
     setSelected(isoToDate(date));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
   const toggle = (id: string) => {    const next = selectedIds.includes(id)

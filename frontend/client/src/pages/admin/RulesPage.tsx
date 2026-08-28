@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   BodyShort,
   Button,
@@ -19,6 +18,7 @@ import { ErrorState, EmptyState } from '../../components/common/ErrorState';
 import { formatRule } from '../../lib/rule';
 import { validateRule } from '../../lib/validate';
 import './RulesPage.css';
+import { AppLink } from '../../components/common/AppLink';
 
 type Flag = 'alle' | 'ansatte' | 'ubrukt' | 'ugyldig';
 
@@ -137,7 +137,7 @@ function RuleRow({ rule, usedIn }: { rule: Rule; usedIn: number }) {
   return (
     <Table.Row>
       <Table.DataCell>
-        <Link to={`/admin/regler/${rule.id}`}>{rule.name}</Link>
+        <AppLink to={`/admin/regler/${rule.id}`}>{rule.name}</AppLink>
       </Table.DataCell>
       <Table.DataCell>
         <code className="oh-rules__expr">{rule.rule}</code>
@@ -178,8 +178,8 @@ function RuleRow({ rule, usedIn }: { rule: Rule; usedIn: number }) {
       </Table.DataCell>
       <Table.DataCell>
         <VStack gap="1">
-          <Link to={`/admin/regler/${rule.id}`}>Rediger</Link>
-          <Link to={`/admin/regler/${rule.id}?slett=1`}>Slett</Link>
+          <AppLink to={`/admin/regler/${rule.id}`}>Rediger</AppLink>
+          <AppLink to={`/admin/regler/${rule.id}?slett=1`}>Slett</AppLink>
         </VStack>
       </Table.DataCell>
     </Table.Row>

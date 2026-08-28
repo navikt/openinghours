@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { BodyShort, Button, HStack, Heading, Table, Tag, VStack } from '@navikt/ds-react';
 import { useGroups, useServiceGroupLinks } from '../../hooks/admin';
 import { useServices } from '../../hooks/queries';
@@ -7,6 +6,7 @@ import { ServiceFormModal } from '../../components/admin/ServiceFormModal';
 import { DelayedLoader } from '../../components/common/DelayedLoader';
 import { ErrorState } from '../../components/common/ErrorState';
 import type { Service } from '../../api/types';
+import { AppLink } from '../../components/common/AppLink';
 
 export function ServicesPage() {
   const services = useServices();
@@ -62,7 +62,7 @@ export function ServicesPage() {
             return (
               <Table.Row key={service.id}>
                 <Table.DataCell>
-                  <Link to={`/t/${service.id}`}>{service.name}</Link>
+                  <AppLink to={`/t/${service.id}`}>{service.name}</AppLink>
                   <BodyShort size="small" textColor="subtle">
                     {service.team}
                   </BodyShort>
@@ -74,7 +74,7 @@ export function ServicesPage() {
                 </Table.DataCell>
                 <Table.DataCell>
                   {group ? (
-                    <Link to={`/admin/grupper/${group.id}`}>{group.name}</Link>
+                    <AppLink to={`/admin/grupper/${group.id}`}>{group.name}</AppLink>
                   ) : links.isPending ? (
                     <BodyShort size="small" textColor="subtle">
                       Henter …

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Alert, BodyShort, HGrid, Heading, Table, Tag, VStack } from '@navikt/ds-react';
+import { AppLink } from '../../components/common/AppLink';
 import { useGroups, useRules, useServiceGroupLinks } from '../../hooks/admin';
 import { useServices, useSession } from '../../hooks/queries';
 import { DelayedLoader } from '../../components/common/DelayedLoader';
@@ -91,7 +92,7 @@ export function AdminOverviewPage() {
                   </Table.DataCell>
                   <Table.DataCell>{issue.description}</Table.DataCell>
                   <Table.DataCell>
-                    <Link to={issue.href}>{issue.actionLabel}</Link>
+                    <AppLink to={issue.href}>{issue.actionLabel}</AppLink>
                   </Table.DataCell>
                 </Table.Row>
               ))}
