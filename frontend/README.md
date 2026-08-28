@@ -67,6 +67,30 @@ secret som backend bruker. Det er med vilje: backend godtar nøyaktig én gyldig
 så en egen frontend-secret måtte hatt identisk verdi. Rotering må derfor gjøres for
 begge appene samtidig.
 
+## Designsystem
+
+Appen bruker Aksels **darkside**-bundel, ikke den eldre `@navikt/ds-css`:
+
+```ts
+import '@navikt/ds-css/darkside';   // definerer --ax-*-tokenene
+<Theme theme="light">…</Theme>      // skrur på omdøpingen navds-* → aksel-*
+```
+
+Disse to hører uløselig sammen, og begge er lette å fjerne ved et uhell:
+
+- **CSS-en alene** gir komponenter uten stil, fordi darkside kun inneholder
+  `aksel-`-klasser mens komponentene skriver `navds-` uten `<Theme>`.
+- **`<Theme>` alene** gir omdøpte klasser som ingen CSS matcher.
+- **Legacy-bundelen** definerer ingen `--ax-*`-tokens i det hele tatt. Designet er
+  spesifisert i nettopp de tokenene, så all egen CSS mister farger og spacing i
+  stillhet — nettleseren dropper deklarasjoner den ikke kan løse opp.
+
+`src/theme.test.tsx` vokter oppsettet. Egen CSS skal kun bruke `--ax-*`; det
+finnes ingen `--a-*`-tokens å falle tilbake på.
+
+Aksel henter Source Sans 3 fra `cdn.nav.no`, som derfor må stå i BFF-ens
+`fontSrc`-direktiv. Uten det faller appen tilbake til Arial uten noen feilmelding.
+
 ## Kommandoer
 
 ```bash
