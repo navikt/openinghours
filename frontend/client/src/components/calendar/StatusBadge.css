@@ -23,23 +23,23 @@
 }
 
 .oh-status--open {
-  color: var(--ax-text-success, var(--a-text-success));
+  color: var(--ax-text-success);
 }
 
 .oh-status--closed {
-  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  color: var(--ax-text-neutral-subtle);
 }
 
 .oh-status--redDay {
-  color: var(--ax-text-danger, var(--a-text-danger));
+  color: var(--ax-text-danger);
 }
 
 .oh-status--warning {
-  color: var(--ax-text-warning, var(--a-text-warning));
+  color: var(--ax-text-warning);
 }
 
 .oh-status--masked {
-  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  color: var(--ax-text-neutral-subtle);
 }
 
 /* Nå-indikator */
@@ -52,9 +52,9 @@
 }
 
 .oh-now--open {
-  color: var(--ax-text-success, var(--a-text-success));
+  color: var(--ax-text-success);
 }
 
 .oh-now--closed {
-  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  color: var(--ax-text-neutral-subtle);
 }

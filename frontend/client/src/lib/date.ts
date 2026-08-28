@@ -37,6 +37,24 @@ export function addDays(dateIso: string, days: number): string {
   return new Date(d.getTime() + days * MS_PER_DAY).toISOString().slice(0, 10);
 }
 
+/**
+ * Bro mot Aksels `DatePicker`, som er den ene komponenten vi ikke kan mate med
+ * ISO-strenger. Konverteringen går via lokale datofelter, ikke `toISOString()`:
+ * sistnevnte regner om til UTC og ville flyttet datoen én dag bakover for enhver
+ * klient vest for Greenwich.
+ */
+export function isoToDate(dateIso: string): Date {
+  const [y, m, d] = dateIso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+export function dateToIso(date: Date): string {
+  const y = String(date.getFullYear()).padStart(4, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 /** Ukedag der 1 = mandag og 7 = søndag, i tråd med regelsyntaksen. */
 export function isoWeekday(dateIso: string): number {
   const dow = new Date(`${dateIso}T00:00:00Z`).getUTCDay();

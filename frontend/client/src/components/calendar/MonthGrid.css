@@ -19,7 +19,7 @@
 .oh-grid__header {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
+  color: var(--ax-text-neutral-subtle);
   padding: 0 2px;
 }
 

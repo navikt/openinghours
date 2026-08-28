@@ -87,6 +87,13 @@ describe('infrastruktur', () => {
     expect(res.headers['x-powered-by']).toBeUndefined();
     expect(res.headers['content-security-policy']).toContain("frame-ancestors 'none'");
   });
+
+  it('slipper gjennom Aksel-fonten fra Navs CDN', async () => {
+    // Uten denne kilden blokkerer CSP Source Sans 3, og hele appen faller
+    // tilbake til Arial. Feilen er stille: ingenting krasjer, alt ser bare feil ut.
+    const res = await call('/internal/health');
+    expect(res.headers['content-security-policy']).toContain('https://cdn.nav.no');
+  });
 });
 
 describe('/me', () => {

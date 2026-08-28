@@ -72,7 +72,9 @@
     align-items: stretch;
   }
 
-  .oh-nav__buttons .navds-button {
+  /* Treffer elementet, ikke Aksels interne klassenavn: det heter navds-button i
+     legacy-bundelen og aksel-button i darkside, og bør ikke kunne ryke ved bytte. */
+  .oh-nav__buttons button {
     min-height: 44px;
   }
 }

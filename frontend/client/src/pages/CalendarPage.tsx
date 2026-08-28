@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   BodyShort,
   Button,
   Heading,
+  Link,
   Loader,
   Modal,
   Select,
@@ -112,7 +113,7 @@ export function CalendarPage() {
 
   return (
     <div className="oh-page">
-      <Link to="/" className="oh-back navds-link">
+      <Link as={RouterLink} to="/" className="oh-back">
         <ArrowLeftIcon aria-hidden /> Tilbake til alle tjenester
       </Link>
 
@@ -142,7 +143,7 @@ export function CalendarPage() {
               </option>
             ))}
           </Select>
-          <Link to={`/sammenlign?dato=${selected ?? today}`} className="navds-link">
+          <Link as={RouterLink} to={`/sammenlign?dato=${selected ?? today}`}>
             Sammenlign tjenester
           </Link>
         </div>
@@ -198,7 +199,7 @@ export function CalendarPage() {
         </Heading>
       </div>
 
-      <span className="navds-sr-only" role="status" aria-live="polite">
+      <span className="oh-sr-only" role="status" aria-live="polite">
         {announcement}
       </span>
 
