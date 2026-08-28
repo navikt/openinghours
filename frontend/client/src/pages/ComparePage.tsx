@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Link as RouterLink, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   Alert,
   BodyShort,
@@ -8,7 +8,6 @@ import {
   DatePicker,
   Detail,
   Heading,
-  Link,
   Skeleton,
   useDatepicker,
 } from '@navikt/ds-react';
@@ -17,6 +16,7 @@ import { useServices, useServicesOnDate, useSession } from '../hooks/queries';
 import { addDays, dateToIso, formatDateLong, isoToDate, todayIso } from '../lib/date';
 import { deriveStatus, statusAriaLabel } from '../lib/status';
 import { useNow } from '../hooks/useNow';
+import { AppLink } from '../components/common/AppLink';
 import { OpeningBar, TimeAxis } from '../components/calendar/OpeningBar';
 import { StatusBadge } from '../components/calendar/StatusBadge';
 import { DelayedLoader } from '../components/common/DelayedLoader';
@@ -82,9 +82,9 @@ export function ComparePage() {
 
   return (
     <div className="oh-page">
-      <Link as={RouterLink} to="/" className="oh-back">
+      <AppLink to="/" className="oh-back">
         <ArrowLeftIcon aria-hidden /> Tilbake til alle tjenester
-      </Link>
+      </AppLink>
 
       <Heading level="1" size="xlarge">
         Sammenlign tjenester

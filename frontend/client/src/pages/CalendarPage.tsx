@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   BodyShort,
   Button,
   Heading,
-  Link,
   Loader,
   Modal,
   Select,
@@ -26,6 +25,7 @@ import { DayDetailPanel } from '../components/calendar/DayDetailPanel';
 import { Legend } from '../components/calendar/Legend';
 import { DelayedLoader } from '../components/common/DelayedLoader';
 import { ErrorState } from '../components/common/ErrorState';
+import { AppLink } from '../components/common/AppLink';
 import './CalendarPage.css';
 
 export function CalendarPage() {
@@ -113,9 +113,9 @@ export function CalendarPage() {
 
   return (
     <div className="oh-page">
-      <Link as={RouterLink} to="/" className="oh-back">
+      <AppLink to="/" className="oh-back">
         <ArrowLeftIcon aria-hidden /> Tilbake til alle tjenester
-      </Link>
+      </AppLink>
 
       <div className="oh-page__head">
         <div>
@@ -143,9 +143,9 @@ export function CalendarPage() {
               </option>
             ))}
           </Select>
-          <Link as={RouterLink} to={`/sammenlign?dato=${selected ?? today}`}>
+          <AppLink to={`/sammenlign?dato=${selected ?? today}`}>
             Sammenlign tjenester
-          </Link>
+          </AppLink>
         </div>
       </div>
 
