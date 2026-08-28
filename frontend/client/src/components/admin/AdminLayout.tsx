@@ -30,7 +30,7 @@ export function AdminLayout() {
           Du må være innlogget for å administrere åpningstider
         </Heading>
         <BodyShort spacing>
-          Kalenderen er åpen for alle, men endringer krever at du logger inn som Nav-ansatt.
+          Endringer i åpningstider krever at du logger inn som Nav-ansatt.
         </BodyShort>
         <Link href="/oauth2/login">Logg inn som ansatt</Link>
       </Alert>

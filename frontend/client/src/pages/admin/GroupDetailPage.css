@@ -15,7 +15,7 @@
   top: var(--ax-space-16);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1000px) {
   .oh-groupdetail {
     display: block;
   }

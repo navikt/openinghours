@@ -16,6 +16,7 @@ import { useGroups, useRules } from '../../hooks/admin';
 import { DelayedLoader } from '../../components/common/DelayedLoader';
 import { ErrorState, EmptyState } from '../../components/common/ErrorState';
 import { formatRule } from '../../lib/rule';
+import { formatTimestamp } from '../../lib/date';
 import { validateRule } from '../../lib/validate';
 import './RulesPage.css';
 import { AppLink } from '../../components/common/AppLink';
@@ -44,13 +45,16 @@ export function RulesPage() {
 
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return (rules.data ?? []).filter((rule) => {
-      if (needle && !`${rule.name} ${rule.rule}`.toLowerCase().includes(needle)) return false;
-      if (flag === 'ansatte') return rule.onlyShowForNavEmployees;
-      if (flag === 'ubrukt') return (counts.get(rule.id) ?? 0) === 0;
-      if (flag === 'ugyldig') return validateRule(rule.rule) !== null;
-      return true;
-    });
+    return (rules.data ?? [])
+      .filter((rule) => {
+        if (needle && !`${rule.name} ${rule.rule}`.toLowerCase().includes(needle)) return false;
+        if (flag === 'ansatte') return rule.onlyShowForNavEmployees;
+        if (flag === 'ubrukt') return (counts.get(rule.id) ?? 0) === 0;
+        if (flag === 'ugyldig') return validateRule(rule.rule) !== null;
+        return true;
+      })
+      // Sist endret øverst: den som leter etter en fersk endring finner den først.
+      .sort((a, b) => (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt));
   }, [rules.data, search, flag, counts]);
 
   if (rules.isPending || groups.isPending) return <DelayedLoader />;
@@ -115,6 +119,7 @@ export function RulesPage() {
               <Table.HeaderCell scope="col">Regeluttrykk</Table.HeaderCell>
               <Table.HeaderCell scope="col">Flagg</Table.HeaderCell>
               <Table.HeaderCell scope="col">Brukt i</Table.HeaderCell>
+              <Table.HeaderCell scope="col">Sist endret</Table.HeaderCell>
               <Table.HeaderCell scope="col">
                 <span className="oh-sr-only">Handlinger</span>
               </Table.HeaderCell>
@@ -175,6 +180,9 @@ function RuleRow({ rule, usedIn }: { rule: Rule; usedIn: number }) {
         ) : (
           `${usedIn} ${usedIn === 1 ? 'gruppe' : 'grupper'}`
         )}
+      </Table.DataCell>
+      <Table.DataCell>
+        <span className="oh-rules__changed">{formatTimestamp(rule.updatedAt ?? rule.createdAt)}</span>
       </Table.DataCell>
       <Table.DataCell>
         <VStack gap="1">

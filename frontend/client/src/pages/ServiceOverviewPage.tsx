@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BodyLong,
   BodyShort,
@@ -20,6 +20,7 @@ import { StatusBadge } from '../components/calendar/StatusBadge';
 import { EmptyState, ErrorState } from '../components/common/ErrorState';
 import { DelayedLoader } from '../components/common/DelayedLoader';
 import { useNow } from '../hooks/useNow';
+import { useDebounced } from '../hooks/useDebounced';
 import './ServiceOverviewPage.css';
 
 export function ServiceOverviewPage() {
@@ -41,6 +42,23 @@ export function ServiceOverviewPage() {
     else next.delete(key);
     setParams(next, { replace: true });
   };
+
+  /*
+   * Feltet eier sin egen verdi og skriver til URL-en først når brukeren tar en
+   * pause. Uten dette utløste hvert tastetrykk en ruternavigasjon, som gjør
+   * skrivingen hakkete i lange lister.
+   */
+  const [query, setQuery] = useState(search);
+  const debouncedQuery = useDebounced(query, 250);
+
+  useEffect(() => {
+    if (debouncedQuery !== search) setParam('sok', debouncedQuery);
+  }, [debouncedQuery]);
+
+  // Trykker brukeren tilbake, eller deles en filtrert lenke, må feltet følge URL-en.
+  useEffect(() => {
+    setQuery((current) => (current === search ? current : search));
+  }, [search]);
 
   const teams = useMemo(
     () => [...new Set((services.data ?? []).map((s) => s.team))].sort((a, b) => a.localeCompare(b, 'nb')),
@@ -88,9 +106,9 @@ export function ServiceOverviewPage() {
           label="Søk etter tjeneste"
           placeholder="F.eks. dagpenger"
           size="small"
-          value={search}
-          onChange={(value) => setParam('sok', value)}
-          onClear={() => setParam('sok', '')}
+          value={query}
+          onChange={(value) => setQuery(value)}
+          onClear={() => setQuery('')}
           variant="simple"
           className="oh-filters__search"
         />

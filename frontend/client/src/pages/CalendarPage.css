@@ -44,6 +44,16 @@
   flex-wrap: wrap;
 }
 
+.oh-nav__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.oh-nav__monthpicker {
+  width: 150px;
+}
+
 .oh-calendar {
   display: flex;
   gap: 24px;

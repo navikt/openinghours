@@ -3,6 +3,7 @@ import {
   addDays,
   dateToIso,
   formatMonthName,
+  formatTimestamp,
   formatWeek,
   isoToDate,
   isoWeekday,
@@ -11,6 +12,7 @@ import {
   monthGrid,
   monthsOfYear,
   shiftMonth,
+  shiftMonthKeepingDay,
   shiftWeek,
   startOfWeek,
   todayIso,
@@ -184,5 +186,50 @@ describe('isoToDate og dateToIso', () => {
 
   it('overlever et årsskifte ved midnatt', () => {
     expect(dateToIso(isoToDate('2027-01-01'))).toBe('2027-01-01');
+  });
+});
+
+describe('shiftMonthKeepingDay', () => {
+  it('beholder dagnummeret i en like lang måned', () => {
+    expect(shiftMonthKeepingDay('2026-05-12', 1)).toBe('2026-06-12');
+    expect(shiftMonthKeepingDay('2026-05-12', -1)).toBe('2026-04-12');
+  });
+
+  it('klemmer mot en kortere måned i stedet for å renne over', () => {
+    // Med et fast hopp på 28 dager havnet 31. mars i mars igjen, og
+    // månedsbyttet uteble helt.
+    expect(shiftMonthKeepingDay('2026-03-31', 1)).toBe('2026-04-30');
+    expect(shiftMonthKeepingDay('2026-03-31', -1)).toBe('2026-02-28');
+  });
+
+  it('treffer 29. februar i skuddår', () => {
+    expect(shiftMonthKeepingDay('2028-01-31', 1)).toBe('2028-02-29');
+  });
+
+  it('bytter alltid måned, også fra den siste dagen i en lang måned', () => {
+    for (const date of ['2026-01-31', '2026-05-31', '2026-07-31', '2026-08-31']) {
+      expect(shiftMonthKeepingDay(date, 1).slice(0, 7)).not.toBe(date.slice(0, 7));
+      expect(shiftMonthKeepingDay(date, -1).slice(0, 7)).not.toBe(date.slice(0, 7));
+    }
+  });
+
+  it('krysser årsskiftet', () => {
+    expect(shiftMonthKeepingDay('2026-12-15', 1)).toBe('2027-01-15');
+    expect(shiftMonthKeepingDay('2026-01-15', -1)).toBe('2025-12-15');
+  });
+});
+
+describe('formatTimestamp', () => {
+  it('sier fra når noe aldri har blitt endret', () => {
+    expect(formatTimestamp(null)).toBe('Aldri endret');
+  });
+
+  it('tåler et ugyldig tidsstempel uten å kaste', () => {
+    expect(formatTimestamp('ikke en dato')).toBe('Ukjent');
+  });
+
+  it('viser tidspunktet i norsk tid, ikke UTC', () => {
+    // 10:15 UTC er 12:15 i Oslo om sommeren.
+    expect(formatTimestamp('2026-07-12T10:15:00Z')).toContain('12:15');
   });
 });

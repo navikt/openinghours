@@ -73,6 +73,9 @@ export interface Rule {
   text: string | null;
   onlyShowForNavEmployees: boolean;
   redDay: boolean;
+  createdAt: string;
+  /** `null` betyr at regelen aldri har blitt endret etter opprettelsen. */
+  updatedAt: string | null;
 }
 
 export interface GroupAssociations {

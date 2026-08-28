@@ -8,6 +8,7 @@ import {
   DatePicker,
   Detail,
   Heading,
+  Select,
   Skeleton,
   useDatepicker,
 } from '@navikt/ds-react';
@@ -71,10 +72,30 @@ export function ComparePage() {
     setSelected(isoToDate(date));
   }, [date]);
 
-  const toggle = (id: string) => {    const next = selectedIds.includes(id)
+  const toggle = (id: string) => {
+    const next = selectedIds.includes(id)
       ? selectedIds.filter((s) => s !== id)
       : [...selectedIds, id].slice(0, MAX_SERVICES);
     setParam('tjenester', next.join(','));
+  };
+
+  const teams = useMemo(() => {
+    const names = new Set((services.data ?? []).map((s) => s.team).filter(Boolean));
+    return [...names].sort((a, b) => a.localeCompare(b, 'nb'));
+  }, [services.data]);
+
+  /*
+   * Å velge et helt team er den vanligste inngangen når et vedlikeholdsvindu
+   * skal legges. Teamet erstatter utvalget framfor å legge til, ellers ville
+   * grensen på seks blitt truffet av rester fra forrige valg.
+   */
+  const selectTeam = (team: string) => {
+    if (!team) return;
+    const ids = (services.data ?? [])
+      .filter((s) => s.team === team)
+      .map((s) => s.id)
+      .slice(0, MAX_SERVICES);
+    setParam('tjenester', ids.join(','));
   };
 
   const atLimit = selectedIds.length >= MAX_SERVICES;
@@ -145,6 +166,23 @@ export function ComparePage() {
               );
             })}
           </Chips>
+
+          {teams.length > 1 && (
+            <Select
+              label="Velg hele et team"
+              size="small"
+              value=""
+              className="oh-compare__team"
+              onChange={(e) => selectTeam(e.target.value)}
+            >
+              <option value="">Velg et team …</option>
+              {teams.map((team) => (
+                <option key={team} value={team}>
+                  {team}
+                </option>
+              ))}
+            </Select>
+          )}
         </fieldset>
       </div>
 

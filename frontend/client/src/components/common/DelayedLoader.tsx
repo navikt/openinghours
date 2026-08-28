@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Loader } from '@navikt/ds-react';
+import './DelayedLoader.css';
 
 /**
  * Loader vises først etter 600 ms.
@@ -17,7 +18,7 @@ export function DelayedLoader({ delayMs = 600 }: { delayMs?: number }) {
 
   if (!visible) return null;
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+    <div className="oh-delayed-loader">
       <Loader size="large" title="Henter åpningstider" />
     </div>
   );
