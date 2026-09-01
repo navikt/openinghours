@@ -226,7 +226,16 @@ class OpeningHoursEvaluator {
         if (!matchesDate(date, parts[0])) return EvalResult.NoMatch
         if (!matchesDayOfMonth(date, parts[1])) return EvalResult.NoMatch
         if (!matchesWeekday(date, parts[2])) return EvalResult.NoMatch
-        return EvalResult.Matched(parts[3], rule.name, rule.rule, rule.displayHeader, rule.displayText, rule.onlyShowForNavEmployees, rule.redDay, rule.unstableOpeningHours)
+        return EvalResult.Matched(
+            openingHours = parts[3],
+            ruleName = rule.name,
+            rule = rule.rule,
+            displayHeader = rule.displayHeader,
+            displayText = rule.displayText,
+            onlyShowForNavEmployees = rule.onlyShowForNavEmployees,
+            redDay = rule.redDay,
+            unstableOpeningHours = rule.unstableOpeningHours,
+        )
     }
 
     private fun matchesDate(date: LocalDate, datePart: String): Boolean {
