@@ -34,8 +34,93 @@ class RuleControllerTest {
     @Suppress("UNCHECKED_CAST")
     private fun <T> anyArg(): T = Mockito.any<T>() as T
 
-    private fun aRule(id: UUID = UUID.randomUUID(), name: String = "Weekdays", rule: String = "??.??.???? ? 1-5 08:00-16:00") =
-        Rule.create(id = id, name = name, rule = rule, header = "Header", text = "Text", onlyShowForNavEmployees = false, redDay = false)
+    private fun aRule(
+        id: UUID = UUID.randomUUID(),
+        name: String = "Weekdays",
+        rule: String = "??.??.???? ? 1-5 08:00-16:00",
+        unstableOpeningHours: Boolean = false
+    ) =
+        Rule.create(
+            id = id,
+            name = name,
+            rule = rule,
+            header = "Header",
+            text = "Text",
+            onlyShowForNavEmployees = false,
+            redDay = false,
+            unstableOpeningHours = unstableOpeningHours
+        )
+
+    @Test
+    fun `GET all rules returns flagged and unflagged rules alike`() {
+        val rules = listOf(
+            aRule(name = "Flaky", unstableOpeningHours = true),
+            aRule(name = "Steady", unstableOpeningHours = false)
+        )
+        `when`(ruleService.getAll()).thenReturn(rules)
+
+        mockMvc.get("/api/openinghours/rule")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(2) }
+                jsonPath("$[0].unstableOpeningHours") { value(true) }
+                jsonPath("$[1].unstableOpeningHours") { value(false) }
+            }
+    }
+
+    @Test
+    fun `PUT upsert forwards unstableOpeningHours true`() {
+        `when`(
+            ruleService.upsert(
+                "Weekdays", "??.??.???? ? 1-5 08:00-16:00", "H", "T",
+                onlyShowForNavEmployees = false, unstableOpeningHours = true
+            )
+        ).thenReturn(aRule(unstableOpeningHours = true))
+
+        mockMvc.put("/api/openinghours/rule") {
+            param("name", "Weekdays")
+            param("rule", "??.??.???? ? 1-5 08:00-16:00")
+            param("header", "H")
+            param("text", "T")
+            param("onlyShowForNavEmployees", "false")
+            param("unstableOpeningHours", "true")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.unstableOpeningHours") { value(true) }
+        }
+    }
+
+    @Test
+    fun `PUT upsert defaults unstableOpeningHours to false when the param is absent`() {
+        `when`(
+            ruleService.upsert(
+                "Weekdays", "??.??.???? ? 1-5 08:00-16:00", null, null,
+                onlyShowForNavEmployees = false, unstableOpeningHours = false
+            )
+        ).thenReturn(aRule())
+
+        mockMvc.put("/api/openinghours/rule") {
+            param("name", "Weekdays")
+            param("rule", "??.??.???? ? 1-5 08:00-16:00")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.unstableOpeningHours") { value(false) }
+        }
+    }
+
+    @Test
+    fun `PATCH forwards unstableOpeningHours to the service`() {
+        val id = UUID.randomUUID()
+        `when`(ruleService.update(id, null, null, null, null, null, true))
+            .thenReturn(aRule(id = id, unstableOpeningHours = true))
+
+        mockMvc.patch("/api/openinghours/rule/$id") {
+            param("unstableOpeningHours", "true")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.unstableOpeningHours") { value(true) }
+        }
+    }
 
     @Test
     fun `GET rule by id returns rule`() {

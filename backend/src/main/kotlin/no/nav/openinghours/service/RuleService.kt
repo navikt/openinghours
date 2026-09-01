@@ -31,7 +31,8 @@ class RuleService(
         rule: String,
         header: String?,
         text: String?,
-        onlyShowForNavEmployees: Boolean = false
+        onlyShowForNavEmployees: Boolean = false,
+        unstableOpeningHours: Boolean = false
     ): Rule {
         return try {
             if (name.isBlank()) {
@@ -50,6 +51,7 @@ class RuleService(
                     this.header = header
                     this.text = text
                     this.onlyShowForNavEmployees = onlyShowForNavEmployees
+                    this.unstableOpeningHours = unstableOpeningHours
                     // redDay is intentionally NOT updated here — it is a legacy per-rule flag.
                     // Public-holiday redDay is computed at read time (QueryController / DailyCache),
                     // and existing persisted values must not be silently cleared on upsert.
@@ -61,7 +63,8 @@ class RuleService(
                     header,
                     text,
                     onlyShowForNavEmployees,
-                    redDay = false
+                    redDay = false,
+                    unstableOpeningHours = unstableOpeningHours
                 )
 
             repo.saveAndFlush(entity).also {
@@ -146,7 +149,8 @@ class RuleService(
         rule: String?,
         header: String?,
         text: String?,
-        onlyShowForNavEmployees: Boolean? = null
+        onlyShowForNavEmployees: Boolean? = null,
+        unstableOpeningHours: Boolean? = null
     ): Rule {
         return try {
             val entity = repo.findById(id).orElseThrow {
@@ -162,6 +166,7 @@ class RuleService(
                 if (header != null) this.header = header
                 if (text != null) this.text = text
                 this.onlyShowForNavEmployees = onlyShowForNavEmployees ?: this.onlyShowForNavEmployees
+                this.unstableOpeningHours = unstableOpeningHours ?: this.unstableOpeningHours
                 // redDay is not updated through this API; public-holiday redDay is computed at read time.
             }
 

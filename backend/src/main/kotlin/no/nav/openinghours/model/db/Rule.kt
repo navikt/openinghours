@@ -29,6 +29,9 @@ open class Rule(
     @Column(name = "red_day", nullable = false)
     var redDay: Boolean = false,
 
+    @Column(name = "unstable_opening_hours", nullable = false)
+    var unstableOpeningHours: Boolean = false,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 
@@ -42,6 +45,7 @@ open class Rule(
         text = "",
         onlyShowForNavEmployees = false,
         redDay = false,
+        unstableOpeningHours = false,
         createdAt = Instant.now(),
         updatedAt = null
     )
@@ -55,7 +59,8 @@ open class Rule(
             header: String?,
             text: String?,
             onlyShowForNavEmployees: Boolean = false,
-            redDay: Boolean = false
+            redDay: Boolean = false,
+            unstableOpeningHours: Boolean = false
         ): Rule = Rule(
             id = id,
             name = name,
@@ -63,7 +68,8 @@ open class Rule(
             header = header,
             text = text,
             onlyShowForNavEmployees = onlyShowForNavEmployees,
-            redDay = redDay
+            redDay = redDay,
+            unstableOpeningHours = unstableOpeningHours
         )
     }
 

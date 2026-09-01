@@ -150,6 +150,61 @@ class RuleServiceTest {
     }
 
     @Test
+    fun `upsert on a new rule defaults unstableOpeningHours to false`() {
+        val rule = ruleService.upsert("new-rule-unstable-default", VALID_RULE, null, null)
+        assertThat(rule.unstableOpeningHours).isFalse()
+    }
+
+    @Test
+    fun `upsert can set unstableOpeningHours to true`() {
+        val rule = ruleService.upsert(
+            "new-rule-unstable-true", VALID_RULE, null, null,
+            onlyShowForNavEmployees = false, unstableOpeningHours = true
+        )
+        assertThat(rule.unstableOpeningHours).isTrue()
+        assertThat(ruleRepo.findById(rule.id).orElseThrow().unstableOpeningHours).isTrue()
+    }
+
+    @Test
+    fun `update leaves unstableOpeningHours untouched when the parameter is omitted`() {
+        val seeded = ruleService.upsert(
+            "patch-keep-unstable", VALID_RULE, null, null,
+            onlyShowForNavEmployees = false, unstableOpeningHours = true
+        )
+
+        val updated = ruleService.update(seeded.id, "patch-keep-unstable-renamed", null, null, null)
+        assertThat(updated.unstableOpeningHours).isTrue()
+    }
+
+    @Test
+    fun `update can toggle unstableOpeningHours on and off`() {
+        val seeded = ruleService.upsert("patch-toggle-unstable", VALID_RULE, null, null)
+        assertThat(seeded.unstableOpeningHours).isFalse()
+
+        val flagged = ruleService.update(seeded.id, null, null, null, null, null, unstableOpeningHours = true)
+        assertThat(flagged.unstableOpeningHours).isTrue()
+
+        val cleared = ruleService.update(seeded.id, null, null, null, null, null, unstableOpeningHours = false)
+        assertThat(cleared.unstableOpeningHours).isFalse()
+    }
+
+    @Test
+    fun `getAll returns both flagged and unflagged rules`() {
+        val flagged = ruleService.upsert(
+            "listed-unstable", VALID_RULE, null, null,
+            onlyShowForNavEmployees = false, unstableOpeningHours = true
+        )
+        val stable = ruleService.upsert("listed-stable", VALID_RULE, null, null)
+
+        val all = ruleService.getAll()
+        assertThat(all.map { it.id })
+            .`as`("flagging a rule must never hide it from the full listing")
+            .contains(flagged.id, stable.id)
+        assertThat(all.single { it.id == flagged.id }.unstableOpeningHours).isTrue()
+        assertThat(all.single { it.id == stable.id }.unstableOpeningHours).isFalse()
+    }
+
+    @Test
     fun `getGroupsByRuleId throws NOT_FOUND for unknown rule`() {
         val ex = assertThrows<ResponseStatusException> {
             ruleService.getGroupsByRuleId(UUID.randomUUID())

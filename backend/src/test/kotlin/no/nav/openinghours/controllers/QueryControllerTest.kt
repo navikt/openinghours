@@ -240,6 +240,74 @@ class QueryControllerTest {
     }
 
     @Test
+    fun `query by service returns unstableOpeningHours true when the matched rule is flagged`() {
+        val serviceId = UUID.randomUUID()
+        val groupId = UUID.randomUUID()
+        val date = LocalDate.of(2024, 3, 15)
+
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
+        `when`(lookupService.getDisplayDataOrDefault(groupId, date)).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(
+                openingHours = "09:00-15:00",
+                ruleName = "Flaky",
+                rule = "??.??.???? ? 1-5 09:00-15:00",
+                unstableOpeningHours = true,
+            ))
+        )
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId?date=2024-03-15")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.unstableOpeningHours") { value(true) }
+            }
+    }
+
+    @Test
+    fun `query by service returns unstableOpeningHours false when the matched rule is not flagged`() {
+        val serviceId = UUID.randomUUID()
+        val groupId = UUID.randomUUID()
+        val date = LocalDate.of(2024, 3, 15)
+
+        `when`(serviceService.getOhGroupIdsForService(serviceId)).thenReturn(listOf(groupId))
+        `when`(serviceService.get(serviceId)).thenReturn(Service.create(name = "Bidrag", type = ServiceType.TJENESTE, team = "team"))
+        `when`(lookupService.getDisplayDataOrDefault(groupId, date)).thenReturn(
+            DisplayDataResult(OpeningHoursDisplayData(
+                openingHours = "09:00-15:00",
+                ruleName = "Steady",
+                rule = "??.??.???? ? 1-5 09:00-15:00",
+            ))
+        )
+
+        mockMvc.get("/api/openinghours/query/service/$serviceId?date=2024-03-15")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.unstableOpeningHours") { value(false) }
+            }
+    }
+
+    @Test
+    fun `query by group returns unstableOpeningHours from the matched rule`() {
+        val groupId = UUID.randomUUID()
+        val date = LocalDate.of(2024, 3, 15)
+
+        `when`(lookupService.getDisplayData(groupId, date)).thenReturn(
+            OpeningHoursDisplayData(
+                openingHours = "09:00-15:00",
+                ruleName = "Flaky",
+                rule = "??.??.???? ? 1-5 09:00-15:00",
+                unstableOpeningHours = true,
+            )
+        )
+
+        mockMvc.get("/api/openinghours/query/group/$groupId?date=2024-03-15")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.unstableOpeningHours") { value(true) }
+            }
+    }
+
+    @Test
     fun `query by service returns default opening hours with warning when group has no rules`() {
         val serviceId = UUID.randomUUID()
         val groupId = UUID.randomUUID()

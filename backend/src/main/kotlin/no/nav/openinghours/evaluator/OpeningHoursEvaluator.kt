@@ -125,7 +125,7 @@ class OpeningHoursEvaluator {
     private sealed interface EvalResult {
         data object NoRules : EvalResult
         data object NoMatch : EvalResult
-        data class Matched(val openingHours: String, val ruleName: String, val rule: String, val displayHeader: String? = null, val displayText: String? = null, val onlyShowForNavEmployees: Boolean = false, val redDay: Boolean = false) : EvalResult
+        data class Matched(val openingHours: String, val ruleName: String, val rule: String, val displayHeader: String? = null, val displayText: String? = null, val onlyShowForNavEmployees: Boolean = false, val redDay: Boolean = false, val unstableOpeningHours: Boolean = false) : EvalResult
     }
 
     /**
@@ -158,6 +158,7 @@ class OpeningHoursEvaluator {
                     displayText = r.displayText,
                     onlyShowForNavEmployees = r.onlyShowForNavEmployees,
                     redDay = r.redDay,
+                    unstableOpeningHours = r.unstableOpeningHours,
                 )
             )
             EvalResult.NoRules -> EvalOutcome.NoRules
@@ -225,7 +226,16 @@ class OpeningHoursEvaluator {
         if (!matchesDate(date, parts[0])) return EvalResult.NoMatch
         if (!matchesDayOfMonth(date, parts[1])) return EvalResult.NoMatch
         if (!matchesWeekday(date, parts[2])) return EvalResult.NoMatch
-        return EvalResult.Matched(parts[3], rule.name, rule.rule, rule.displayHeader, rule.displayText, rule.onlyShowForNavEmployees, rule.redDay)
+        return EvalResult.Matched(
+            openingHours = parts[3],
+            ruleName = rule.name,
+            rule = rule.rule,
+            displayHeader = rule.displayHeader,
+            displayText = rule.displayText,
+            onlyShowForNavEmployees = rule.onlyShowForNavEmployees,
+            redDay = rule.redDay,
+            unstableOpeningHours = rule.unstableOpeningHours,
+        )
     }
 
     private fun matchesDate(date: LocalDate, datePart: String): Boolean {

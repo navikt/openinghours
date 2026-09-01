@@ -18,15 +18,23 @@ class RuleController(
     @GetMapping("/{id}")
     fun get(@PathVariable id: UUID): Rule = service.get(id)
 
-    @Operation(summary = "Upsert opening hours rule with name, rule, header, text, and onlyShowForNavEmployees")
+    @Operation(summary = "Upsert opening hours rule with name, rule, header, text, onlyShowForNavEmployees, and unstableOpeningHours")
     @PutMapping
     fun upsert(
         @RequestParam name: String,
         @RequestParam rule: String,
         @RequestParam(required = false) header: String?,
         @RequestParam(required = false) text: String?,
-        @RequestParam(required = false, defaultValue = "false") onlyShowForNavEmployees: Boolean?
-    ): Rule = service.upsert(name, rule, header, text, onlyShowForNavEmployees ?: false)
+        @RequestParam(required = false, defaultValue = "false") onlyShowForNavEmployees: Boolean?,
+        @RequestParam(required = false, defaultValue = "false") unstableOpeningHours: Boolean?
+    ): Rule = service.upsert(
+        name,
+        rule,
+        header,
+        text,
+        onlyShowForNavEmployees ?: false,
+        unstableOpeningHours ?: false
+    )
 
     @Operation(summary = "Delete opening hours rule by id. Returns 409 with a warning if the rule is used by one or more groups; pass ?confirm=true to proceed with deletion.")
     @DeleteMapping("/{id}")
@@ -59,7 +67,7 @@ class RuleController(
     @GetMapping("/{id}/groups")
     fun getGroupsByRuleId(@PathVariable id: UUID): List<OhGroup> = service.getGroupsByRuleId(id)
 
-    @Operation(summary = "Update opening hours rule by id with name, rule, header, text, and onlyShowForNavEmployees")
+    @Operation(summary = "Update opening hours rule by id with name, rule, header, text, onlyShowForNavEmployees, and unstableOpeningHours")
     @PatchMapping("/{id}")
     fun update(
         @PathVariable id: UUID,
@@ -67,8 +75,9 @@ class RuleController(
         @RequestParam(required = false) rule: String?,
         @RequestParam(required = false) header: String?,
         @RequestParam(required = false) text: String?,
-        @RequestParam(required = false) onlyShowForNavEmployees: Boolean?
-    ): Rule = service.update(id, name, rule, header, text, onlyShowForNavEmployees)
+        @RequestParam(required = false) onlyShowForNavEmployees: Boolean?,
+        @RequestParam(required = false) unstableOpeningHours: Boolean?
+    ): Rule = service.update(id, name, rule, header, text, onlyShowForNavEmployees, unstableOpeningHours)
 
 
 }

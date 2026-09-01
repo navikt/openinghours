@@ -115,6 +115,7 @@ class DailyCacheControllerTest {
                         displayText = "Kun for ansatte",
                         onlyShowForNavEmployees = true,
                         redDay = false,
+                        unstableOpeningHours = true,
                     )
                 )
             )
@@ -131,7 +132,31 @@ class DailyCacheControllerTest {
                 jsonPath("$['$id'].displayText") { value("Kun for ansatte") }
                 jsonPath("$['$id'].onlyShowForNavEmployees") { value(true) }
                 jsonPath("$['$id'].redDay") { value(false) }
+                jsonPath("$['$id'].unstableOpeningHours") { value(true) }
                 jsonPath("$['$id'].isOpen") { value(true) }
+            }
+    }
+
+    @Test
+    fun `GET daily returns unstableOpeningHours false for an unflagged cached entry`() {
+        val id = UUID.randomUUID()
+        `when`(cache.getAll()).thenReturn(
+            mapOf(
+                id to ServiceCacheEntry(
+                    serviceName = "Ordinary Service",
+                    displayData = OpeningHoursDisplayData(
+                        ruleName = "Weekday",
+                        rule = "??.??.???? ? 1-5 09:00-15:00",
+                        openingHours = "09:00-15:00",
+                    )
+                )
+            )
+        )
+
+        mockMvc.get("/api/openinghours/daily")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$['$id'].unstableOpeningHours") { value(false) }
             }
     }
 
