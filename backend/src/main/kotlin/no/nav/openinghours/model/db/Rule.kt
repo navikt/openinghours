@@ -29,10 +29,6 @@ open class Rule(
     @Column(name = "red_day", nullable = false)
     var redDay: Boolean = false,
 
-    /**
-     * User-maintained flag marking opening hours that may cause periods of instability.
-     * Never derived from the rule DSL — it is set explicitly through the rule API.
-     */
     @Column(name = "unstable_opening_hours", nullable = false)
     var unstableOpeningHours: Boolean = false,
 

@@ -149,8 +149,6 @@ class RuleServiceTest {
         assertThat(updated.redDay).isFalse()
     }
 
-    // ── unstableOpeningHours: manual instability flag ─────────────────────
-
     @Test
     fun `upsert on a new rule defaults unstableOpeningHours to false`() {
         val rule = ruleService.upsert("new-rule-unstable-default", VALID_RULE, null, null)

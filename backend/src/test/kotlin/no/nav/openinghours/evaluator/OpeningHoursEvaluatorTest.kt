@@ -188,9 +188,7 @@ class OpeningHoursEvaluatorTest {
 
     @Test
     fun `getDisplayData propagates unstableOpeningHours from the matched rule only`() {
-        // First-match-wins: the flagged rule does not apply on a Saturday, so the
-        // unflagged catch-all must win and report unstableOpeningHours = false.
-        val flagged = ResolvedRule(
+         val flagged = ResolvedRule(
             name = "weekday-flaky",
             rule = "??.??.???? ? 1-5 09:00-15:00",
             unstableOpeningHours = true,

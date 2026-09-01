@@ -166,7 +166,6 @@ class RuleService(
                 if (header != null) this.header = header
                 if (text != null) this.text = text
                 this.onlyShowForNavEmployees = onlyShowForNavEmployees ?: this.onlyShowForNavEmployees
-                // Omitting the parameter leaves the stored flag untouched (PATCH semantics).
                 this.unstableOpeningHours = unstableOpeningHours ?: this.unstableOpeningHours
                 // redDay is not updated through this API; public-holiday redDay is computed at read time.
             }
