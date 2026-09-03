@@ -1,0 +1,50 @@
+/* Dagsvisning — én dato, alle tjenester. */
+
+.oh-day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-16);
+}
+
+.oh-day__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ax-space-16);
+  flex-wrap: wrap;
+}
+
+.oh-day__nav {
+  display: flex;
+  gap: var(--ax-space-8);
+  flex: none;
+}
+
+.oh-day__red {
+  display: flex;
+  align-items: center;
+  gap: var(--ax-space-8);
+  margin-top: var(--ax-space-8);
+}
+
+.oh-day__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ax-space-8);
+  flex-wrap: wrap;
+}
+
+.oh-day__hours {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 10rem;
+  max-width: 14rem;
+}
+
+.oh-day__message {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 26rem;
+}

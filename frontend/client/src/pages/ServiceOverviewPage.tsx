@@ -10,7 +10,7 @@ import {
   Table,
   Tag,
 } from '@navikt/ds-react';
-import { ExternalLinkIcon } from '@navikt/aksel-icons';
+import { ArrowLeftIcon, ExternalLinkIcon } from '@navikt/aksel-icons';
 import { useSearchParams } from 'react-router-dom';
 import type { ServiceType } from '../api/types';
 import { useDailyStatus, useServices, useSession } from '../hooks/queries';
@@ -92,12 +92,16 @@ export function ServiceOverviewPage() {
 
   return (
     <div className="oh-overview">
+      <AppLink to="/" className="oh-back">
+        <ArrowLeftIcon aria-hidden /> Tilbake til oversikten
+      </AppLink>
+
       <div>
         <Heading level="1" size="xlarge" spacing>
-          Åpningstider for Navs tjenester
+          Alle tjenester
         </Heading>
         <BodyLong size="large">
-          Se når en tjeneste er åpen, i dag og resten av måneden.
+          Se om en tjeneste er åpen nå, og når den er åpen resten av måneden.
         </BodyLong>
       </div>
 

@@ -1,0 +1,133 @@
+/*
+ * Andelsstrek og tegnforklaring.
+ *
+ * Bare Aksel-tokens — ingen nye farger. Ustabil skiller seg fra åpen med et
+ * skråstripemønster i tillegg til fargen, slik at de to også kan skilles av
+ * noen som ikke ser forskjell på grønt og blått.
+ */
+
+.oh-summarybar {
+  display: flex;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--ax-bg-neutral-moderate);
+}
+
+.oh-summarybar--medium {
+  height: 10px;
+}
+
+.oh-summarybar--small {
+  height: 6px;
+}
+
+.oh-summarybar__segment {
+  height: 100%;
+  min-width: 2px;
+}
+
+.oh-summarybar__segment--empty {
+  width: 100%;
+  background: var(--ax-bg-neutral-moderate);
+}
+
+.oh-summarybar__segment--open {
+  background: var(--ax-bg-success-strong);
+}
+
+.oh-summarybar__segment--unstable {
+  background: var(--ax-bg-info-strong, var(--ax-bg-accent-strong));
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgb(255 255 255 / 55%) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.oh-summarybar__segment--closed {
+  background: var(--ax-bg-neutral-strong);
+}
+
+.oh-summarybar__segment--missing {
+  background: var(--ax-bg-warning-strong, var(--ax-bg-warning-moderate));
+}
+
+/* Fargeprikkene i talllisten og tegnforklaringen — samme kilde til farge. */
+.oh-swatch {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.oh-swatch--open {
+  background: var(--ax-bg-success-strong);
+}
+
+.oh-swatch--unstable {
+  background: var(--ax-bg-info-strong, var(--ax-bg-accent-strong));
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgb(255 255 255 / 55%) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.oh-swatch--closed {
+  background: var(--ax-bg-neutral-strong);
+}
+
+.oh-swatch--missing {
+  background: var(--ax-bg-warning-strong, var(--ax-bg-warning-moderate));
+}
+
+.oh-summarycounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ax-space-8) var(--ax-space-20);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oh-summarycounts--medium {
+  font-size: 1rem;
+}
+
+.oh-summarycounts--small {
+  font-size: 0.8125rem;
+}
+
+.oh-summarycounts__item {
+  display: flex;
+  align-items: center;
+  gap: var(--ax-space-8);
+  color: var(--ax-text-neutral);
+}
+
+.oh-summarylegend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-8);
+  border-top: 1px solid var(--ax-border-neutral-subtle);
+  padding-top: var(--ax-space-12);
+}
+
+.oh-summarylegend__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ax-space-8) var(--ax-space-24);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.oh-summarylegend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--ax-space-8);
+}

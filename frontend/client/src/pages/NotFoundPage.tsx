@@ -8,7 +8,7 @@ export function NotFoundPage() {
         Fant ikke siden
       </Heading>
       <BodyLong spacing>Adressen finnes ikke, eller tjenesten kan ha blitt slettet.</BodyLong>
-      <AppLink to="/">Gå til oversikten over tjenester</AppLink>
+      <AppLink to="/">Gå til oversikten</AppLink>
     </div>
   );
 }

@@ -25,7 +25,14 @@ export function DayDetailPanel({ day, loggedIn, onClose, headingRef }: Props) {
   const status = deriveStatus(day);
 
   return (
-    <Box className="oh-panel" padding="6" borderRadius="large" borderWidth="1" background="surface-default">
+    <Box.New
+      className="oh-panel"
+      padding="6"
+      borderRadius="large"
+      borderWidth="1"
+      borderColor="neutral-subtle"
+      background="default"
+    >
       <div className="oh-panel__head">
         <Label size="small" textColor="subtle">
           Detaljer for dagen
@@ -95,6 +102,6 @@ export function DayDetailPanel({ day, loggedIn, onClose, headingRef }: Props) {
           </BodyShort>
         </div>
       )}
-    </Box>
+    </Box.New>
   );
 }

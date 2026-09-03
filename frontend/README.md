@@ -1,8 +1,8 @@
 # OpeningHours frontend
 
-Webgrensesnitt for Navs åpningstidstjeneste. Viser når tjenester er åpne, som
-kalender (måned, uke og år), sammenligning på tvers av tjenester, og som
-oversiktstabell.
+Webgrensesnitt for Navs åpningstidstjeneste. Viser driftsbildet for alle
+tjenester i dag og de nærmeste dagene, én dato om gangen, som kalender per
+tjeneste (måned, uke og år), som sammenligning på tvers, og som oversiktstabell.
 
 Backend ligger i `../backend` (Kotlin/Spring Boot, port 8081).
 
@@ -108,7 +108,9 @@ All tilstand ligger i URL-en, slik at en visning kan deles som lenke.
 
 | Rute | Parametre | Innhold |
 | --- | --- | --- |
-| `/` | – | Alle tjenester med «åpen nå»-status |
+| `/` | – | Driftsbildet i dag, og stripen med de neste seks dagene |
+| `/dag/:dato` | `vis=missing\|unstable\|closed\|open` | Alle tjenester på én dato, avvik øverst |
+| `/tjenester` | `sok=<tekst>`, `team=<navn>`, `type=TJENESTE\|KOMPONENT` | Alle tjenester med «åpen nå»-status |
 | `/t/:serviceId` | `visning=maned\|uke\|aar`, `dag=<ISO-dato>`, `dato=<ISO-dato>` | Kalender for én tjeneste |
 | `/sammenlign` | `dato=<ISO-dato>`, `tjenester=<id,id,…>` | Inntil seks tjenester på samme tidsakse |
 | `/admin` | – | Nøkkeltall og avvik i oppsettet |
@@ -122,6 +124,24 @@ Admin krever innlogging og lastes som egen bundel — uinnloggede laster den ald
 `dag` er ankeret som bestemmer perioden, `dato` er dagen som er valgt i
 detaljpanelet. De tre visningene deler samme range-endepunkt og skiller seg bare i
 hvilket tidsrom de spør om — logikken ligger i `lib/view.ts`.
+
+Forsiden og dagsvisningen deler bøttene i `lib/summary.ts`: uten åpningstider,
+ustabil, stengt, åpen — i den rekkefølgen. Bøttene er gjensidig utelukkende, så en
+tjeneste som er både åpen og ustabil telles kun som ustabil. Det er avviket som er
+verdt å vise.
+
+Dagens status hentes fra `/daily` (ett kall for alle tjenester). Andre datoer må
+hentes med ett kall per tjeneste, siden backend ikke har noe samlet endepunkt for
+en dato. Stripen henter derfor hele seksdagersvinduet i ett kall per tjeneste
+framfor én dag av gangen.
+
+To detaljer skiller `/daily` fra periodeendepunktet, og begge håndteres i
+`dailyToQuery`: dagcachen sier ikke fra når ingen regel traff — den sender
+backendens standardregel (`ruleName = "No Rules stated"`, døgnåpent) — og den
+bærer `isOpen` for akkurat nå. Forsiden lover «åpne nå», så bøttene får
+klokkeslettet inn og teller en tjeneste med åpningstid 08:00–15:30 som stengt
+klokken 20:00. For framtidige datoer finnes det ikke noe «nå», og da teller dagen
+som åpen hvis den er åpen på et tidspunkt.
 
 Under 720 px erstattes måneds- og ukevisningen av en agendaliste.
 
@@ -215,7 +235,8 @@ kjørbar uten en ekte Entra ID-gruppe.
 
 Ferdig: prosjektoppsett, API-lag, statussystem, kalender med måneds-, uke- og
 årsvisning og full tastaturnavigasjon, detaljpanel, agendaliste for mobil,
-sammenlign-side, tjenesteoversikt, BFF med autorisasjon og maskering, Dockerfile,
+sammenlign-side, landingsside med dagsstripe, dagsvisning, tjenesteoversikt,
+BFF med autorisasjon og maskering, Dockerfile,
 NAIS-manifest, GitHub Actions.
 
 Ferdig i admin: oversikt med avviksdeteksjon, regelliste, regelskjema med

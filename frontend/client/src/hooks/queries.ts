@@ -76,3 +76,28 @@ export function useServicesOnDate(serviceIds: string[], date: string) {
     })),
   });
 }
+
+/**
+ * Samme periode for alle tjenester — grunnlaget for dagsstripen på forsiden.
+ *
+ * Backend har fortsatt ingen samlet endepunkt, så dette blir ett kall per
+ * tjeneste. Vi henter derfor hele vinduet i én omgang framfor én dag av gangen:
+ * seks dager for 47 tjenester er 47 kall her, mot 282 hvis hver dag hentes for
+ * seg. Nøkkelen er den samme som `useServiceRange` bruker, så en tjeneste som
+ * allerede er hentet for sin egen kalender treffer cachen.
+ *
+ * Hver tjeneste feiler for seg. En tjeneste som ikke svarer havner i «uten
+ * åpningstider» og blir dermed synlig, framfor å tømme hele oversikten.
+ */
+export function useAllServicesRange(serviceIds: string[], from: string, to: string) {
+  return useQueries({
+    queries: serviceIds.map((id) => ({
+      queryKey: ['range', id, from, to],
+      queryFn: () =>
+        apiFetch<QueryResponse[]>(
+          `/api/openinghours/query/service/${id}/range${query({ from, to })}`,
+        ),
+      staleTime: STALE,
+    })),
+  });
+}
