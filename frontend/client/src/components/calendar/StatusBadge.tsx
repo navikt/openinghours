@@ -2,6 +2,7 @@ import {
   CheckmarkCircleIcon,
   ClockIcon,
   ExclamationmarkTriangleIcon,
+  ExclamationmarkTriangleFillIcon,
   MinusCircleIcon,
   PadlockLockedIcon,
   StarIcon,
@@ -51,6 +52,26 @@ export function NowIndicator({ isOpen }: { isOpen: boolean }) {
     <span className={`oh-now ${isOpen ? 'oh-now--open' : 'oh-now--closed'}`} aria-hidden>
       <ClockIcon aria-hidden fontSize="0.875rem" />
       {isOpen ? 'Åpent nå' : 'Stengt nå'}
+    </span>
+  );
+}
+
+/**
+ * Merke for perioder fagansvarlig har flagget som ustabile.
+ *
+ * Står ved siden av statusmerket, ikke i stedet for det: dagen kan være både
+ * åpen og ustabil. Alltid dekorativt — hele statusen, ustabiliteten inkludert,
+ * ligger i cellens `aria-label` via `statusAriaLabel`, så et eget
+ * skjermlesermerke ville blitt lest opp to ganger.
+ */
+export function UnstableMark({ size = 'small' }: { size?: 'small' | 'medium' }) {
+  return (
+    <span className={`oh-unstable oh-unstable--${size}`} aria-hidden>
+      <ExclamationmarkTriangleFillIcon
+        aria-hidden
+        fontSize={size === 'small' ? '0.9375rem' : '1.125rem'}
+      />
+      Ustabil
     </span>
   );
 }

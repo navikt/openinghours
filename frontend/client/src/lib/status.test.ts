@@ -12,6 +12,7 @@ function day(overrides: Partial<QueryResponse> = {}): QueryResponse {
     displayHeader: null,
     displayText: null,
     onlyShowForNavEmployees: false,
+    unstableOpeningHours: false,
     redDay: false,
     ...overrides,
   };
@@ -99,5 +100,38 @@ describe('statusAriaLabel', () => {
   it('nevner navnet på den røde dagen', () => {
     const d = day({ date: '2026-05-17', redDay: true, openingTime: '00:00', closingTime: '00:00' });
     expect(statusAriaLabel(d, deriveStatus(d))).toContain('grunnlovsdagen');
+  });
+});
+
+describe('ustabile perioder', () => {
+  it('er avslått som standard', () => {
+    expect(deriveStatus(day()).unstable).toBe(false);
+  });
+
+  it('kommer i tillegg til statusen, ikke i stedet for den', () => {
+    const status = deriveStatus(day({ unstableOpeningHours: true }));
+    expect(status.unstable).toBe(true);
+    // Åpningstiden gjelder fortsatt — flagget sier bare at den kan svikte.
+    expect(status.kind).toBe('open');
+    expect(status.label).toBe('Åpen 08:00–15:30');
+    expect(status.intervals).toHaveLength(1);
+  });
+
+  it('kan settes på en stengt dag også', () => {
+    const status = deriveStatus(
+      day({ unstableOpeningHours: true, openingTime: '00:00', closingTime: '00:00' }),
+    );
+    expect(status.kind).toBe('closed');
+    expect(status.unstable).toBe(true);
+  });
+
+  it('havner i aria-etiketten, slik at merket ikke bare er visuelt', () => {
+    const d = day({ unstableOpeningHours: true });
+    expect(statusAriaLabel(d, deriveStatus(d))).toContain('merket som ustabil periode');
+  });
+
+  it('nevnes ikke i aria-etiketten når flagget er av', () => {
+    const d = day();
+    expect(statusAriaLabel(d, deriveStatus(d))).not.toContain('ustabil');
   });
 });

@@ -16,7 +16,7 @@ import type { ServiceType } from '../api/types';
 import { useDailyStatus, useServices, useSession } from '../hooks/queries';
 import { formatHours, HOURS_ALWAYS_OPEN, HOURS_CLOSED } from '../lib/rule';
 import { AppLink } from '../components/common/AppLink';
-import { StatusBadge } from '../components/calendar/StatusBadge';
+import { StatusBadge, UnstableMark } from '../components/calendar/StatusBadge';
 import { EmptyState, ErrorState } from '../components/common/ErrorState';
 import { DelayedLoader } from '../components/common/DelayedLoader';
 import { useNow } from '../hooks/useNow';
@@ -228,13 +228,37 @@ export function ServiceOverviewPage() {
   );
 }
 
-function NowStatus({ status }: { status?: { isOpen: boolean; redDay: boolean; openingHours: string | null } }) {
+function NowStatus({
+  status,
+}: {
+  status?: {
+    isOpen: boolean;
+    redDay: boolean;
+    openingHours: string | null;
+    unstableOpeningHours?: boolean;
+  };
+}) {
   if (!status) return <StatusBadge kind="warning" label="Ikke satt opp" size="small" />;
-  if (status.redDay) return <StatusBadge kind="redDay" label="Rød dag" size="small" />;
-  return status.isOpen ? (
+
+  const badge = status.redDay ? (
+    <StatusBadge kind="redDay" label="Rød dag" size="small" />
+  ) : status.isOpen ? (
     <StatusBadge kind="open" label="Åpent nå" size="small" />
   ) : (
     <StatusBadge kind="closed" label="Stengt nå" size="small" />
+  );
+
+  if (!status.unstableOpeningHours) return badge;
+
+  // Ustabilitet erstatter ikke statusen, den kommer i tillegg til den.
+  return (
+    <span className="oh-overview__status">
+      {badge}
+      <UnstableMark />
+      {/* Merket er aria-hidden. Her leses statusen opp direkte, så uten dette
+          ville skjermlesere gått glipp av ustabiliteten helt. */}
+      <span className="oh-sr-only">Merket som ustabil periode</span>
+    </span>
   );
 }
 

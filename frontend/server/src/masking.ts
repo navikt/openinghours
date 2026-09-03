@@ -16,6 +16,7 @@
 
 interface MaskableDay {
   onlyShowForNavEmployees?: boolean;
+  unstableOpeningHours?: boolean;
   matchedRule?: unknown;
   displayHeader?: string | null;
   displayText?: string | null;
@@ -41,6 +42,9 @@ function maskDay<T extends MaskableDay>(day: T): T {
   if ('openingTime' in masked) masked.openingTime = '00:00';
   if ('closingTime' in masked) masked.closingTime = '00:00';
   if ('isOpen' in masked) masked.isOpen = false;
+  // Ustabilitet er en egenskap ved den skjulte regelen. Beholdt den seg, ville
+  // et «Ustabil»-merke røpet noe om en åpningstid vi nettopp har maskert bort.
+  if ('unstableOpeningHours' in masked) masked.unstableOpeningHours = false;
   return masked;
 }
 

@@ -54,6 +54,7 @@ export function RuleFormPage() {
   const [header, setHeader] = useState('');
   const [text, setText] = useState('');
   const [onlyEmployees, setOnlyEmployees] = useState(false);
+  const [unstable, setUnstable] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(searchParams.get('slett') === '1');
   const [saved, setSaved] = useState(false);
@@ -70,6 +71,7 @@ export function RuleFormPage() {
     setHeader(rule.header ?? '');
     setText(rule.text ?? '');
     setOnlyEmployees(rule.onlyShowForNavEmployees);
+    setUnstable(rule.unstableOpeningHours);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing.data?.id]);
 
@@ -132,6 +134,7 @@ export function RuleFormPage() {
       header: header.trim() || null,
       text: text.trim() || null,
       onlyShowForNavEmployees: onlyEmployees,
+      unstableOpeningHours: unstable,
     };
     try {
       if (isNew) {
@@ -231,6 +234,13 @@ export function RuleFormPage() {
               description="Dagen skjules for uinnloggede brukere."
             >
               Kun for Nav-ansatte
+            </Checkbox>
+            <Checkbox
+              checked={unstable}
+              onChange={(e) => setUnstable(e.target.checked)}
+              description="Åpningstiden gjelder, men tjenesten kan være ustabil i perioden."
+            >
+              Ustabil periode
             </Checkbox>
             {/* Designet hadde også en «Rød dag»-avkrysning. Den finnes ikke:
                 backend beregner røde dager fra helligdagskalenderen ved lesetid,

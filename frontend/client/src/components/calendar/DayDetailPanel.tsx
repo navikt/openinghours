@@ -56,6 +56,13 @@ export function DayDetailPanel({ day, loggedIn, onClose, headingRef }: Props) {
         </Alert>
       )}
 
+      {status.unstable && (
+        <Alert variant="warning" size="small" inline={false}>
+          Denne perioden er markert som ustabil. Åpningstiden over gjelder, men tjenesten kan
+          være ustabil eller utilgjengelig i deler av tiden.
+        </Alert>
+      )}
+
       {day.masked && (
         <Alert variant="info" size="small">
           Åpningstiden denne dagen gjelder kun Nav-ansatte. Logg inn for å se den.

@@ -101,6 +101,21 @@ describe('maskResponse', () => {
     expect(JSON.stringify(result)).not.toContain('Intern drift');
   });
 
+  it('nullstiller ustabilitetsflagget, som hører til den skjulte regelen', () => {
+    const result = maskResponse(
+      { ...internDag, unstableOpeningHours: true },
+      false,
+    ) as Record<string, unknown>;
+    expect(result.unstableOpeningHours).toBe(false);
+  });
+
+  it('beholder ustabilitetsflagget på offentlige dager', () => {
+    const offentlig = { ...internDag, onlyShowForNavEmployees: false, unstableOpeningHours: true };
+    expect((maskResponse(offentlig, false) as Record<string, unknown>).unstableOpeningHours).toBe(
+      true,
+    );
+  });
+
   it('rører ikke offentlige dager', () => {
     const offentlig = { ...internDag, onlyShowForNavEmployees: false };
     expect(maskResponse(offentlig, false)).toEqual(offentlig);
