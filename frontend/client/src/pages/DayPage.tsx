@@ -13,10 +13,10 @@ import {
 } from '@navikt/ds-react';
 import { ArrowLeftIcon, ArrowRightIcon } from '@navikt/aksel-icons';
 import type { DeviationEntry } from '../lib/deviation';
-import { DEVIATION_LABELS, buildCalendar, describeSignature, deriveBaseline } from '../lib/deviation';
+import { DEVIATION_LABELS, buildCalendar } from '../lib/deviation';
 import { useAllServicesRange, useServices, useSession } from '../hooks/queries';
 import { useNow } from '../hooks/useNow';
-import { addDays, formatDateLong, isoWeekday, monthGrid, monthOf, todayIso, weekdayName } from '../lib/date';
+import { addDays, formatDateLong, monthGrid, monthOf, todayIso, weekdayName } from '../lib/date';
 import { formatRule } from '../lib/rule';
 import { deriveStatus, statusAriaLabel } from '../lib/status';
 import type { DayStatus } from '../lib/status';
@@ -45,8 +45,8 @@ interface NormalRow {
  * en liste der 45 normale tjenester står side om side med de to som har endret
  * seg, skjuler nettopp det siden er til for å vise.
  *
- * Vinduet som hentes er hele månedsrutenettet, ikke bare denne ene dagen.
- * Normalplanen kan bare utledes ved å se flere uker av samme ukedag — og
+ * Vinduet som hentes er hele månedsrutenettet, ikke bare denne ene dagen: å
+ * vite hva som avviker krever flere uker av samme ukedag å sammenligne med — og
  * nøkkelen er den samme som forsidens, så et klikk derfra treffer cachen.
  */
 export function DayPage() {
@@ -104,17 +104,6 @@ export function DayPage() {
       })
       .sort((a, b) => a.serviceName.localeCompare(b.serviceName, 'nb'));
   }, [serviceDays, deviations, date]);
-
-  /** Normalplanen for ukedagen, per tjeneste — brukes i «som vanlig»-lista. */
-  const baselines = useMemo(() => {
-    const weekday = isoWeekday(date);
-    const map = new Map<string, string>();
-    for (const service of serviceDays) {
-      const sig = deriveBaseline(service.days, monthOf(date)).byWeekday.get(weekday);
-      if (sig) map.set(service.serviceId, describeSignature(sig));
-    }
-    return map;
-  }, [serviceDays, date]);
 
   const holiday = deviations.find((d) => d.deviation.holiday)?.deviation.holiday ?? null;
   const goto = (delta: number) => navigate(`/dag/${addDays(date, delta)}`);
@@ -199,7 +188,7 @@ export function DayPage() {
         <Skeleton variant="rectangle" height="12rem" />
       ) : deviations.length === 0 ? (
         <Alert variant="success" size="small" inline={false}>
-          Alle tjenester følger sin vanlige timeplan denne dagen.
+          Ingen avvik denne dagen. Alle tjenester er åpne som vanlig.
         </Alert>
       ) : (
         <section aria-labelledby="oh-dev-heading" className="oh-day__section">
@@ -232,7 +221,7 @@ export function DayPage() {
               {normal.length === 1 ? 'tjeneste' : 'tjenester'})
             </ExpansionCard.Title>
             <ExpansionCard.Description>
-              Disse følger timeplanen sin denne dagen. Åpne for å slå opp en bestemt tjeneste.
+              Åpne for å slå opp åpningstiden til en bestemt tjeneste.
             </ExpansionCard.Description>
           </ExpansionCard.Header>
           <ExpansionCard.Content>
@@ -241,7 +230,6 @@ export function DayPage() {
                 <Table.Row>
                   <Table.ColumnHeader scope="col">Tjeneste</Table.ColumnHeader>
                   <Table.ColumnHeader scope="col">Åpningstid</Table.ColumnHeader>
-                  <Table.ColumnHeader scope="col">Normalt</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -273,11 +261,6 @@ export function DayPage() {
                         <BodyShort size="small">Ukjent</BodyShort>
                       )}
                     </Table.DataCell>
-                    <Table.DataCell>
-                      <BodyShort size="small" textColor="subtle">
-                        {baselines.get(row.serviceId) ?? 'ukjent normalplan'}
-                      </BodyShort>
-                    </Table.DataCell>
                   </Table.Row>
                 ))}
               </Table.Body>
@@ -286,11 +269,9 @@ export function DayPage() {
         </ExpansionCard>
       )}
 
-      <Detail textColor="subtle">
-        «Normalt» er utledet av tjenestens egne regler: den timeplanen som gjentar seg hver uke.
-        Avvik er dagene som bryter med den.
-        {loggedIn && ' Regelnavnet vises bare for innloggede.'}
-      </Detail>
+      {loggedIn && (
+        <Detail textColor="subtle">Regelnavnet vises bare for innloggede.</Detail>
+      )}
     </div>
   );
 }
@@ -311,11 +292,6 @@ function DeviationRow({ entry, loggedIn }: { entry: DeviationEntry; loggedIn: bo
           <BodyShort size="small" weight="semibold">
             {DEVIATION_LABELS[deviation.kind]}
           </BodyShort>
-          {deviation.normally && (
-            <BodyShort size="small" textColor="subtle">
-              {capitalize(deviation.normally)}
-            </BodyShort>
-          )}
           {deviation.unstable && deviation.kind !== 'unstable' && (
             <BodyShort size="small" textColor="subtle">
               Også markert som ustabil
@@ -362,8 +338,4 @@ function headline(deviations: number, total: number): string {
   if (total === 0) return 'Ingen tjenester';
   if (deviations === 0) return `${total} tjenester · alle som vanlig`;
   return `${total} tjenester · ${deviations} avvik`;
-}
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }

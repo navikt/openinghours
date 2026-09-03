@@ -133,6 +133,12 @@ Forsiden og dagsvisningen viser ikke om tjenestene er åpne — de viser hva som
 når. En kalender som markerte «stengt» hver lørdag ville druknet nettopp de
 dagene den skal løfte fram.
 
+Normalplanen er et **filter, ikke innhold.** Den avgjør hvilke dager som er verdt
+å vise, men står ikke i teksten: cellene sier «Åpent 08:00–12:00», ikke «stenger
+tre timer tidligere enn normalt 08:00–15:30». Spørsmålet brukeren kommer med er
+«rekker jeg innom fredag?», og da er klokkeslettene som gjelder hele svaret —
+en sammenligning tvinger henne til å regne det ut selv.
+
 Hva som er normalt utledes i `lib/deviation.ts`, fra to kilder i prioritert
 rekkefølge:
 
