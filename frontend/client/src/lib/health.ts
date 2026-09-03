@@ -81,7 +81,7 @@ export function findIssues({ services, groups, rules, linkedServiceIds }: Health
       description: `${unlinked
         .slice(0, 3)
         .map((s) => s.name)
-        .join(', ')}${unlinked.length > 3 ? ' med flere' : ''}. Uten gruppe har tjenesten ingen åpningstider, og kalenderen står tom.`,
+        .join(', ')}${unlinked.length > 3 ? ' med flere' : ''}. Uten gruppe treffer ingen regel, og tjenesten vises som døgnåpen.`,
       href: '/admin/tjenester',
       actionLabel: 'Koble til gruppe',
     });

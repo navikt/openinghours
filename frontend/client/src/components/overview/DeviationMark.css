@@ -9,10 +9,6 @@
  * Fargen rangerer alvorlighet, men gjentar aldri noe teksten ikke sier.
  */
 
-.oh-devchip--missing {
-  border-left-color: var(--ax-border-warning);
-}
-
 .oh-devchip--closed {
   border-left-color: var(--ax-border-danger);
 }

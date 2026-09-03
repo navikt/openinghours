@@ -176,9 +176,8 @@ export function CalendarPage() {
       </div>
 
       {noGroup && service.data && (
-        <Alert variant="warning">
-          {service.data.name} har ingen åpningstidsgruppe ennå. Vi kan derfor ikke si når tjenesten
-          er åpen.
+        <Alert variant="info">
+          {service.data.name} har ingen åpningstidsgruppe ennå, og regnes derfor som døgnåpen.
         </Alert>
       )}
 

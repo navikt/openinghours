@@ -143,7 +143,6 @@
 }
 
 /* Tegnforklaringens merker arver stripefargen fra chipsene over. */
-.oh-devlegend .oh-devchip--missing,
 .oh-devlegend .oh-devchip--closed,
 .oh-devlegend .oh-devchip--shorter,
 .oh-devlegend .oh-devchip--moved,

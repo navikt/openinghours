@@ -65,15 +65,6 @@
   overflow-wrap: anywhere;
 }
 
-.oh-unconfigured {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ax-space-4) var(--ax-space-16);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 /* Månedsseksjonen */
 .oh-month {
   display: flex;

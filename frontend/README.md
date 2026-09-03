@@ -142,8 +142,8 @@ rekkefølge:
    festet til en dato (`24.12.????`) er per definisjon et unntak fra den.
 2. **Det som skjer oftest.** Traff ingen ukesregel den ukedagen, brukes den
    hyppigste signaturen i vinduet. Dette fanger tjenester som ikke har
-   helgeregler i det hele tatt: «ingen regel treffer» blir da normalen for
-   lørdag, ikke et avvik som ropes ut hver uke.
+   helgeregler i det hele tatt: lørdagene er da døgnåpne hver uke, og døgnåpent
+   blir normalen for lørdag framfor et avvik som ropes ut hver uke.
 
 Er begge kilder tomme for en ukedag, finnes ingen normal å måle mot, og dagen
 får være i fred. Et falskt avvik koster mer enn et uteglemt — det lærer brukeren
@@ -156,9 +156,25 @@ avgrensningen ville mandag 30. juni satt normalen for alle julis mandager, mens
 tirsdag til fredag fant julitidene selv — avvik kun på mandager, avgjort av hvor
 rutenettkanten falt.
 
-Avvikstypene er `missing`, `closed`, `shorter`, `moved`, `longer`, `extra` og
-`unstable`, i den rekkefølgen. Tjenester uten regler i det hele tatt samles i én
-melding over kalenderen framfor å farge alle 42 dagene.
+Avvikstypene er `closed`, `shorter`, `moved`, `longer`, `extra` og `unstable`, i
+den rekkefølgen.
+
+### Uten regler er døgnåpent
+
+Traff ingen regel — enten fordi tjenesten mangler åpningstidsgruppe eller fordi
+ingen regel dekker datoen — svarer backend med `DEFAULT_DISPLAY_DATA`, som er
+`00:00-23:59`. Frontenden tolker det bokstavelig: **en tjeneste uten regler er
+døgnåpen.** Det er den betydningen alle andre som bruker API-et ser, og en
+kalender som sa noe annet ville vært uenig med tjenestene den beskriver.
+
+Praktisk betyr det at `warningMessage` ikke gir noen egen tilstand: ingen
+«ikke satt opp»-merking, ingen avvikstype og ingen advarsel over kalenderen. En
+tjeneste ingen har satt opp er døgnåpen hver dag, døgnåpent blir dermed normalen
+for hver ukedag, og kalenderen tier — slik den skal når ingenting avviker.
+
+Manglende oppsett er en administrasjonssak, ikke en driftsmelding, og hører
+hjemme under `/admin`: `lib/health.ts` flagger tjenester uten gruppe, tomme
+grupper og regler som ikke kan tolkes.
 
 ### Datakilder
 
@@ -171,9 +187,8 @@ samme vinduet med samme query-nøkkel, så et klikk fra forsiden treffer cachen.
 Backend har ikke noe samlet endepunkt for flere tjenester på én dato, så dette er
 ett kall per tjeneste. `/tjenester` bruker fortsatt `/daily`, som er ett kall for
 alle. Dagcachen sier ikke fra når ingen regel traff — den sender backendens
-standardregel (`ruleName = "No Rules stated"`, døgnåpent) — så tjenester uten
-oppsett ville stått som «åpent nå». `lib/daily.ts` kjenner dem igjen på
-sentinelen.
+standardregel (`ruleName = "No Rules stated"`, døgnåpent) — og det er akkurat
+den betydningen vi vil ha, så den brukes som den er.
 
 Under 720 px erstattes måneds- og ukevisningen av en agendaliste.
 

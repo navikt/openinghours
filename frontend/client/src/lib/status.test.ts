@@ -76,10 +76,14 @@ describe('deriveStatus', () => {
     expect(status.detail).toBe('Stengt');
   });
 
-  it('lar advarsel gå foran åpningstid', () => {
-    const status = deriveStatus(day({ warningMessage: 'Ingen gruppe' }));
-    expect(status.kind).toBe('warning');
-    expect(status.intervals).toEqual([]);
+  it('regner en dag uten gjeldende regel som døgnåpen', () => {
+    // Backend svarer med 00:00–23:59 når ingen regel treffer, og det er den
+    // avtalte betydningen: uten regler er tjenesten åpen, ikke ukjent.
+    const status = deriveStatus(
+      day({ openingTime: '00:00', closingTime: '23:59', warningMessage: 'Ingen gruppe' }),
+    );
+    expect(status.kind).toBe('open');
+    expect(status.allDay).toBe(true);
   });
 
   it('lar maskering gå foran alt annet', () => {

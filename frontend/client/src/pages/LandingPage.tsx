@@ -180,25 +180,6 @@ export function LandingPage() {
         </Alert>
       )}
 
-      {calendar.unconfigured.length > 0 && (
-        <Alert variant="warning" size="small">
-          {/* Én linje framfor 42 røde dager: en tjeneste uten regler har ingen
-              normal å avvike fra, og ville ellers farget hele kalenderen. */}
-          <BodyShort size="small" spacing>
-            {calendar.unconfigured.length === 1
-              ? 'Én tjeneste har ingen regler som treffer, og har derfor ingen normal å måle avvik mot:'
-              : `${calendar.unconfigured.length} tjenester har ingen regler som treffer, og har derfor ingen normal å måle avvik mot:`}
-          </BodyShort>
-          <ul className="oh-unconfigured">
-            {calendar.unconfigured.map((service) => (
-              <li key={service.serviceId}>
-                <AppLink to={`/t/${service.serviceId}`}>{service.serviceName}</AppLink>
-              </li>
-            ))}
-          </ul>
-        </Alert>
-      )}
-
       <section className="oh-month" aria-labelledby="oh-month-heading">
         <div className="oh-month__head">
           <div className="oh-month__title">
