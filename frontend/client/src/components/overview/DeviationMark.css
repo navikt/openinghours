@@ -1,0 +1,41 @@
+/*
+ * Fargekoding av avvikstyper.
+ *
+ * Egen fil fordi tre visninger deler den — kalendercellene, listene på forsiden
+ * og tabellen i dagsvisningen. Samme avvik skal se likt ut uansett hvor det
+ * dukker opp, og ingen av visningene skal være avhengig av at en av de andre
+ * tilfeldigvis er lastet inn først.
+ *
+ * Fargen rangerer alvorlighet, men gjentar aldri noe teksten ikke sier.
+ */
+
+.oh-devchip--missing {
+  border-left-color: var(--ax-border-warning);
+}
+
+.oh-devchip--closed {
+  border-left-color: var(--ax-border-danger);
+}
+
+.oh-devchip--shorter,
+.oh-devchip--moved {
+  border-left-color: var(--ax-border-warning);
+}
+
+.oh-devchip--longer,
+.oh-devchip--extra {
+  border-left-color: var(--ax-border-info);
+}
+
+.oh-devchip--unstable {
+  border-left-color: var(--ax-border-warning);
+  /* Skråstripe i tillegg til farge — samme språk som ustabilmerket ellers. */
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 4px,
+    var(--ax-bg-warning-soft) 4px,
+    var(--ax-bg-warning-soft) 8px
+  );
+}
+

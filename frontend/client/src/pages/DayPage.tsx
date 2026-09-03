@@ -1,129 +1,136 @@
 import { useMemo } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
   BodyShort,
   Button,
-  Chips,
   Detail,
+  ExpansionCard,
   Heading,
   Skeleton,
   Table,
   Tag,
 } from '@navikt/ds-react';
 import { ArrowLeftIcon, ArrowRightIcon } from '@navikt/aksel-icons';
-import type { Bucket, DayEntry, ServiceDay } from '../lib/summary';
-import { BUCKETS, countLabel, dailyToQuery, presentBuckets, summarize } from '../lib/summary';
-import { useAllServicesRange, useDailyStatus, useServices, useSession } from '../hooks/queries';
+import type { DeviationEntry } from '../lib/deviation';
+import { DEVIATION_LABELS, buildCalendar, describeSignature, deriveBaseline } from '../lib/deviation';
+import { useAllServicesRange, useServices, useSession } from '../hooks/queries';
 import { useNow } from '../hooks/useNow';
-import { addDays, formatDateLong, todayIso, weekdayName } from '../lib/date';
+import { addDays, formatDateLong, isoWeekday, monthGrid, monthOf, todayIso, weekdayName } from '../lib/date';
 import { formatRule } from '../lib/rule';
-import type { StatusKind } from '../lib/status';
-import { statusAriaLabel } from '../lib/status';
+import { deriveStatus, statusAriaLabel } from '../lib/status';
+import type { DayStatus } from '../lib/status';
+import type { QueryResponse } from '../api/types';
 import { AppLink } from '../components/common/AppLink';
 import { OpeningBar } from '../components/calendar/OpeningBar';
-import { StatusBadge, UnstableMark } from '../components/calendar/StatusBadge';
-import { SummaryBar, SummaryLegend } from '../components/overview/SummaryBar';
 import { ErrorState } from '../components/common/ErrorState';
+import '../components/overview/DeviationMark.css';
 import './DayPage.css';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/*
- * Merket viser bøtten, ikke den fulle statusteksten: kolonnen ved siden av bærer
- * åpningstiden, og to plasser som sier «08:00–15:30» er én for mye. `unstable`
- * har ingen egen `StatusKind` — den rendres med `UnstableMark` — og står derfor
- * ikke her.
- */
-const BUCKET_STATUS: Record<Exclude<Bucket, 'unstable'>, { kind: StatusKind; label: string }> = {
-  missing: { kind: 'warning', label: 'Ikke satt opp' },
-  closed: { kind: 'closed', label: 'Stengt' },
-  open: { kind: 'open', label: 'Åpen' },
-};
+interface NormalRow {
+  serviceId: string;
+  serviceName: string;
+  team: string;
+  day: QueryResponse | null;
+  status: DayStatus | null;
+}
 
 /**
- * Dagsvisning — én dato, alle tjenester.
+ * Dagsvisning — én dato, avvikene først.
  *
- * Rekkefølgen er ikke alfabetisk: uten oppsett først, deretter ustabile, stengte
- * og åpne. Det er avvikene som gjør at noen åpner denne siden, og i en liste på
- * 47 ville de to som mangler oppsett vært umulige å få øye på alfabetisk.
+ * Avvikene står øverst og i sin helhet; tjenestene som følger sin vanlige
+ * timeplan er slått sammen bak én utvidbar linje. Det er en bevisst asymmetri:
+ * en liste der 45 normale tjenester står side om side med de to som har endret
+ * seg, skjuler nettopp det siden er til for å vise.
+ *
+ * Vinduet som hentes er hele månedsrutenettet, ikke bare denne ene dagen.
+ * Normalplanen kan bare utledes ved å se flere uker av samme ukedag — og
+ * nøkkelen er den samme som forsidens, så et klikk derfra treffer cachen.
  */
 export function DayPage() {
   const { dato } = useParams();
   const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
-  const { now, minutes } = useNow();
+  const { now } = useNow();
   const today = todayIso(now);
 
   const date = dato && ISO_DATE.test(dato) ? dato : today;
   const isToday = date === today;
-  const filter = params.get('vis');
-  const activeFilter = BUCKETS.includes(filter as Bucket) ? (filter as Bucket) : null;
 
   const session = useSession();
   const services = useServices();
   const loggedIn = session.data?.loggedIn ?? false;
 
-  /*
-   * I dag har sitt eget endepunkt: `/daily` er ett kall for alle tjenester, mot
-   * ett kall per tjeneste for enhver annen dato. Vi bruker den billige kilden
-   * når vi kan, og fan-out bare når vi må.
-   */
-  const daily = useDailyStatus();
   const serviceIds = useMemo(() => (services.data ?? []).map((s) => s.id), [services.data]);
-  const range = useAllServicesRange(isToday ? [] : serviceIds, date, date);
+  const grid = useMemo(() => monthGrid(monthOf(date)), [date]);
+  const range = useAllServicesRange(serviceIds, grid[0].date, grid[grid.length - 1].date);
 
-  const items: ServiceDay[] = useMemo(
+  const pending = services.isPending || range.some((r) => r.isPending);
+  const failed = range.filter((r) => r.isError).length;
+
+  const serviceDays = useMemo(
     () =>
-      (services.data ?? []).map((service, index) => {
-        const cached = daily.data?.[service.id];
-        const fetched = range[index]?.data?.find((d) => d.date === date) ?? null;
+      (services.data ?? []).map((service, index) => ({
+        serviceId: service.id,
+        serviceName: service.name,
+        team: service.team,
+        days: range[index]?.data ?? [],
+      })),
+    [services.data, range.map((r) => r.dataUpdatedAt).join(',')],
+  );
+
+  const calendar = useMemo(() => buildCalendar(serviceDays, monthOf(date)), [serviceDays, date]);
+  const deviations = calendar.byDate.get(date) ?? [];
+
+  /*
+   * «Som vanlig» er alt som ikke er et avvik — inkludert tjenestene uten
+   * oppsett, som ikke har noen normal å avvike fra. De hører hjemme i lista,
+   * ikke i avviksseksjonen, der de ville ropt like høyt hver eneste dag.
+   */
+  const normal: NormalRow[] = useMemo(() => {
+    const deviating = new Set(deviations.map((d) => d.serviceId));
+    return serviceDays
+      .filter((service) => !deviating.has(service.serviceId))
+      .map((service) => {
+        const day = service.days.find((d) => d.date === date) ?? null;
         return {
-          serviceId: service.id,
-          serviceName: service.name,
+          serviceId: service.serviceId,
+          serviceName: service.serviceName,
           team: service.team,
-          day: isToday ? (cached ? dailyToQuery(cached, date) : null) : fetched,
+          day,
+          status: day ? deriveStatus(day) : null,
         };
-      }),
-    [services.data, daily.data, range.map((r) => r.dataUpdatedAt).join(','), date, isToday],
-  );
+      })
+      .sort((a, b) => a.serviceName.localeCompare(b.serviceName, 'nb'));
+  }, [serviceDays, deviations, date]);
 
-  /*
-   * Klokkeslettet gjelder bare i dag. For enhver annen dato finnes det ikke noe
-   * «nå», og en tjeneste med åpningstid 08:00–15:30 er da åpen den dagen — ikke
-   * stengt fordi klokken tilfeldigvis er 20:00 mens noen ser på den.
-   */
-  const summary = useMemo(
-    () => summarize(date, items, isToday ? minutes : undefined),
-    [date, items, isToday, minutes],
-  );
-  const visible = activeFilter
-    ? summary.entries.filter((entry) => entry.bucket === activeFilter)
-    : summary.entries;
+  /** Normalplanen for ukedagen, per tjeneste — brukes i «som vanlig»-lista. */
+  const baselines = useMemo(() => {
+    const weekday = isoWeekday(date);
+    const map = new Map<string, string>();
+    for (const service of serviceDays) {
+      const sig = deriveBaseline(service.days, monthOf(date)).byWeekday.get(weekday);
+      if (sig) map.set(service.serviceId, describeSignature(sig));
+    }
+    return map;
+  }, [serviceDays, date]);
 
-  const pending = services.isPending || (isToday ? daily.isPending : range.some((r) => r.isPending));
-  /*
-   * Feiler kilden, blir hver tjeneste stående som «uten åpningstider». Det ser ut
-   * som en opplysning, men er fravær av en. Da sier vi det heller rett ut.
-   */
-  const failed = isToday ? daily.isError : range.filter((r) => r.isError).length;
-
-  const setFilter = (bucket: Bucket | null) => {
-    const next = new URLSearchParams(params);
-    if (bucket) next.set('vis', bucket);
-    else next.delete('vis');
-    setParams(next, { replace: true });
-  };
-
-  const goto = (delta: number) => navigate(`/dag/${addDays(date, delta)}${params.toString() ? `?${params}` : ''}`);
+  const holiday = deviations.find((d) => d.deviation.holiday)?.deviation.holiday ?? null;
+  const goto = (delta: number) => navigate(`/dag/${addDays(date, delta)}`);
 
   if (services.isError) {
-    return <ErrorState message="Vi klarte ikke å hente tjenestelisten." onRetry={() => services.refetch()} />;
+    return (
+      <ErrorState
+        message="Vi klarte ikke å hente tjenestelisten."
+        onRetry={() => services.refetch()}
+      />
+    );
   }
 
   return (
     <div className="oh-day">
-      <AppLink to="/">Tilbake til oversikten</AppLink>
+      <AppLink to="/">Tilbake til kalenderen</AppLink>
 
       <div className="oh-day__head">
         <div>
@@ -139,25 +146,20 @@ export function DayPage() {
             )}
           </Heading>
           {pending ? (
-            <Skeleton variant="text" width="20rem" />
+            <Skeleton variant="text" width="18rem" />
           ) : (
             <BodyShort size="small" textColor="subtle">
-              {summary.total} tjenester ·{' '}
-              {presentBuckets(summary.counts)
-                .map((bucket) => countLabel(bucket, summary.counts[bucket]))
-                .join(', ')}
+              {headline(deviations.length, serviceDays.length)}
             </BodyShort>
           )}
-          {summary.redDay && (
+          {holiday && (
             <div className="oh-day__red">
               <Tag variant="error" size="small">
                 Rød dag
               </Tag>
-              {summary.holiday && (
-                <BodyShort size="small" textColor="subtle">
-                  {summary.holiday}
-                </BodyShort>
-              )}
+              <BodyShort size="small" textColor="subtle">
+                {holiday}
+              </BodyShort>
             </div>
           )}
         </div>
@@ -184,78 +186,118 @@ export function DayPage() {
         </div>
       </div>
 
-      {pending ? (
-        <Skeleton variant="rectangle" height="0.625rem" />
-      ) : (
-        <SummaryBar counts={summary.counts} total={summary.total} />
-      )}
-
-      {Boolean(failed) && (
+      {failed > 0 && (
         <Alert variant="warning" size="small">
-          {isToday
-            ? 'Vi klarte ikke å hente statusen for i dag. Tjenestene under står som «ikke satt opp» fordi vi mangler svar, ikke fordi de mangler åpningstider.'
-            : `Vi klarte ikke å hente åpningstidene for ${failed} av ${summary.total} tjenester. De står som «ikke satt opp» fordi vi mangler svar.`}
+          {failed === 1
+            ? 'Én tjeneste svarte ikke.'
+            : `${failed} tjenester svarte ikke.`}{' '}
+          Avvik kan mangle uten at siden sier fra.
         </Alert>
       )}
 
-      {/*
-        Filtrene er bare bøttene som faktisk har treff denne dagen. En knapp som
-        alltid gir null treff er en blindvei, og en dag uten avvik skal se ut som
-        en dag uten avvik.
-      */}
-      <Chips>
-        {(pending ? [] : presentBuckets(summary.counts)).map((bucket) => (
-          <Chips.Toggle
-            key={bucket}
-            selected={activeFilter === bucket}
-            onClick={() => setFilter(activeFilter === bucket ? null : bucket)}
-          >
-            {countLabel(bucket, summary.counts[bucket])}
-          </Chips.Toggle>
-        ))}
-        {activeFilter && (
-          <Chips.Removable onClick={() => setFilter(null)}>Vis alle</Chips.Removable>
-        )}
-      </Chips>
-
-      {pending && <Skeleton variant="rectangle" height="20rem" />}
-
-      {!pending && (
-        <Table size="small" zebraStripes={false}>
-          <Table.Header>
-            <Table.Row>
-              <Table.ColumnHeader scope="col">Tjeneste</Table.ColumnHeader>
-              <Table.ColumnHeader scope="col">Status denne dagen</Table.ColumnHeader>
-              <Table.ColumnHeader scope="col">Åpningstid</Table.ColumnHeader>
-              <Table.ColumnHeader scope="col">Melding til brukeren</Table.ColumnHeader>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {visible.map((entry) => (
-              <DayRow key={entry.serviceId} entry={entry} loggedIn={loggedIn} />
-            ))}
-          </Table.Body>
-        </Table>
+      {pending ? (
+        <Skeleton variant="rectangle" height="12rem" />
+      ) : deviations.length === 0 ? (
+        <Alert variant="success" size="small" inline={false}>
+          Alle tjenester følger sin vanlige timeplan denne dagen.
+        </Alert>
+      ) : (
+        <section aria-labelledby="oh-dev-heading" className="oh-day__section">
+          <Heading level="2" size="small" id="oh-dev-heading">
+            Avvik denne dagen
+          </Heading>
+          <Table size="small" zebraStripes={false}>
+            <Table.Header>
+              <Table.Row>
+                <Table.ColumnHeader scope="col">Tjeneste</Table.ColumnHeader>
+                <Table.ColumnHeader scope="col">Avvik</Table.ColumnHeader>
+                <Table.ColumnHeader scope="col">Denne dagen</Table.ColumnHeader>
+                <Table.ColumnHeader scope="col">Melding til brukeren</Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {deviations.map((entry) => (
+                <DeviationRow key={entry.serviceId} entry={entry} loggedIn={loggedIn} />
+              ))}
+            </Table.Body>
+          </Table>
+        </section>
       )}
 
-      {!pending && visible.length === 0 && (
-        <BodyShort>Ingen tjenester i denne kategorien denne dagen.</BodyShort>
+      {!pending && normal.length > 0 && (
+        <ExpansionCard size="small" aria-label="Tjenester som følger sin vanlige timeplan">
+          <ExpansionCard.Header>
+            <ExpansionCard.Title size="small">
+              Som vanlig ({normal.length}{' '}
+              {normal.length === 1 ? 'tjeneste' : 'tjenester'})
+            </ExpansionCard.Title>
+            <ExpansionCard.Description>
+              Disse følger timeplanen sin denne dagen. Åpne for å slå opp en bestemt tjeneste.
+            </ExpansionCard.Description>
+          </ExpansionCard.Header>
+          <ExpansionCard.Content>
+            <Table size="small" zebraStripes={false}>
+              <Table.Header>
+                <Table.Row>
+                  <Table.ColumnHeader scope="col">Tjeneste</Table.ColumnHeader>
+                  <Table.ColumnHeader scope="col">Åpningstid</Table.ColumnHeader>
+                  <Table.ColumnHeader scope="col">Normalt</Table.ColumnHeader>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {normal.map((row) => (
+                  <Table.Row key={row.serviceId}>
+                    <Table.HeaderCell scope="row">
+                      <AppLink to={`/t/${row.serviceId}`}>{row.serviceName}</AppLink>
+                      <Detail textColor="subtle">{row.team}</Detail>
+                    </Table.HeaderCell>
+                    <Table.DataCell>
+                      {row.status && row.day ? (
+                        <div className="oh-day__hours">
+                          <BodyShort size="small" weight="semibold">
+                            {row.status.allDay
+                              ? 'Døgnåpen'
+                              : row.status.label.replace('Åpen ', '')}
+                          </BodyShort>
+                          <span className="oh-sr-only">
+                            {statusAriaLabel(row.day, row.status)}
+                          </span>
+                          {(row.status.intervals.length > 0 || row.status.allDay) && (
+                            <OpeningBar
+                              intervals={row.status.intervals}
+                              allDay={row.status.allDay}
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <BodyShort size="small">Ukjent</BodyShort>
+                      )}
+                    </Table.DataCell>
+                    <Table.DataCell>
+                      <BodyShort size="small" textColor="subtle">
+                        {baselines.get(row.serviceId) ?? 'ukjent normalplan'}
+                      </BodyShort>
+                    </Table.DataCell>
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table>
+          </ExpansionCard.Content>
+        </ExpansionCard>
       )}
-
-      <SummaryLegend />
 
       <Detail textColor="subtle">
-        Rekkefølgen er ikke alfabetisk: uten oppsett først, deretter ustabile, stengte og åpne. Det
-        er avvikene som gjør at noen åpner denne siden.
-        {loggedIn && ' Regelnavnet under meldingen vises bare for innloggede.'}
+        «Normalt» er utledet av tjenestens egne regler: den timeplanen som gjentar seg hver uke.
+        Avvik er dagene som bryter med den.
+        {loggedIn && ' Regelnavnet vises bare for innloggede.'}
       </Detail>
     </div>
   );
 }
 
-function DayRow({ entry, loggedIn }: { entry: DayEntry; loggedIn: boolean }) {
-  const { status, day } = entry;
-  const badge = entry.bucket === 'unstable' ? null : BUCKET_STATUS[entry.bucket];
+function DeviationRow({ entry, loggedIn }: { entry: DeviationEntry; loggedIn: boolean }) {
+  const { deviation, day } = entry;
+  const status = deriveStatus(day);
 
   return (
     <Table.Row>
@@ -265,44 +307,40 @@ function DayRow({ entry, loggedIn }: { entry: DayEntry; loggedIn: boolean }) {
       </Table.HeaderCell>
 
       <Table.DataCell>
-        {/*
-          Merket er dekorativt, og hele statusen ligger i den skjulte teksten.
-          `aria-label` på en naken `span` gir ingen tilgjengelig navn — elementet
-          har ingen rolle å henge navnet på — så cellen ville vært tom for
-          skjermlesere. Teksten må stå som ekte innhold.
-        */}
-        <span className="oh-day__status">
-          {badge ? (
-            <StatusBadge kind={badge.kind} label={badge.label} size="small" decorative />
-          ) : (
-            <UnstableMark />
+        <span className={`oh-devmark oh-devchip--${deviation.kind}`}>
+          <BodyShort size="small" weight="semibold">
+            {DEVIATION_LABELS[deviation.kind]}
+          </BodyShort>
+          {deviation.normally && (
+            <BodyShort size="small" textColor="subtle">
+              {capitalize(deviation.normally)}
+            </BodyShort>
           )}
-          <span className="oh-sr-only">
-            {day && status ? statusAriaLabel(day, status) : `${entry.serviceName}: ikke satt opp`}
-          </span>
+          {deviation.unstable && deviation.kind !== 'unstable' && (
+            <BodyShort size="small" textColor="subtle">
+              Også markert som ustabil
+            </BodyShort>
+          )}
         </span>
       </Table.DataCell>
 
       <Table.DataCell>
-        {status ? (
-          <div className="oh-day__hours">
-            <BodyShort size="small" weight="semibold">
-              {status.allDay ? 'Døgnåpen' : status.label.replace('Åpen ', '')}
-            </BodyShort>
-            {(status.intervals.length > 0 || status.allDay) && (
-              <OpeningBar intervals={status.intervals} allDay={status.allDay} />
-            )}
-          </div>
-        ) : (
+        <div className="oh-day__hours">
           <BodyShort size="small" weight="semibold">
-            Ukjent
+            {deviation.summary}
           </BodyShort>
-        )}
+          {/* Full status som tekst: merket over er komprimert, og en skjermleser
+              skal ikke måtte sette sammen betydningen av to fragmenter. */}
+          <span className="oh-sr-only">{statusAriaLabel(day, status)}</span>
+          {(status.intervals.length > 0 || status.allDay) && (
+            <OpeningBar intervals={status.intervals} allDay={status.allDay} />
+          )}
+        </div>
       </Table.DataCell>
 
       <Table.DataCell>
         <div className="oh-day__message">
-          {day?.warningMessage || !day ? (
+          {day.warningMessage ? (
             <BodyShort size="small">Vi kan ikke si når tjenesten er åpen denne dagen.</BodyShort>
           ) : (
             <>
@@ -312,21 +350,26 @@ function DayRow({ entry, loggedIn }: { entry: DayEntry; loggedIn: boolean }) {
                 </BodyShort>
               )}
               {day.displayText && <BodyShort size="small">{day.displayText}</BodyShort>}
-              {status?.unstable && (
-                <BodyShort size="small">
-                  Perioden er markert som ustabil. Åpningstiden gjelder, men kan svikte.
-                </BodyShort>
-              )}
             </>
           )}
           {loggedIn && (
             <Detail textColor="subtle">
-              {day?.matchedRule ? `Regel: ${day.matchedRule.name}` : 'Regel: ingen regel traff'}
-              {day?.matchedRule && ` · ${formatRule(day.matchedRule.rule)}`}
+              {day.matchedRule ? `Regel: ${day.matchedRule.name}` : 'Regel: ingen regel traff'}
+              {day.matchedRule && ` · ${formatRule(day.matchedRule.rule)}`}
             </Detail>
           )}
         </div>
       </Table.DataCell>
     </Table.Row>
   );
+}
+
+function headline(deviations: number, total: number): string {
+  if (total === 0) return 'Ingen tjenester';
+  if (deviations === 0) return `${total} tjenester · alle som vanlig`;
+  return `${total} tjenester · ${deviations} avvik`;
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

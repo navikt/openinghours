@@ -1,0 +1,175 @@
+.oh-devmonth {
+  min-width: 0;
+}
+
+/* minmax(0, 1fr): uten den vokser sporene med innholdet, og et langt
+   tjenestenavn i én celle skyver hele rutenettet ut av bredden. */
+.oh-devmonth__grid,
+.oh-devmonth__headers {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.oh-devmonth__headers {
+  margin-bottom: 6px;
+}
+
+.oh-devmonth__header {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ax-text-neutral-subtle);
+  padding: 0 2px;
+}
+
+.oh-devcell {
+  min-width: 0;
+}
+
+.oh-devcell__link {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 104px;
+  padding: 6px 6px 8px;
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: 4px;
+  /* Normalen er stille: en dag uten avvik skal se ut som papir, ikke som en
+     knapp som venter på å bli trykket på. */
+  background: var(--ax-bg-default);
+  color: inherit;
+  text-decoration: none;
+}
+
+.oh-devcell__link:hover {
+  border-color: var(--ax-border-neutral);
+  background: var(--ax-bg-neutral-soft);
+}
+
+.oh-devcell__link:focus-visible {
+  outline: 3px solid var(--ax-border-focus);
+  outline-offset: 1px;
+}
+
+.oh-devcell--outside .oh-devcell__link {
+  opacity: 0.4;
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Dager med avvik løftes fra flaten. Rammen bærer signalet sammen med
+   innholdet i cellen, slik at den ikke er avhengig av farge alene. */
+.oh-devcell--has .oh-devcell__link {
+  background: var(--ax-bg-raised);
+  border-color: var(--ax-border-neutral);
+}
+
+.oh-devcell--today .oh-devcell__link {
+  border-width: 2px;
+  border-color: var(--ax-border-neutral-strong);
+  padding: 5px 5px 7px;
+}
+
+.oh-devcell__num {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.oh-devcell__today {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--ax-bg-neutral-strong);
+  color: var(--ax-text-neutral-contrast, #fff);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.oh-devcell__holiday {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--ax-text-danger-subtle, var(--ax-text-danger));
+  overflow-wrap: anywhere;
+}
+
+.oh-devcell--red .oh-devcell__num {
+  color: var(--ax-text-danger-subtle, var(--ax-text-danger));
+}
+
+.oh-devcell__list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.oh-devchip {
+  display: flex;
+  flex-direction: column;
+  border-left: 3px solid var(--ax-border-neutral);
+  padding: 1px 0 1px 5px;
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.oh-devchip__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oh-devchip__what {
+  color: var(--ax-text-neutral-subtle);
+  overflow-wrap: anywhere;
+}
+
+.oh-devcell__more {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.oh-devlegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ax-space-8);
+}
+
+/* Tegnforklaringens merker arver stripefargen fra chipsene over. */
+.oh-devlegend .oh-devchip--missing,
+.oh-devlegend .oh-devchip--closed,
+.oh-devlegend .oh-devchip--shorter,
+.oh-devlegend .oh-devchip--moved,
+.oh-devlegend .oh-devchip--longer,
+.oh-devlegend .oh-devchip--extra,
+.oh-devlegend .oh-devchip--unstable {
+  border-left-width: 4px;
+  border-left-style: solid;
+}
+
+@media (max-width: 900px) {
+  .oh-devmonth__header {
+    font-size: 0;
+  }
+
+  .oh-devmonth__header::first-letter {
+    font-size: 0.8125rem;
+  }
+
+  .oh-devcell__link {
+    min-height: 76px;
+  }
+
+  /* På smal skjerm er det ikke plass til hva som skjer, bare til at noe skjer. */
+  .oh-devchip__what,
+  .oh-devcell__holiday {
+    display: none;
+  }
+}
