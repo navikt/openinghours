@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import type { Config } from './config.ts';
-import { isLoggedIn } from './auth.ts';
+import { isAdmin, isLoggedIn } from './auth.ts';
 import { maskResponse } from './masking.ts';
 
 /**
@@ -57,27 +57,52 @@ const FORBIDDEN_PARAMS = new Set(['confirm']);
  *   som i dag, bak `ansatt.nav.no` — krever alt innlogging. Sjekken er da
  *   forsvar i dybden mot kall som omgår Wonderwall-sidecaren.
  */
+/** Ba forespørselen om noe som krever admintilgang? Styrer 403 mot 404. */
+function isAdminRequest(path: string, method: string): boolean {
+  if (!SAFE_METHODS.has(method)) return MUTABLE_ROUTES.some((r) => r.test(path));
+  return ADMIN_ROUTES.some((r) => r.test(path));
+}
+
 export function isAllowed(
   path: string,
   method: string,
   loggedIn: boolean,
   publicAccess = false,
+  admin = false,
 ): boolean {
-  // Alt som endrer data krever innlogging, uten unntak.
+  // Alt som endrer data krever medlemskap i admingruppen, uten unntak.
   if (!SAFE_METHODS.has(method)) {
-    return loggedIn && MUTABLE_ROUTES.some((r) => r.test(path));
+    return admin && MUTABLE_ROUTES.some((r) => r.test(path));
   }
   if (CALENDAR_ROUTES.some((r) => r.test(path))) return loggedIn || publicAccess;
-  if (ADMIN_ROUTES.some((r) => r.test(path))) return loggedIn;
+  /*
+   * Adminrutene er lesing av regler og grupper. Vi krever admin også her: uten
+   * skrivetilgang er sidene likevel uten nytte, og oppsettet skal ikke kunne
+   * kartlegges av alle ansatte.
+   */
+  if (ADMIN_ROUTES.some((r) => r.test(path))) return admin;
   return false;
 }
 
 export function createProxy(config: Config) {
   return async function proxy(req: Request, res: Response): Promise<void> {
     const loggedIn = isLoggedIn(req);
+    const admin = isAdmin(req, config.adminGroupId);
     const path = req.path;
 
-    if (!isAllowed(path, req.method, loggedIn, config.publicAccess)) {
+    if (!isAllowed(path, req.method, loggedIn, config.publicAccess, admin)) {
+      /*
+       * Innlogget uten admintilgang gir 403, ikke 404: brukeren finnes og ba om
+       * noe som finnes, og en «fant ikke»-melding ville sendt hen på leting
+       * etter en feil som ikke er der.
+       */
+      const forbidden = loggedIn && !admin && isAdminRequest(path, req.method);
+      if (forbidden) {
+        res.status(403).json({
+          message: 'Du har ikke tilgang til å administrere åpningstider.',
+        });
+        return;
+      }
       res.status(loggedIn ? 404 : 401).json({
         message: loggedIn
           ? 'Fant ikke ressursen.'

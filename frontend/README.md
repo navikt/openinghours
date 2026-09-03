@@ -59,6 +59,7 @@ Legg dem i `frontend/.env` (ikke sjekk inn filen).
 | `PORT` | `3000` | Porten BFF-en lytter på |
 | `STATIC_DIR` | `../client/dist` | Hvor de bygde klientfilene ligger |
 | `PUBLIC_ACCESS` | `false` | Om kalenderen er åpen for uinnloggede. Se «Tilgang» |
+| `ADMIN_GROUP_ID` | tom | Entra ID-gruppen som gir admintilgang. Tom = alle innloggede er admin |
 
 Standardverdien for `API_KEY` matcher `../backend/env.local`.
 
@@ -174,8 +175,41 @@ De aktiveres av tre samtidige endringer:
 3. `PUBLIC_ACCESS` → `"true"`
 
 Innloggingssjekkene i BFF-en gjelder uansett. De er forsvar i dybden mot kall
-som omgår sidecaren, for eksempel pod-til-pod inne i clusteret. Admin krever
-innlogging i begge moduser.
+som omgår sidecaren, for eksempel pod-til-pod inne i clusteret.
+
+### Hvem får administrere?
+
+Å **se** kalenderen krever bare innlogging. Å **endre** åpningstider krever i
+tillegg medlemskap i en Entra ID-gruppe:
+
+```
+01a18f07-4dc7-4426-a407-09a1021dc024
+```
+
+Gruppen må stå **to steder** i `.nais/nais.yaml`, og oppsettet virker ikke med
+bare det ene:
+
+1. `azure.application.claims.groups` — får Entra ID til å legge gruppen i
+   `groups`-claimet i tokenet
+2. `ADMIN_GROUP_ID` under `env` — forteller BFF-en hvilken gruppe den skal se
+   etter
+
+`allowAllUsers: true` beholdes ved siden av. Kombinasjonen er Nais' anbefalte
+mønster når alle skal slippe inn, men bare noen skal ha utvidede rettigheter:
+alle ansatte autentiseres og kan se kalenderen, mens `groups`-claimet avgjør
+hvem som i tillegg er admin.
+
+**Kun direkte medlemskap teller.** Er en bruker medlem gjennom en nestet gruppe,
+kommer ikke gruppe-ID-en med i tokenet, og hen blir ikke admin.
+
+Sperren håndheves i BFF-en (`isAdmin` i `auth.ts`, brukt av `isAllowed` i
+`proxy.ts`), som avviser både lesing og skriving på adminrutene med `403`.
+Grensesnittet skjuler i tillegg adminlenken og viser en forklaring på
+`/admin` — men det er kosmetikk, ikke sikkerhet.
+
+Settes `ADMIN_GROUP_ID` til tom streng, er alle innloggede admin. Det er
+oppførselen appen hadde før gruppestyringen, og den holder lokal utvikling
+kjørbar uten en ekte Entra ID-gruppe.
 
 ## Status
 

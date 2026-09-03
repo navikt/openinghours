@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { Alert, BodyShort, Heading, Link } from '@navikt/ds-react';
 import { useSession } from '../../hooks/queries';
 import { DelayedLoader } from '../common/DelayedLoader';
+import { AppLink } from '../common/AppLink';
 import './AdminLayout.css';
 
 const LINKS = [
@@ -33,6 +34,25 @@ export function AdminLayout() {
           Endringer i åpningstider krever at du logger inn som Nav-ansatt.
         </BodyShort>
         <Link href="/oauth2/login">Logg inn som ansatt</Link>
+      </Alert>
+    );
+  }
+
+  /*
+   * Innlogget, men utenfor admingruppen. Vi sier hvem som har tilgang framfor
+   * bare å nekte — ellers vet ikke brukeren hva neste steg er.
+   */
+  if (!session.data.isAdmin) {
+    return (
+      <Alert variant="warning">
+        <Heading level="2" size="small" spacing>
+          Du har ikke tilgang til administrasjon
+        </Heading>
+        <BodyShort spacing>
+          Å endre åpningstider krever medlemskap i tilgangsgruppen for
+          åpningstidsadministrasjon. Ta kontakt med teamet som eier tjenesten for å få tilgang.
+        </BodyShort>
+        <AppLink to="/">Gå til kalenderen</AppLink>
       </Alert>
     );
   }

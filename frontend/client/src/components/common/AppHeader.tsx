@@ -4,12 +4,16 @@ import { useSession } from '../../hooks/queries';
 import './AppHeader.css';
 
 /**
- * Adminlenker og interne snarveier rendres ikke når brukeren er uinnlogget.
+ * Adminlenker og interne snarveier rendres ikke når brukeren mangler tilgang.
  * De skjules ikke med CSS — de finnes ikke i DOM-en.
+ *
+ * «Administrasjon» krever medlemskap i admingruppen, ikke bare innlogging: en
+ * lenke som alltid ender i «du har ikke tilgang» er verre enn ingen lenke.
  */
 export function AppHeader() {
   const session = useSession();
   const loggedIn = session.data?.loggedIn ?? false;
+  const isAdmin = session.data?.isAdmin ?? false;
 
   return (
     <InternalHeader>
@@ -19,9 +23,11 @@ export function AppHeader() {
       <Spacer />
       {loggedIn ? (
         <>
-          <InternalHeader.Button as={Link} to="/admin">
-            Administrasjon
-          </InternalHeader.Button>
+          {isAdmin && (
+            <InternalHeader.Button as={Link} to="/admin">
+              Administrasjon
+            </InternalHeader.Button>
+          )}
           <InternalHeader.User name={session.data?.name ?? 'Innlogget'} />
           {/* Wonderwall eier sesjonen, så utlogging må gå via sidecaren og kan
               ikke være en ren klientrute. */}

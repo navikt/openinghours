@@ -4,7 +4,7 @@ import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { loadConfig, type Config } from './config.ts';
-import { getUser } from './auth.ts';
+import { getUser, isAdmin } from './auth.ts';
 import { createProxy } from './proxy.ts';
 
 export function createApp(config: Config) {
@@ -40,7 +40,13 @@ export function createApp(config: Config) {
 
   app.get('/me', (req, res) => {
     const user = getUser(req);
-    res.json(user ? { loggedIn: true, name: user.name } : { loggedIn: false });
+    // `isAdmin` styrer bare hva klienten viser. Selve sperren ligger i proxyen,
+    // som avviser adminkall uavhengig av hva klienten tror.
+    res.json(
+      user
+        ? { loggedIn: true, name: user.name, isAdmin: isAdmin(req, config.adminGroupId) }
+        : { loggedIn: false, isAdmin: false },
+    );
   });
 
   app.use(
