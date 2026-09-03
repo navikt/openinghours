@@ -42,14 +42,29 @@ spec:
     #   3. PUBLIC_ACCESS → "true"
     - name: PUBLIC_ACCESS
       value: "false"
+    # Entra ID-gruppen som gir tilgang til administrasjon. Må være den samme
+    # som under `claims.groups` — uten at gruppen står begge steder blir ingen
+    # admin: den ene siden ber om claimet, den andre sjekker det.
+    - name: ADMIN_GROUP_ID
+      value: "01a18f07-4dc7-4426-a407-09a1021dc024"
   azure:
     application:
       enabled: true
-      # Alle Nav-ansatte skal kunne se kalenderen. Tilgangsstyringen ligger i
-      # selve domenet: ansatt.nav.no slipper bare gjennom autentiserte brukere
-      # på godkjente enheter.
+      # Alle Nav-ansatte skal kunne se kalenderen. Tilgangsstyringen for lesing
+      # ligger i selve domenet: ansatt.nav.no slipper bare gjennom autentiserte
+      # brukere på godkjente enheter.
       allowAllUsers: true
       tenant: nav.no
+      # Å endre åpningstider er derimot begrenset til én gruppe. Kombinasjonen
+      # `allowAllUsers` + `claims.groups` er Nais' anbefalte mønster når alle
+      # skal slippe inn, men bare noen skal ha utvidede rettigheter: alle
+      # autentiseres, og `groups`-claimet forteller appen hvem som er hvem.
+      #
+      # NB: kun *direkte* medlemskap teller. Er en bruker medlem via en nestet
+      # gruppe, kommer ikke gruppe-ID-en med i tokenet, og hen blir ikke admin.
+      claims:
+        groups:
+          - id: "01a18f07-4dc7-4426-a407-09a1021dc024"
     sidecar:
       # Wonderwall terminerer Entra ID-flyten før requesten når appen, så alle
       # innkommende forespørsler er innlogget. Appen har derfor ingen

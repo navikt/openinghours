@@ -86,4 +86,11 @@ export interface GroupAssociations {
 export interface Session {
   loggedIn: boolean;
   name?: string;
+  /**
+   * Er brukeren medlem av admingruppen?
+   *
+   * Styrer kun hva grensesnittet viser. Selve sperren ligger i BFF-en, som
+   * avviser adminkall uavhengig av hva klienten tror.
+   */
+  isAdmin?: boolean;
 }

@@ -25,6 +25,15 @@ export interface Config {
    * interne åpningstider maskeres for uinnloggede.
    */
   publicAccess: boolean;
+  /**
+   * Entra ID-gruppen som gir tilgang til administrasjon.
+   *
+   * Tom streng betyr «alle innloggede er admin». Det er oppførselen appen hadde
+   * før gruppestyringen, og den holder lokal utvikling kjørbar uten en ekte
+   * gruppe. I prod settes den i nais.yaml, og gruppen må samtidig ligge i
+   * `azure.application.claims.groups` — ellers kommer den aldri i tokenet.
+   */
+  adminGroupId: string;
 }
 
 export function loadConfig(): Config {
@@ -37,5 +46,6 @@ export function loadConfig(): Config {
     staticDir: process.env.STATIC_DIR ?? '../client/dist',
     serveStatic: !isDev,
     publicAccess: process.env.PUBLIC_ACCESS === 'true',
+    adminGroupId: process.env.ADMIN_GROUP_ID ?? '',
   };
 }

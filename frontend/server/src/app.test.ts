@@ -11,6 +11,9 @@ import type { Config } from './config.ts';
  * der lytting på porter er blokkert.
  */
 
+/** Samme gruppe som i nais.yaml. Medlemskap her er det som gir admintilgang. */
+const ADMIN_GROUP = '01a18f07-4dc7-4426-a407-09a1021dc024';
+
 const config: Config = {
   port: 0,
   backendUrl: 'http://backend.test',
@@ -19,6 +22,7 @@ const config: Config = {
   serveStatic: false,
   // Slik appen kjører i dag: bak ansatt.nav.no, alt krever innlogging.
   publicAccess: false,
+  adminGroupId: ADMIN_GROUP,
 };
 
 const app = createApp(config);
@@ -54,9 +58,17 @@ async function call(url: string, options: CallOptions = {}) {
   };
 }
 
-/** Token uten gyldig signatur — BFF-en validerer ikke selv, Wonderwall står foran. */
-function authHeader(name: string): Record<string, string> {
-  const payload = Buffer.from(JSON.stringify({ name }), 'utf8').toString('base64url');
+/**
+ * Token uten gyldig signatur — BFF-en validerer ikke selv, Wonderwall står foran.
+ *
+ * Standard er en bruker *med* admintilgang, slik at testene av selve proxyingen
+ * handler om proxying. Send `groups: []` for en innlogget uten tilgang.
+ */
+function authHeader(
+  name: string,
+  groups: string[] = [ADMIN_GROUP],
+): Record<string, string> {
+  const payload = Buffer.from(JSON.stringify({ name, groups }), 'utf8').toString('base64url');
   return { authorization: `Bearer header.${payload}.signature` };
 }
 
@@ -99,12 +111,17 @@ describe('infrastruktur', () => {
 describe('/me', () => {
   it('rapporterer utlogget uten Authorization-header', async () => {
     const res = await call('/me');
-    expect(res.body).toEqual({ loggedIn: false });
+    expect(res.body).toEqual({ loggedIn: false, isAdmin: false });
   });
 
   it('leser navnet ut av tokenet fra Wonderwall', async () => {
     const res = await call('/me', { headers: authHeader('Kari Nordmann') });
-    expect(res.body).toEqual({ loggedIn: true, name: 'Kari Nordmann' });
+    expect(res.body).toEqual({ loggedIn: true, name: 'Kari Nordmann', isAdmin: true });
+  });
+
+  it('melder fra når en innlogget står utenfor admingruppen', async () => {
+    const res = await call('/me', { headers: authHeader('Ola Nordmann', []) });
+    expect(res.body).toEqual({ loggedIn: true, name: 'Ola Nordmann', isAdmin: false });
   });
 });
 
@@ -161,13 +178,37 @@ describe('proxy-tilgang', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('slipper gjennom admin-ruter for innloggede', async () => {
+  it('slipper gjennom admin-ruter for medlemmer av admingruppen', async () => {
     const fetchMock = mockUpstream([{ id: 'r1', name: 'Ordinær åpningstid' }]);
 
     const res = await call('/api/openinghours/rule', { headers: authHeader('Kari') });
 
     expect(res.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it('gir 403, ikke 404, til innloggede utenfor admingruppen', async () => {
+    const fetchMock = mockUpstream([]);
+
+    const res = await call('/api/openinghours/rule', { headers: authHeader('Ola', []) });
+
+    expect(res.status).toBe(403);
+    expect((res.body as { message: string }).message).toMatch(/ikke tilgang/i);
+    // Kallet skal stoppes i BFF-en, ikke sendes videre og avvises av backend.
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('stopper mutasjoner fra innloggede utenfor admingruppen', async () => {
+    const fetchMock = mockUpstream({});
+
+    const res = await call('/api/openinghours/rule', {
+      method: 'POST',
+      headers: authHeader('Ola', []),
+      query: { name: 'Ny regel', rule: '??.??.???? ? 1-5 08:00-15:30' },
+    });
+
+    expect(res.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('blokkerer alle mutasjoner for utloggede, også på offentlige ruter', async () => {
