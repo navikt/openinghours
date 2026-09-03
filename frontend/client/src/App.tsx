@@ -5,6 +5,8 @@ import { AppHeader } from './components/common/AppHeader';
 import { DelayedLoader } from './components/common/DelayedLoader';
 import { CalendarPage } from './pages/CalendarPage';
 import { ComparePage } from './pages/ComparePage';
+import { DayPage } from './pages/DayPage';
+import { LandingPage } from './pages/LandingPage';
 import { ServiceOverviewPage } from './pages/ServiceOverviewPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -44,7 +46,9 @@ export function App() {
       <Page.Block as="main" width="xl" gutters className="oh-main">
         <Suspense fallback={<DelayedLoader />}>
           <Routes>
-            <Route path="/" element={<ServiceOverviewPage />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/dag/:dato" element={<DayPage />} />
+            <Route path="/tjenester" element={<ServiceOverviewPage />} />
             <Route path="/t/:serviceId" element={<CalendarPage />} />
             <Route path="/sammenlign" element={<ComparePage />} />
             <Route path="/admin" element={<AdminLayout />}>

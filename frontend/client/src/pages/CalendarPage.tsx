@@ -139,7 +139,7 @@ export function CalendarPage() {
 
   return (
     <div className="oh-page">
-      <AppLink to="/" className="oh-back">
+      <AppLink to="/tjenester" className="oh-back">
         <ArrowLeftIcon aria-hidden /> Tilbake til alle tjenester
       </AppLink>
 
