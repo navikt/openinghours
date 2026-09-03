@@ -1,6 +1,6 @@
 import type { DayStatus } from '../../lib/status';
 import { OpeningBar } from './OpeningBar';
-import { NowIndicator, StatusBadge } from './StatusBadge';
+import { NowIndicator, StatusBadge, UnstableMark } from './StatusBadge';
 import './DayCell.css';
 
 interface Props {
@@ -70,6 +70,7 @@ export function DayCell({
       <OpeningBar intervals={status?.intervals ?? []} allDay={status?.allDay} />
 
       {status && <StatusBadge kind={status.kind} label={status.label} size="small" decorative />}
+      {status?.unstable && <UnstableMark />}
       {status?.detail && <span className="oh-day__detail">{status.detail}</span>}
       {isToday && status && <NowIndicator isOpen={nowIsOpen} />}
     </div>

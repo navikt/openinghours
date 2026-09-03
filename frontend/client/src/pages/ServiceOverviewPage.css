@@ -33,3 +33,10 @@
     width: 100%;
   }
 }
+
+.oh-overview__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ax-space-8);
+  flex-wrap: wrap;
+}

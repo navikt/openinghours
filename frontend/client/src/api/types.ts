@@ -35,6 +35,8 @@ export interface QueryResponse {
   displayHeader: string | null;
   displayText: string | null;
   onlyShowForNavEmployees: boolean;
+  /** Fagansvarlig har flagget perioden som ustabil. Åpningstiden gjelder, men kan svikte. */
+  unstableOpeningHours: boolean;
   redDay: boolean;
   matchedRule?: MatchedRule;
   warningMessage?: string;
@@ -53,6 +55,7 @@ export interface DailyCacheResponse {
   displayHeader: string | null;
   displayText: string | null;
   onlyShowForNavEmployees: boolean;
+  unstableOpeningHours: boolean;
   redDay: boolean;
   ruleName: string | null;
   rule: string | null;
@@ -72,6 +75,7 @@ export interface Rule {
   header: string | null;
   text: string | null;
   onlyShowForNavEmployees: boolean;
+  unstableOpeningHours: boolean;
   redDay: boolean;
   createdAt: string;
   /** `null` betyr at regelen aldri har blitt endret etter opprettelsen. */

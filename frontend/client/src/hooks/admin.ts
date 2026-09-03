@@ -38,6 +38,10 @@ function ruleParams(input: RuleInput): Record<string, string | undefined> {
       input.onlyShowForNavEmployees === undefined
         ? undefined
         : String(input.onlyShowForNavEmployees),
+    unstableOpeningHours:
+      input.unstableOpeningHours === undefined
+        ? undefined
+        : String(input.unstableOpeningHours),
   };
 }
 
@@ -47,6 +51,7 @@ export interface RuleInput {
   header?: string | null;
   text?: string | null;
   onlyShowForNavEmployees?: boolean;
+  unstableOpeningHours?: boolean;
 }
 
 export interface ServiceInput {

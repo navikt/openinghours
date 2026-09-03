@@ -2,7 +2,7 @@ import { ChevronRightIcon } from '@navikt/aksel-icons';
 import type { QueryResponse } from '../../api/types';
 import { weekdayShort } from '../../lib/date';
 import { deriveStatus, statusAriaLabel } from '../../lib/status';
-import { NowIndicator, StatusBadge } from './StatusBadge';
+import { NowIndicator, StatusBadge, UnstableMark } from './StatusBadge';
 import './AgendaList.css';
 
 interface Props {
@@ -44,6 +44,7 @@ export function AgendaList({ days, today, nowIsOpen, onSelect }: Props) {
               </span>
               <span className="oh-agenda__body">
                 <StatusBadge kind={status.kind} label={status.label} decorative />
+                {status.unstable && <UnstableMark />}
                 {status.detail && <span className="oh-agenda__detail">{status.detail}</span>}
                 {isToday && <NowIndicator isOpen={nowIsOpen} />}
               </span>

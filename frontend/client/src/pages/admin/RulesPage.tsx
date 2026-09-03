@@ -21,7 +21,7 @@ import { validateRule } from '../../lib/validate';
 import './RulesPage.css';
 import { AppLink } from '../../components/common/AppLink';
 
-type Flag = 'alle' | 'ansatte' | 'ubrukt' | 'ugyldig';
+type Flag = 'alle' | 'ansatte' | 'ustabil' | 'ubrukt' | 'ugyldig';
 
 /** Hvor mange grupper bruker hver regel? Gruppene bærer koblingen selv. */
 function usageCount(groups: OhGroup[]): Map<string, number> {
@@ -49,6 +49,7 @@ export function RulesPage() {
       .filter((rule) => {
         if (needle && !`${rule.name} ${rule.rule}`.toLowerCase().includes(needle)) return false;
         if (flag === 'ansatte') return rule.onlyShowForNavEmployees;
+        if (flag === 'ustabil') return rule.unstableOpeningHours;
         if (flag === 'ubrukt') return (counts.get(rule.id) ?? 0) === 0;
         if (flag === 'ugyldig') return validateRule(rule.rule) !== null;
         return true;
@@ -101,6 +102,7 @@ export function RulesPage() {
         >
           <option value="alle">Alle regler</option>
           <option value="ansatte">Kun for Nav-ansatte</option>
+          <option value="ustabil">Ustabil periode</option>
           <option value="ubrukt">Ikke i bruk</option>
           <option value="ugyldig">Uttrykket kan ikke tolkes</option>
         </Select>
@@ -160,6 +162,11 @@ function RuleRow({ rule, usedIn }: { rule: Rule; usedIn: number }) {
           {rule.onlyShowForNavEmployees && (
             <Tag size="small" variant="alt3">
               Kun for Nav-ansatte
+            </Tag>
+          )}
+          {rule.unstableOpeningHours && (
+            <Tag size="small" variant="warning">
+              Ustabil
             </Tag>
           )}
           {usedIn === 0 && (

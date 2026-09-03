@@ -19,7 +19,7 @@ import { deriveStatus, statusAriaLabel } from '../lib/status';
 import { useNow } from '../hooks/useNow';
 import { AppLink } from '../components/common/AppLink';
 import { OpeningBar, TimeAxis } from '../components/calendar/OpeningBar';
-import { StatusBadge } from '../components/calendar/StatusBadge';
+import { StatusBadge, UnstableMark } from '../components/calendar/StatusBadge';
 import { DelayedLoader } from '../components/common/DelayedLoader';
 import { ErrorState } from '../components/common/ErrorState';
 import './ComparePage.css';
@@ -250,6 +250,7 @@ export function ComparePage() {
                             size="small"
                             decorative
                           />
+                          {status.unstable && <UnstableMark />}
                           {status.detail && (
                             <Detail as="span" textColor="subtle">
                               {status.detail}

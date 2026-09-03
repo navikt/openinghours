@@ -10,6 +10,7 @@ const rule = (id: string, name: string, expr = '??.??.???? ? 1-5 08:00-15:30'): 
   text: null,
   onlyShowForNavEmployees: false,
   redDay: false,
+  unstableOpeningHours: false,
   createdAt: '2026-01-01T09:00:00Z',
   updatedAt: null,
 });

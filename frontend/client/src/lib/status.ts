@@ -20,6 +20,13 @@ export interface DayStatus {
   allDay: boolean;
   /** Navnet på helligdagen, når datoen er en offisiell rød dag. */
   holiday: string | null;
+  /**
+   * Fagansvarlig har flagget perioden som ustabil.
+   *
+   * Dette er ikke en egen status, men et tillegg til den: en dag kan være både
+   * åpen og ustabil. Åpningstiden gjelder fortsatt — den kan bare ikke garanteres.
+   */
+  unstable: boolean;
 }
 
 export interface Interval {
@@ -57,6 +64,15 @@ function weekendDetail(dateIso: string): string | null {
 }
 
 export function deriveStatus(day: QueryResponse): DayStatus {
+  /*
+   * Ustabilitet er ortogonalt til status: den sier ikke *om* tjenesten er åpen,
+   * men hvor mye åpningstiden kan stoles på. Derfor settes flagget ett sted her,
+   * framfor å gjentas i hver av grenene under.
+   */
+  return { ...baseStatus(day), unstable: day.unstableOpeningHours === true };
+}
+
+function baseStatus(day: QueryResponse): Omit<DayStatus, 'unstable'> {
   const holiday = day.redDay ? holidayName(day.date) : null;
   const intervals = toIntervals(day);
   const hours = `${trimSeconds(day.openingTime)}-${trimSeconds(day.closingTime)}`;
@@ -164,5 +180,7 @@ export function statusAriaLabel(day: QueryResponse, status: DayStatus): string {
       parts.push('intern åpningstid, krever innlogging');
       break;
   }
+  // Må med i teksten: ellers ville merket vært synlig, men usynlig for skjermleser.
+  if (status.unstable) parts.push('merket som ustabil periode');
   return parts.join(', ');
 }

@@ -3,7 +3,7 @@ import type { QueryResponse } from '../../api/types';
 import { deriveStatus, statusAriaLabel } from '../../lib/status';
 import { formatRule } from '../../lib/rule';
 import { formatDateLong, weekDays, weekdayName } from '../../lib/date';
-import { StatusBadge, NowIndicator } from './StatusBadge';
+import { StatusBadge, NowIndicator, UnstableMark } from './StatusBadge';
 import { OpeningBar, TimeAxis } from './OpeningBar';
 import './WeekView.css';
 
@@ -88,6 +88,7 @@ export function WeekView({
                       />
                       <span className="oh-week__status">
                         <StatusBadge kind={status.kind} label={status.label} size="small" decorative />
+                        {status.unstable && <UnstableMark />}
                         {status.detail && (
                           <Detail as="span" textColor="subtle">
                             {status.detail}
