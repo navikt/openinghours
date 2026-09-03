@@ -156,22 +156,23 @@ describe('deviationOf', () => {
     expect(deviationOf(day('2025-05-19', '08:00-15:30'), baseline)).toBeNull();
   });
 
-  it('nevner bare den enden som er flyttet', () => {
+  it('oppgir åpningstiden som gjelder, ikke hva som er endret', () => {
+    // Setningen skal kunne leses alene: den som lurer på om hun rekker innom
+    // skal slippe å huske normalen og regne ut svaret selv.
     expect(deviationOf(day('2025-05-19', '08:00-12:00'), baseline)).toMatchObject({
       kind: 'shorter',
-      summary: 'Stenger 12:00',
-      normally: 'normalt 08:00–15:30',
+      summary: 'Åpent 08:00–12:00',
     });
     expect(deviationOf(day('2025-05-19', '10:00-15:30'), baseline)).toMatchObject({
       kind: 'shorter',
-      summary: 'Åpner 10:00',
+      summary: 'Åpent 10:00–15:30',
     });
   });
 
   it('skiller lenger åpent fra kortere', () => {
     expect(deviationOf(day('2025-05-19', '08:00-20:00'), baseline)).toMatchObject({
       kind: 'longer',
-      summary: 'Stenger 20:00',
+      summary: 'Åpent 08:00–20:00',
     });
   });
 
@@ -199,7 +200,6 @@ describe('deviationOf', () => {
     expect(deviationOf(day('2025-05-17', '10:00-14:00'), weekend)).toMatchObject({
       kind: 'extra',
       summary: 'Åpent 10:00–14:00',
-      normally: 'normalt stengt',
     });
   });
 
@@ -224,7 +224,7 @@ describe('åpningstider over midnatt', () => {
   it('melder stenging av en nattåpen tjeneste', () => {
     expect(deviationOf(day('2025-05-19', '00:00-00:00'), night)).toMatchObject({
       kind: 'closed',
-      normally: 'normalt 22:00–02:00',
+      summary: 'Stengt hele dagen',
     });
   });
 
@@ -233,7 +233,7 @@ describe('åpningstider over midnatt', () => {
     // sluttidspunktet ville dette blitt lest som lengre åpent.
     expect(deviationOf(day('2025-05-19', '22:00-01:00'), night)).toMatchObject({
       kind: 'shorter',
-      summary: 'Stenger 01:00',
+      summary: 'Åpent 22:00–01:00',
     });
     expect(deviationOf(day('2025-05-19', '22:00-03:00'), night)).toMatchObject({
       kind: 'longer',

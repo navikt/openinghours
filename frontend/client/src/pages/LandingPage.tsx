@@ -113,8 +113,8 @@ export function LandingPage() {
           Avvik i åpningstidene
         </Heading>
         <BodyLong size="large">
-          Kalenderen viser bare dagene som bryter med tjenestenes normale åpningstider. Er en dag
-          tom, er alt som det pleier.
+          Her står dagene tjenestene er stengt eller har andre åpningstider enn vanlig. Er en dag
+          tom, skjer det ingenting du trenger å vite om.
         </BodyLong>
       </div>
 
@@ -266,10 +266,7 @@ function DeviationLine({ entry, withDate = false }: { entry: DeviationEntry; wit
         )}
         <AppLink to={`/t/${entry.serviceId}`}>{entry.serviceName}</AppLink>
       </span>
-      <span className="oh-devline__what">
-        {entry.deviation.summary}
-        {entry.deviation.normally && ` · ${entry.deviation.normally}`}
-      </span>
+      <span className="oh-devline__what">{entry.deviation.summary}</span>
       {/* Kun for skjermlesere: fargestripen til venstre sier det samme visuelt. */}
       <span className="oh-sr-only">{DEVIATION_LABELS[entry.deviation.kind]}</span>
     </li>

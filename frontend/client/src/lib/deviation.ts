@@ -211,10 +211,14 @@ export const DEVIATION_LABELS: Record<DeviationKind, string> = {
 
 export interface Deviation {
   kind: DeviationKind;
-  /** Hva som gjelder denne dagen, f.eks. «Stenger 12:00». */
+  /**
+  * Åpningstiden denne dagen, f.eks. «Åpent 08:00–12:00».
+  *
+  * Setningen står på egne bein. Normalplanen er *filteret* som avgjør om dagen
+  * er verdt å vise, men den nevnes ikke: den som leser vil vite om hun rekker
+  * innom fredag, ikke hva regelen pleier å si.
+  */
   summary: string;
-  /** Hva som pleier å gjelde, f.eks. «normalt 08:00–15:30». `null` når vi ikke vet. */
-  normally: string | null;
   /** Ustabilitet er et tillegg til avviket, ikke et alternativ til det. */
   unstable: boolean;
   /** Navnet på helligdagen, når dagen er rød. */
@@ -243,7 +247,6 @@ export function deviationOf(day: QueryResponse, baseline: Baseline): Deviation |
       return {
         kind: 'unstable',
         summary: 'Ustabile åpningstider',
-        normally: null,
         unstable: true,
         holiday,
       };
@@ -254,8 +257,7 @@ export function deviationOf(day: QueryResponse, baseline: Baseline): Deviation |
   const kind = classify(actual, normal);
   return {
     kind,
-    summary: summarize(actual, normal, kind, holiday),
-    normally: `normalt ${describeSignature(normal)}`,
+    summary: summarize(actual, holiday),
     unstable,
     holiday,
   };
@@ -282,27 +284,13 @@ function classify(actual: DaySignature, normal: DaySignature): DeviationKind {
 /**
  * Setningen som står i kalendercellen.
  *
- * Den nevner *endringen*, ikke hele åpningstiden: «Stenger 12:00» er det leseren
- * trenger å vite når normalen er 08:00–15:30. Full åpningstid tas med først når
- * begge ender er flyttet, for da er endringen faktisk hele intervallet.
+ * Den sier hva som gjelder denne dagen, ikke hva som er endret. «Stenger 12:00»
+ * er kortere, men krever at leseren husker at normalen er 08:00–15:30 — og da
+ * må hun regne ut svaret selv. «Åpent 08:00–12:00» er hele svaret med én gang.
  */
-function summarize(
-  actual: DaySignature,
-  normal: DaySignature,
-  kind: DeviationKind,
-  holiday: string | null,
-): string {
+function summarize(actual: DaySignature, holiday: string | null): string {
   if (actual.kind === 'closed') return holiday ? `Stengt · ${holiday}` : 'Stengt hele dagen';
   if (actual.kind === 'allDay') return 'Døgnåpent';
-  if (normal.kind !== 'open') return `Åpent ${describeSignature(actual)}`;
-
-  if (kind === 'moved') return `Åpent ${describeSignature(actual)}`;
-  if (actual.from !== normal.from && actual.to === normal.to) {
-    return `Åpner ${formatMinutes(actual.from)}`;
-  }
-  if (actual.to !== normal.to && actual.from === normal.from) {
-    return `Stenger ${formatMinutes(actual.to)}`;
-  }
   return `Åpent ${describeSignature(actual)}`;
 }
 

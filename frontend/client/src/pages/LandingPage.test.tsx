@@ -133,7 +133,7 @@ describe('LandingPage', () => {
     expect(screen.queryByText(/Stengt hele dagen/)).not.toBeInTheDocument();
   });
 
-  it('viser tidlig stenging som avvik, med normalen ved siden av', async () => {
+  it('viser tidlig stenging som avvik, med åpningstiden som gjelder', async () => {
     mockApi({
       s1: monthOfDays('s1', {
         '2025-05-13': day('s1', '2025-05-13', '08:00-12:00', {
@@ -145,8 +145,9 @@ describe('LandingPage', () => {
     renderPage(<LandingPage />);
 
     expect(await screen.findByText('Ett avvik i dag')).toBeInTheDocument();
-    expect(screen.getAllByText(/Stenger 12:00/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/normalt 08:00–15:30/).length).toBeGreaterThan(0);
+    // Ikke «stenger fire timer tidligere»: klokkeslettene som faktisk gjelder.
+    expect(screen.getAllByText('Åpent 08:00–12:00').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/normalt/)).not.toBeInTheDocument();
   });
 
   it('lister kommende avvik med dato', async () => {
@@ -237,7 +238,7 @@ describe('DayPage', () => {
     renderPage(<DayPage />, '/dag/2025-05-14');
 
     expect(
-      await screen.findByText('Alle tjenester følger sin vanlige timeplan denne dagen.'),
+      await screen.findByText('Ingen avvik denne dagen. Alle tjenester er åpne som vanlig.'),
     ).toBeInTheDocument();
     expect(screen.getByText(/Som vanlig \(2 tjenester\)/)).toBeInTheDocument();
   });
