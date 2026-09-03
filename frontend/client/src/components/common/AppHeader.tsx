@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button, InternalHeader, Spacer } from '@navikt/ds-react';
 import { useSession } from '../../hooks/queries';
+import { AppNav } from './AppNav';
 import './AppHeader.css';
 
 /**
@@ -20,14 +21,10 @@ export function AppHeader() {
       <InternalHeader.Title as={Link} to="/">
         Åpningstider
       </InternalHeader.Title>
+      <AppNav isAdmin={isAdmin} />
       <Spacer />
       {loggedIn ? (
         <>
-          {isAdmin && (
-            <InternalHeader.Button as={Link} to="/admin">
-              Administrasjon
-            </InternalHeader.Button>
-          )}
           <InternalHeader.User name={session.data?.name ?? 'Innlogget'} />
           {/* Wonderwall eier sesjonen, så utlogging må gå via sidecaren og kan
               ikke være en ren klientrute. */}
