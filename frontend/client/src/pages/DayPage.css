@@ -48,3 +48,20 @@
   gap: 2px;
   max-width: 26rem;
 }
+
+.oh-day__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-12);
+}
+
+/* Avviksmerket i tabellen arver fargestripen fra kalendercellene, slik at
+   samme avvik ser likt ut uansett hvor det vises. */
+.oh-devmark {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: var(--ax-space-8);
+  border-left: 3px solid var(--ax-border-neutral);
+  min-width: 8rem;
+}

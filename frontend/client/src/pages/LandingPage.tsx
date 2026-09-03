@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   BodyLong,
@@ -7,131 +7,115 @@ import {
   Box,
   Button,
   Heading,
-  Label,
   Search,
   Skeleton,
   Tag,
 } from '@navikt/ds-react';
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  ExclamationmarkTriangleFillIcon,
-  ExclamationmarkTriangleIcon,
-  MinusCircleIcon,
-} from '@navikt/aksel-icons';
-import type { Bucket, ServiceDay } from '../lib/summary';
-import {
-  attentionItems,
-  dailyToQuery,
-  headline,
-  summarize,
-} from '../lib/summary';
-import { useAllServicesRange, useDailyStatus, useServices } from '../hooks/queries';
+import { ChevronLeftIcon, ChevronRightIcon } from '@navikt/aksel-icons';
+import type { DeviationEntry } from '../lib/deviation';
+import { DEVIATION_KINDS, DEVIATION_LABELS, buildCalendar, upcoming } from '../lib/deviation';
+import { useAllServicesRange, useServices } from '../hooks/queries';
 import { useNow } from '../hooks/useNow';
-import { addDays, todayIso, weekdayName } from '../lib/date';
+import { formatMonth, monthGrid, monthOf, shiftMonth, todayIso } from '../lib/date';
 import { AppLink } from '../components/common/AppLink';
-import { SummaryBar, SummaryCounts, SummaryLegend } from '../components/overview/SummaryBar';
+import { DeviationLegend, DeviationMonth } from '../components/overview/DeviationMonth';
 import { ErrorState } from '../components/common/ErrorState';
+import '../components/overview/DeviationMark.css';
 import './LandingPage.css';
 
-/** Én uke minus i dag: nok til å planlegge rundt, få nok til å leses på et blikk. */
-const STRIP_DAYS = 6;
+const ISO_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 /**
- * Landingsside — driftsbildet, ikke tjenestelisten.
+ * Landingsside — avvikskalenderen.
  *
- * Siden svarer på to spørsmål i rekkefølge: «står det bra til nå?» og «kommer
- * det noe de nærmeste dagene?». Selve listen over 47 tjenester er flyttet til
- * `/tjenester`, fordi den besvarer et tredje spørsmål — «hvor finner jeg X?» —
- * som ingen stiller før de har sett at noe er galt.
+ * Premisset: den som åpner siden kjenner allerede tjenestenes normale
+ * åpningstider. Det de kommer for å finne ut er hva som *bryter* med dem, og
+ * når. Siden viser derfor bare avvik, i en kalender som kan skummes: er en dag
+ * tom, er det ingenting å vite om den dagen.
+ *
+ * Hva som er «normalt» avgjøres ikke her, men av tjenestens egne regler — se
+ * `lib/deviation.ts`.
  */
 export function LandingPage() {
   const navigate = useNavigate();
-  const { now, minutes } = useNow();
+  const [params, setParams] = useSearchParams();
+  const { now } = useNow();
   const today = todayIso(now);
-
-  const services = useServices();
-  const daily = useDailyStatus();
-  const [offset, setOffset] = useState(0);
   const [query, setQuery] = useState('');
 
-  const stripStart = addDays(today, 1 + offset * STRIP_DAYS);
-  const stripEnd = addDays(stripStart, STRIP_DAYS - 1);
+  const raw = params.get('maned');
+  const month = raw && ISO_MONTH.test(raw) ? raw : monthOf(today);
 
+  const services = useServices();
   const serviceIds = useMemo(() => (services.data ?? []).map((s) => s.id), [services.data]);
-  const range = useAllServicesRange(serviceIds, stripStart, stripEnd);
-
-  /* I dag kommer fra `/daily`: ett kall for alle tjenester, oppdatert hvert minutt. */
-  const todayItems: ServiceDay[] = useMemo(
-    () =>
-      (services.data ?? []).map((service) => {
-        const cached = daily.data?.[service.id];
-        return {
-          serviceId: service.id,
-          serviceName: service.name,
-          team: service.team,
-          day: cached ? dailyToQuery(cached, today) : null,
-        };
-      }),
-    [services.data, daily.data, today],
-  );
-
-  /* Klokkeslettet er med: forsiden lover «åpne nå», ikke «åpne en gang i dag». */
-  const todaySummary = useMemo(
-    () => summarize(today, todayItems, minutes),
-    [today, todayItems, minutes],
-  );
-  const attention = useMemo(
-    () => attentionItems(todaySummary.entries, 5, minutes),
-    [todaySummary, minutes],
-  );
 
   /*
-   * Stripen bygges av N svar med hver sin periode. Vi indekserer på dato først,
-   * slik at et enkelt svar som mangler eller feiler bare gir ett hull i én dag
-   * framfor å velte hele stripen.
+   * Hele månedsrutenettet i ett kall per tjeneste — også dagene fra nabo-
+   * månedene. Normalplanen utledes fra de samme dagene, og seks uker gir fire
+   * til seks observasjoner per ukedag. Med et kortere vindu kunne en enkelt
+   * kortdag flyttet «normalen» for hele ukedagen.
    */
-  const strip = useMemo(() => {
+  const grid = useMemo(() => monthGrid(month), [month]);
+  const from = grid[0].date;
+  const to = grid[grid.length - 1].date;
+  const range = useAllServicesRange(serviceIds, from, to);
+
+  const pending = services.isPending || range.some((r) => r.isPending);
+  const failed = range.filter((r) => r.isError).length;
+
+  const calendar = useMemo(() => {
     const list = services.data ?? [];
-    return Array.from({ length: STRIP_DAYS }, (_, i) => addDays(stripStart, i)).map((date) =>
-      summarize(
-        date,
-        list.map((service, index) => ({
-          serviceId: service.id,
-          serviceName: service.name,
-          team: service.team,
-          day: range[index]?.data?.find((d) => d.date === date) ?? null,
-        })),
-      ),
+    return buildCalendar(
+      list.map((service, index) => ({
+        serviceId: service.id,
+        serviceName: service.name,
+        team: service.team,
+        days: range[index]?.data ?? [],
+      })),
+      month,
     );
-  }, [services.data, range.map((r) => r.dataUpdatedAt).join(','), stripStart]);
+  }, [services.data, range.map((r) => r.dataUpdatedAt).join(','), month]);
 
-  const stripPending = range.some((r) => r.isPending) || services.isPending;
-  /* Begge kildene må være på plass før tallene betyr noe — se kortet under. */
-  const todayPending = services.isPending || daily.isPending || daily.data === undefined;
-  const total = services.data?.length ?? 0;
+  const todayEntries = calendar.byDate.get(today) ?? [];
+  const showsToday = grid.some((d) => d.inMonth && d.date === today);
+  const next = useMemo(() => upcoming(calendar, today, 8), [calendar, today]);
 
-  const timestamp = new Intl.DateTimeFormat('nb-NO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Europe/Oslo',
-  }).format(now);
+  /* Tegnforklaringen nevner bare det som faktisk står i kalenderen. */
+  const kinds = useMemo(() => {
+    const present = new Set<string>();
+    for (const entries of calendar.byDate.values()) {
+      for (const entry of entries) present.add(entry.deviation.kind);
+    }
+    return DEVIATION_KINDS.filter((k) => present.has(k));
+  }, [calendar]);
+
+  const setMonth = (target: string) => {
+    const updated = new URLSearchParams(params);
+    // Inneværende måned er standardvisningen og trenger ingen parameter.
+    if (target === monthOf(today)) updated.delete('maned');
+    else updated.set('maned', target);
+    setParams(updated, { replace: true });
+  };
 
   if (services.isError) {
-    return <ErrorState message="Vi klarte ikke å hente tjenestelisten." onRetry={() => services.refetch()} />;
+    return (
+      <ErrorState
+        message="Vi klarte ikke å hente tjenestelisten."
+        onRetry={() => services.refetch()}
+      />
+    );
   }
 
   return (
     <div className="oh-landing">
       <div>
         <Heading level="1" size="xlarge" spacing>
-          Åpningstider for Navs tjenester
+          Avvik i åpningstidene
         </Heading>
-        <BodyLong size="large">Slik ser driften ut i dag og de nærmeste dagene.</BodyLong>
+        <BodyLong size="large">
+          Kalenderen viser bare dagene som bryter med tjenestenes normale åpningstider. Er en dag
+          tom, er alt som det pleier.
+        </BodyLong>
       </div>
 
       <Box.New
@@ -142,145 +126,126 @@ export function LandingPage() {
         borderWidth="2"
         borderColor="accent"
         background="default"
-        aria-label="Status i dag"
+        aria-label="Avvik i dag og framover"
       >
         <div className="oh-today__main">
-          <div className="oh-today__stamp">
-            <Tag variant="info-filled" size="small">
-              I dag
-            </Tag>
-            <BodyShort size="small" textColor="subtle">
-              {timestamp}
-            </BodyShort>
-          </div>
-
-          {daily.isError ? (
-            <Alert variant="warning" size="small" inline={false}>
-              Vi klarte ikke å hente statusen for i dag. Tallene under ville vært misvisende, så de
-              er utelatt. Prøv igjen om litt.
-            </Alert>
-          ) : todayPending ? (
-            /*
-             * Alt eller ingenting. Tjenestelisten og statusen kommer fra hvert
-             * sitt kall, og i vinduet mellom dem er hver tjeneste uten status —
-             * altså «uten åpningstider». Å tegne streken da ville slått ut i full
-             * alarm for noe som bare er en halvferdig lasting.
-             */
-            <>
-              <Skeleton variant="text" width="24rem" height="2.5rem" />
-              <Skeleton variant="rectangle" height="0.625rem" />
-              <Skeleton variant="text" width="18rem" />
-            </>
+          <Tag variant="info-filled" size="small">
+            I dag
+          </Tag>
+          {pending ? (
+            <Skeleton variant="text" width="20rem" height="2.25rem" />
           ) : (
-            <>
-              <Heading level="2" size="large">
-                {headline(todaySummary.counts, todaySummary.total, true)}
-              </Heading>
-              <SummaryBar
-                counts={todaySummary.counts}
-                total={todaySummary.total}
-                label={`Status i dag: ${headline(todaySummary.counts, todaySummary.total, true)}`}
-              />
-              <SummaryCounts counts={todaySummary.counts} />
-            </>
+            <Heading level="2" size="large">
+              {showsToday
+                ? todayHeadline(todayEntries.length)
+                : `Du ser på ${formatMonth(month).toLowerCase()}`}
+            </Heading>
           )}
-        </div>
-
-        <div className="oh-today__aside">
-          <Label size="small" textColor="subtle" as="h3">
-            Krever oppmerksomhet i dag
-          </Label>
-          {daily.isError ? (
-            <BodyShort size="small" textColor="subtle">
-              Ukjent så lenge statusen mangler.
-            </BodyShort>
-          ) : todayPending ? (
-            <Skeleton variant="text" width="14rem" />
-          ) : attention.length === 0 ? (
-            <BodyShort size="small" textColor="subtle">
-              Ingenting å følge opp — alle tjenester er åpne som normalt.
-            </BodyShort>
-          ) : (
-            <ul className="oh-attention">
-              {attention.map((entry) => (
-                <li key={entry.serviceId} className={`oh-attention__item oh-attention__item--${entry.bucket}`}>
-                  <BucketIcon bucket={entry.bucket} />
-                  <span>
-                    <AppLink to={`/t/${entry.serviceId}`}>{entry.serviceName}</AppLink> {entry.detail}
-                  </span>
-                </li>
+          {showsToday && !pending && todayEntries.length > 0 && (
+            <ul className="oh-devlist">
+              {todayEntries.slice(0, 4).map((entry) => (
+                <DeviationLine key={entry.serviceId} entry={entry} />
               ))}
             </ul>
           )}
-          <AppLink to={`/dag/${today}`}>
-            {total ? `Se alle ${total} tjenester i dag` : 'Se alle tjenester i dag'}
-          </AppLink>
+          <AppLink to={`/dag/${today}`}>Se alle tjenester i dag</AppLink>
+        </div>
+
+        <div className="oh-today__aside">
+          <Heading level="3" size="xsmall">
+            Neste avvik
+          </Heading>
+          {pending ? (
+            <Skeleton variant="text" width="14rem" />
+          ) : next.length === 0 ? (
+            <BodyShort size="small" textColor="subtle">
+              Ingen avvik igjen i {formatMonth(month).toLowerCase()}.
+            </BodyShort>
+          ) : (
+            <ul className="oh-devlist">
+              {next.map((entry) => (
+                <DeviationLine key={`${entry.date}-${entry.serviceId}`} entry={entry} withDate />
+              ))}
+            </ul>
+          )}
         </div>
       </Box.New>
 
-      <section className="oh-strip" aria-labelledby="oh-strip-heading">
-        <div className="oh-strip__head">
-          <Heading level="2" size="small" id="oh-strip-heading">
-            {stripHeading(offset)}
-          </Heading>
-          <div className="oh-strip__nav">
+      {failed > 0 && (
+        <Alert variant="warning" size="small">
+          {failed === 1
+            ? 'Én tjeneste svarte ikke og er utelatt fra kalenderen.'
+            : `${failed} tjenester svarte ikke og er utelatt fra kalenderen.`}{' '}
+          Avvik kan mangle uten at kalenderen sier fra.
+        </Alert>
+      )}
+
+      {calendar.unconfigured.length > 0 && (
+        <Alert variant="warning" size="small">
+          {/* Én linje framfor 42 røde dager: en tjeneste uten regler har ingen
+              normal å avvike fra, og ville ellers farget hele kalenderen. */}
+          <BodyShort size="small" spacing>
+            {calendar.unconfigured.length === 1
+              ? 'Én tjeneste har ingen regler som treffer, og har derfor ingen normal å måle avvik mot:'
+              : `${calendar.unconfigured.length} tjenester har ingen regler som treffer, og har derfor ingen normal å måle avvik mot:`}
+          </BodyShort>
+          <ul className="oh-unconfigured">
+            {calendar.unconfigured.map((service) => (
+              <li key={service.serviceId}>
+                <AppLink to={`/t/${service.serviceId}`}>{service.serviceName}</AppLink>
+              </li>
+            ))}
+          </ul>
+        </Alert>
+      )}
+
+      <section className="oh-month" aria-labelledby="oh-month-heading">
+        <div className="oh-month__head">
+          <div className="oh-month__title">
+            <Heading level="2" size="medium" id="oh-month-heading">
+              {formatMonth(month)}
+            </Heading>
+            <BodyShort size="small" textColor="subtle">
+              {pending ? 'Henter …' : monthCount(calendar.total)}
+            </BodyShort>
+          </div>
+          <div className="oh-month__nav">
             <Button
               variant="secondary"
               size="small"
-              icon={<ArrowLeftIcon aria-hidden />}
-              iconPosition="left"
-              onClick={() => setOffset((o) => o - 1)}
+              icon={<ChevronLeftIcon aria-hidden />}
+              onClick={() => setMonth(shiftMonth(month, -1))}
             >
-              Forrige seks dager
+              Forrige
             </Button>
+            {month !== monthOf(today) && (
+              <Button variant="secondary" size="small" onClick={() => setMonth(monthOf(today))}>
+                I dag
+              </Button>
+            )}
             <Button
               variant="secondary"
               size="small"
-              icon={<ArrowRightIcon aria-hidden />}
+              icon={<ChevronRightIcon aria-hidden />}
               iconPosition="right"
-              onClick={() => setOffset((o) => o + 1)}
+              onClick={() => setMonth(shiftMonth(month, 1))}
             >
-              Neste seks dager
+              Neste
             </Button>
           </div>
         </div>
 
-        <ul className="oh-strip__days">
-          {strip.map((summary) => (
-            <li key={summary.date}>
-              <Link to={`/dag/${summary.date}`} className="oh-daycard">
-                <span className="oh-daycard__weekday">{weekdayName(summary.date)}</span>
-                <span className="oh-daycard__date">{shortDate(summary.date)}</span>
-                {stripPending ? (
-                  <Skeleton variant="rectangle" height="1.5rem" />
-                ) : (
-                  <>
-                    <SummaryBar
-                      counts={summary.counts}
-                      total={summary.total}
-                      size="small"
-                      label={`${weekdayName(summary.date)} ${shortDate(summary.date)}: ${headline(summary.counts, summary.total, false)}`}
-                    />
-                    {summary.redDay && (
-                      <span className="oh-daycard__red">
-                        <Tag variant="error" size="small">
-                          Rød dag
-                        </Tag>
-                        {summary.holiday && (
-                          <span className="oh-daycard__holiday">{summary.holiday}</span>
-                        )}
-                      </span>
-                    )}
-                    <SummaryCounts counts={summary.counts} size="small" />
-                  </>
-                )}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+        <DeviationMonth
+          month={month}
+          calendar={calendar}
+          today={today}
+          pending={pending}
+          onNavigateMonth={(target) => setMonth(target)}
+          onSelect={(date) => navigate(`/dag/${date}`)}
+        />
 
-      <SummaryLegend />
+        <DeviationLegend kinds={kinds} />
+      </section>
 
       <section className="oh-find" aria-labelledby="oh-find-heading">
         <Heading level="2" size="small" id="oh-find-heading" spacing>
@@ -302,36 +267,49 @@ export function LandingPage() {
             onClear={() => setQuery('')}
             className="oh-find__search"
           />
-          <AppLink to="/tjenester">
-            {total ? `Se alle ${total} tjenester` : 'Se alle tjenester'}
-          </AppLink>
+          <AppLink to="/tjenester">Se alle tjenester</AppLink>
         </form>
       </section>
     </div>
   );
 }
 
-function BucketIcon({ bucket }: { bucket: Bucket }) {
-  if (bucket === 'missing') return <ExclamationmarkTriangleIcon aria-hidden fontSize="1.125rem" />;
-  if (bucket === 'unstable') return <ExclamationmarkTriangleFillIcon aria-hidden fontSize="1.125rem" />;
-  return <MinusCircleIcon aria-hidden fontSize="1.125rem" />;
-}
-
-/** «13. mai» — året er underforstått i en stripe som aldri spenner over årsskiftet. */
-function shortDate(dateIso: string): string {
-  return new Intl.DateTimeFormat('nb-NO', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(
-    new Date(`${dateIso}T00:00:00Z`),
+function DeviationLine({ entry, withDate = false }: { entry: DeviationEntry; withDate?: boolean }) {
+  return (
+    <li className={`oh-devline oh-devchip--${entry.deviation.kind}`}>
+      <span className="oh-devline__top">
+        {withDate && (
+          <Link to={`/dag/${entry.date}`} className="oh-devline__date">
+            {shortDate(entry.date)}
+          </Link>
+        )}
+        <AppLink to={`/t/${entry.serviceId}`}>{entry.serviceName}</AppLink>
+      </span>
+      <span className="oh-devline__what">
+        {entry.deviation.summary}
+        {entry.deviation.normally && ` · ${entry.deviation.normally}`}
+      </span>
+      {/* Kun for skjermlesere: fargestripen til venstre sier det samme visuelt. */}
+      <span className="oh-sr-only">{DEVIATION_LABELS[entry.deviation.kind]}</span>
+    </li>
   );
 }
 
-/**
- * Overskriften følger stripen.
- *
- * Bla man bakover står det fortsatt seks dager i stripen, men «de neste» er da
- * feil — og en overskrift som lyver om hva som står under den er verre enn ingen.
- */
-function stripHeading(offset: number): string {
-  if (offset === 0) return 'De neste seks dagene';
-  if (offset > 0) return `Seks dager fram, ${offset} steg videre`;
-  return `Seks dager tilbake, ${Math.abs(offset)} steg bakover`;
+function todayHeadline(count: number): string {
+  if (count === 0) return 'Ingen avvik i dag';
+  return count === 1 ? 'Ett avvik i dag' : `${count} avvik i dag`;
+}
+
+function monthCount(total: number): string {
+  if (total === 0) return 'Ingen avvik denne måneden';
+  return total === 1 ? 'Ett avvik denne måneden' : `${total} avvik denne måneden`;
+}
+
+/** «13. mai» — året står allerede i månedsoverskriften. */
+function shortDate(dateIso: string): string {
+  return new Intl.DateTimeFormat('nb-NO', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(`${dateIso}T00:00:00Z`));
 }

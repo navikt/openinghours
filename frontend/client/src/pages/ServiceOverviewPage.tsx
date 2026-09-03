@@ -14,6 +14,7 @@ import { ArrowLeftIcon, ExternalLinkIcon } from '@navikt/aksel-icons';
 import { useSearchParams } from 'react-router-dom';
 import type { ServiceType } from '../api/types';
 import { useDailyStatus, useServices, useSession } from '../hooks/queries';
+import { hasNoRule } from '../lib/daily';
 import { formatHours, HOURS_ALWAYS_OPEN, HOURS_CLOSED } from '../lib/rule';
 import { AppLink } from '../components/common/AppLink';
 import { StatusBadge, UnstableMark } from '../components/calendar/StatusBadge';
@@ -202,7 +203,9 @@ export function ServiceOverviewPage() {
                       <NowStatus status={status} />
                     )}
                   </Table.DataCell>
-                  <Table.DataCell>{describeHours(status?.openingHours)}</Table.DataCell>
+                  <Table.DataCell>
+                    {status && hasNoRule(status) ? '—' : describeHours(status?.openingHours)}
+                  </Table.DataCell>
                   {loggedIn && (
                     <Table.DataCell>
                       <div className="oh-overview__links">
@@ -239,10 +242,14 @@ function NowStatus({
     isOpen: boolean;
     redDay: boolean;
     openingHours: string | null;
+    ruleName?: string | null;
     unstableOpeningHours?: boolean;
   };
 }) {
-  if (!status) return <StatusBadge kind="warning" label="Ikke satt opp" size="small" />;
+  // Manglende oppsett kommer tilbake som *døgnåpent* fra dagcachen, ikke som en
+  // feil. Uten sjekken ville tjenester uten regler stått som «åpent nå».
+  if (!status || hasNoRule({ openingHours: status.openingHours, ruleName: status.ruleName ?? null }))
+    return <StatusBadge kind="warning" label="Ikke satt opp" size="small" />;
 
   const badge = status.redDay ? (
     <StatusBadge kind="redDay" label="Rød dag" size="small" />
