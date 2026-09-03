@@ -14,3 +14,9 @@
   font-size: 0.8125rem;
   color: var(--ax-text-neutral-subtle);
 }
+
+.oh-rules__changed {
+  font-size: 13px;
+  color: var(--ax-text-neutral-subtle);
+  white-space: nowrap;
+}

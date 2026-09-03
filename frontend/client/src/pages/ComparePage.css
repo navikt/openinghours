@@ -34,6 +34,11 @@
   padding: 0 0 8px;
 }
 
+.oh-compare__team {
+  margin-top: var(--ax-space-12);
+  max-width: 260px;
+}
+
 .oh-compare {
   display: flex;
   flex-direction: column;

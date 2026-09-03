@@ -33,7 +33,7 @@
   gap: var(--ax-space-4);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1000px) {
   .oh-ruleform {
     display: block;
   }

@@ -1,0 +1,5 @@
+.oh-delayed-loader {
+  display: flex;
+  justify-content: center;
+  padding: var(--ax-space-32);
+}

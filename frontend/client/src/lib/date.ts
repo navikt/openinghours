@@ -84,6 +84,17 @@ export function monthOf(dateIso: string): string {
   return dateIso.slice(0, 7);
 }
 
+/**
+ * `"2026-03-31"` + 1 måned → `"2026-04-30"`. Dagnummeret klemmes mot
+ * målmånedens lengde, slik at et månedshopp aldri renner over i måneden etter.
+ */
+export function shiftMonthKeepingDay(dateIso: string, delta: number): string {
+  const target = shiftMonth(monthOf(dateIso), delta);
+  const lastDay = lastOfMonth(target).slice(8);
+  const day = dateIso.slice(8);
+  return `${target}-${day > lastDay ? lastDay : day}`;
+}
+
 export function yearOf(dateIso: string): string {
   return dateIso.slice(0, 4);
 }
@@ -191,6 +202,24 @@ export function formatDateLong(dateIso: string): string {
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(`${dateIso}T00:00:00Z`));
+}
+
+/**
+ * Backendens `Instant` (`"2026-05-12T10:15:30Z"`) til lesbar norsk tid.
+ * Vises i `Europe/Oslo`, siden det er tidssonen hele tjenesten regner i.
+ */
+export function formatTimestamp(instant: string | null): string {
+  if (!instant) return 'Aldri endret';
+  const date = new Date(instant);
+  if (Number.isNaN(date.getTime())) return 'Ukjent';
+  return new Intl.DateTimeFormat('nb-NO', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Oslo',
+  }).format(date);
 }
 
 export function weekdayName(dateIso: string): string {

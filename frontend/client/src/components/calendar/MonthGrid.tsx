@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { QueryResponse } from '../../api/types';
-import { addDays, monthGrid, monthOf, WEEKDAY_HEADERS } from '../../lib/date';
+import { addDays, monthGrid, monthOf, shiftMonthKeepingDay, WEEKDAY_HEADERS } from '../../lib/date';
 import { deriveStatus, statusAriaLabel } from '../../lib/status';
 import { DayCell } from './DayCell';
 import './MonthGrid.css';
@@ -61,6 +61,17 @@ export function MonthGrid({
     focusDate(target);
   };
 
+  /*
+   * PageUp/PageDown skal bytte måned, ikke flytte et fast antall dager.
+   * Dagnummeret klemmes mot månedens lengde, slik at 31. mars havner på
+   * 28. februar i stedet for å renne over i mars igjen.
+   */
+  const moveMonth = (from: string, delta: number) => {
+    const target = shiftMonthKeepingDay(from, delta);
+    focusRef.current = target;
+    onNavigateMonth(monthOf(target), target);
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent, date: string) => {
     const handlers: Record<string, () => void> = {
       ArrowLeft: () => move(date, -1),
@@ -75,8 +86,8 @@ export function MonthGrid({
         const dow = grid.findIndex((d) => d.date === date) % 7;
         move(date, 6 - dow);
       },
-      PageUp: () => move(date, -28),
-      PageDown: () => move(date, 28),
+      PageUp: () => moveMonth(date, -1),
+      PageDown: () => moveMonth(date, 1),
       Enter: () => onSelect(date),
       ' ': () => onSelect(date),
     };

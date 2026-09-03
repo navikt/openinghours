@@ -7,14 +7,24 @@ import {
   Heading,
   Loader,
   Modal,
+  MonthPicker,
   Select,
   Skeleton,
   Tabs,
+  useMonthpicker,
 } from '@navikt/ds-react';
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon } from '@navikt/aksel-icons';
 import { useNavigate } from 'react-router-dom';
 import { useService, useServiceRange, useServices, useSession } from '../hooks/queries';
-import { monthOf, startOfWeek, todayIso, yearOf } from '../lib/date';
+import {
+  dateToIso,
+  firstOfMonth,
+  isoToDate,
+  monthOf,
+  startOfWeek,
+  todayIso,
+  yearOf,
+} from '../lib/date';
 import { parseView, shiftAnchor, viewRange, type ViewKind } from '../lib/view';
 import { useNow } from '../hooks/useNow';
 import { MonthGrid } from '../components/calendar/MonthGrid';
@@ -111,6 +121,22 @@ export function CalendarPage() {
 
   const noGroup = range.data?.every((d) => Boolean(d.warningMessage)) ?? false;
 
+  // Månedsvelgeren speiler ankeret, slik at den viser riktig måned også når
+  // brukeren har navigert med pilknappene eller PageUp/PageDown.
+  const { monthpickerProps, inputProps: monthInputProps, setSelected: setPickedMonth } =
+    useMonthpicker({
+      defaultSelected: isoToDate(firstOfMonth(monthOf(anchor))),
+      onMonthChange: (picked) => {
+        if (picked) goTo(firstOfMonth(monthOf(dateToIso(picked))));
+      },
+    });
+
+  const anchorMonth = monthOf(anchor);
+  useEffect(() => {
+    // setPickedMonth er ustabil mellom renders og hører ikke hjemme i avhengighetene.
+    setPickedMonth(isoToDate(firstOfMonth(anchorMonth)));
+  }, [anchorMonth]);
+
   return (
     <div className="oh-page">
       <AppLink to="/" className="oh-back">
@@ -194,9 +220,22 @@ export function CalendarPage() {
             I dag
           </Button>
         </div>
-        <Heading level="2" size="small" aria-live="polite">
-          {title}
-        </Heading>
+        <div className="oh-nav__title">
+          <Heading level="2" size="small" aria-live="polite">
+            {title}
+          </Heading>
+          {view === 'maned' && (
+            <MonthPicker {...monthpickerProps} dropdownCaption>
+              <MonthPicker.Input
+                {...monthInputProps}
+                label="Velg måned"
+                hideLabel
+                size="small"
+                className="oh-nav__monthpicker"
+              />
+            </MonthPicker>
+          )}
+        </div>
       </div>
 
       <span className="oh-sr-only" role="status" aria-live="polite">
