@@ -24,13 +24,19 @@ import { formatMinutes } from './status';
  * så 08:00–15:30 og 08:00–12:00 er forskjellige dager selv om begge er «åpne».
  */
 export type DaySignature =
-  | { kind: 'missing' }
   | { kind: 'closed' }
   | { kind: 'allDay' }
   | { kind: 'open'; from: number; to: number };
 
 export function signatureOf(day: QueryResponse): DaySignature {
-  if (day.warningMessage) return { kind: 'missing' };
+  /*
+   * `warningMessage` gir ingen egen signatur. Traff ingen regel, svarer backend
+   * med døgnåpent, og det er den avtalte betydningen — se `lib/status.ts`.
+   * Dagen får dermed signaturen `allDay` fra klokkeslettene under, akkurat som
+   * en tjeneste som er satt opp døgnåpent med vilje. Det er poenget: er
+   * tjenesten uten regler hele måneden, er *hver* dag døgnåpen, normalen blir
+   * døgnåpen, og kalenderen tier — slik den skal når ingenting avviker.
+   */
   /*
    * Rød dag er ikke en egen signatur. En helligdag der tjenesten er stengt har
    * samme signatur som enhver annen stengt dag — det er sammenligningen med
@@ -81,8 +87,6 @@ export function sameSignature(a: DaySignature, b: DaySignature): boolean {
 /** «08:00–15:30», «stengt», «døgnåpent» — normalplanen skrevet ut. */
 export function describeSignature(sig: DaySignature): string {
   switch (sig.kind) {
-    case 'missing':
-      return 'uten oppsett';
     case 'closed':
       return 'stengt';
     case 'allDay':
@@ -112,13 +116,6 @@ export type Baseline = Map<number, DaySignature>;
 
 export interface ServiceBaseline {
   byWeekday: Baseline;
-  /**
-   * Ingen dag i vinduet hadde noen regel som traff.
-   *
-   * Da er ikke tjenesten «avvikende hver dag» — den er ikke satt opp. Én linje
-   * om det er til hjelp; 42 røde kalenderdager er det ikke.
-   */
-  neverConfigured: boolean;
 }
 
 /**
@@ -190,24 +187,20 @@ export function deriveBaseline(days: QueryResponse[], primaryMonth?: string): Se
     if (winner && winner.count > 1) byWeekday.set(weekday, winner.sig);
   }
 
-  return {
-    byWeekday,
-    neverConfigured: days.length > 0 && days.every((d) => Boolean(d.warningMessage)),
-  };
+  return { byWeekday };
 }
 
 /**
  * Avvikstyper, sortert etter hvor mye de haster.
  *
- * `missing` først fordi den betyr at ingen vet hva som gjelder; `extra` sist
- * fordi ekstra åpningstid sjelden ødelegger noens dag.
+ * `closed` først fordi en stengt dør er det som faktisk stopper noen; `extra`
+ * sist fordi ekstra åpningstid sjelden ødelegger noens dag.
  */
-export const DEVIATION_KINDS = ['missing', 'closed', 'shorter', 'moved', 'longer', 'extra', 'unstable'] as const;
+export const DEVIATION_KINDS = ['closed', 'shorter', 'moved', 'longer', 'extra', 'unstable'] as const;
 
 export type DeviationKind = (typeof DEVIATION_KINDS)[number];
 
 export const DEVIATION_LABELS: Record<DeviationKind, string> = {
-  missing: 'Uten oppsett',
   closed: 'Stengt',
   shorter: 'Kortere åpent',
   moved: 'Endret åpningstid',
@@ -269,7 +262,6 @@ export function deviationOf(day: QueryResponse, baseline: Baseline): Deviation |
 }
 
 function classify(actual: DaySignature, normal: DaySignature): DeviationKind {
-  if (actual.kind === 'missing') return 'missing';
   if (actual.kind === 'closed') return 'closed';
   if (normal.kind !== 'open' && normal.kind !== 'allDay') return 'extra';
   if (actual.kind === 'allDay') return 'longer';
@@ -300,7 +292,6 @@ function summarize(
   kind: DeviationKind,
   holiday: string | null,
 ): string {
-  if (actual.kind === 'missing') return 'Ingen regel treffer';
   if (actual.kind === 'closed') return holiday ? `Stengt · ${holiday}` : 'Stengt hele dagen';
   if (actual.kind === 'allDay') return 'Døgnåpent';
   if (normal.kind !== 'open') return `Åpent ${describeSignature(actual)}`;
@@ -335,8 +326,6 @@ export interface DeviationEntry {
 export interface DeviationCalendar {
   /** Dato → avvikene den dagen, viktigste først. Datoer uten avvik mangler helt. */
   byDate: Map<string, DeviationEntry[]>;
-  /** Tjenester uten regler i det hele tatt — én linje, ikke 42 røde dager. */
-  unconfigured: { serviceId: string; serviceName: string }[];
   total: number;
 }
 
@@ -352,15 +341,10 @@ export interface DeviationCalendar {
  */
 export function buildCalendar(services: ServiceDays[], month?: string): DeviationCalendar {
   const byDate = new Map<string, DeviationEntry[]>();
-  const unconfigured: { serviceId: string; serviceName: string }[] = [];
   let total = 0;
 
   for (const service of services) {
     const baseline = deriveBaseline(service.days, month);
-    if (baseline.neverConfigured) {
-      unconfigured.push({ serviceId: service.serviceId, serviceName: service.serviceName });
-      continue;
-    }
 
     for (const day of service.days) {
       /*
@@ -386,7 +370,7 @@ export function buildCalendar(services: ServiceDays[], month?: string): Deviatio
   }
 
   for (const list of byDate.values()) list.sort(compareEntries);
-  return { byDate, unconfigured, total };
+  return { byDate, total };
 }
 
 export function compareEntries(a: DeviationEntry, b: DeviationEntry): number {

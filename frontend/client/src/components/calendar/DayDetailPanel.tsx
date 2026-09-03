@@ -57,10 +57,12 @@ export function DayDetailPanel({ day, loggedIn, onClose, headingRef }: Props) {
         </BodyShort>
       )}
 
+      {/* Ingen advarsel: uten regel er tjenesten døgnåpen, ikke ukjent. Linjen
+          forklarer bare hvorfor det står døgnåpent uten at noen har satt det. */}
       {day.warningMessage && (
-        <Alert variant="warning" size="small" inline={false}>
-          Vi kan ikke si når tjenesten er åpen denne dagen. Ingen åpningstidsregel treffer datoen.
-        </Alert>
+        <BodyShort size="small" textColor="subtle">
+          Ingen åpningstidsregel treffer datoen, så tjenesten regnes som døgnåpen.
+        </BodyShort>
       )}
 
       {status.unstable && (

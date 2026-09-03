@@ -13,8 +13,8 @@ import {
 
 const BASELINE_RULE = '??.??.???? ? 1-5 08:00-15:30';
 
-function day(date: string, hours: string | 'missing', extra: Partial<QueryResponse> = {}): QueryResponse {
-  if (hours === 'missing') {
+function day(date: string, hours: string | 'uten regel', extra: Partial<QueryResponse> = {}): QueryResponse {
+  if (hours === 'uten regel') {
     return {
       resourceId: 's1',
       date,
@@ -55,7 +55,9 @@ describe('signatureOf', () => {
     expect(signatureKey(signatureOf(day('2025-05-05', '08:00-15:30')))).toBe('open:480-930');
     expect(signatureKey(signatureOf(day('2025-05-05', '00:00-00:00')))).toBe('closed');
     expect(signatureKey(signatureOf(day('2025-05-05', '00:00-23:59')))).toBe('allDay');
-    expect(signatureKey(signatureOf(day('2025-05-05', 'missing')))).toBe('missing');
+    // Traff ingen regel svarer backend med døgnåpent, og frontenden er enig:
+    // en tjeneste uten oppsett er åpen, ikke ukjent.
+    expect(signatureKey(signatureOf(day('2025-05-05', 'uten regel')))).toBe('allDay');
   });
 
   it('holder på åpningstider som krysser midnatt', () => {
@@ -112,16 +114,17 @@ describe('deriveBaseline', () => {
   it('gjør «ingen regel treffer» til normalen for lørdager uten oppsett', () => {
     // Selve poenget med modulen. Mange tjenester har ingen helgeregel i det
     // hele tatt. Uten dette ville hver eneste lørdag blitt et rødt avvik.
+    // Lørdagene teller som døgnåpne, og fordi de er det *hver* lørdag, er det
+    // normalen — ingenting å melde.
     const days = [
       ...NORMAL_WEEK.map((d) => day(d, '08:00-15:30')),
-      day('2025-05-10', 'missing'),
-      day('2025-05-17', 'missing'),
-      day('2025-05-24', 'missing'),
+      day('2025-05-10', 'uten regel'),
+      day('2025-05-17', 'uten regel'),
+      day('2025-05-24', 'uten regel'),
     ];
     const base = deriveBaseline(days);
-    expect(signatureKey(base.byWeekday.get(6)!)).toBe('missing');
-    expect(deviationOf(day('2025-05-31', 'missing'), base.byWeekday)).toBeNull();
-    expect(base.neverConfigured).toBe(false);
+    expect(signatureKey(base.byWeekday.get(6)!)).toBe('allDay');
+    expect(deviationOf(day('2025-05-31', 'uten regel'), base.byWeekday)).toBeNull();
   });
 
   it('setter ingen normal når ukedagen bare er sett én gang', () => {
@@ -133,9 +136,13 @@ describe('deriveBaseline', () => {
     expect(base.byWeekday.has(6)).toBe(false);
   });
 
-  it('flagger tjenester som aldri har en regel som treffer', () => {
-    const base = deriveBaseline(NORMAL_WEEK.map((d) => day(d, 'missing')));
-    expect(base.neverConfigured).toBe(true);
+  it('gjør døgnåpent til normalen for tjenester uten regler i det hele tatt', () => {
+    // En tjeneste ingen har satt opp er døgnåpen etter avtalen med backend.
+    // Da er den døgnåpen hver dag, og skal aldri dukke opp som avvik.
+    const mondays = ['2025-05-05', '2025-05-12', '2025-05-19', '2025-05-26'];
+    const base = deriveBaseline(mondays.map((d) => day(d, 'uten regel')));
+    expect(signatureKey(base.byWeekday.get(1)!)).toBe('allDay');
+    expect(deviationOf(day('2025-06-02', 'uten regel'), base.byWeekday)).toBeNull();
   });
 });
 
@@ -312,19 +319,19 @@ describe('buildCalendar', () => {
     expect(calendar.byDate.has('2025-05-12')).toBe(false);
   });
 
-  it('samler tjenester uten oppsett i én liste framfor å farge hele kalenderen', () => {
+  it('melder ingen avvik for tjenester som mangler regler hele måneden', () => {
     const calendar = buildCalendar([
       { serviceId: 'a', serviceName: 'Alfa', team: 'T1', days: normalDays },
       {
         serviceId: 'c',
         serviceName: 'Gamma',
         team: 'T3',
-        days: NORMAL_WEEK.map((d) => day(d, 'missing')),
+        days: NORMAL_WEEK.map((d) => day(d, 'uten regel')),
       },
     ]);
 
-    expect(calendar.unconfigured).toEqual([{ serviceId: 'c', serviceName: 'Gamma' }]);
     expect(calendar.total).toBe(0);
+    expect(calendar.byDate.size).toBe(0);
   });
 
   it('lister kommende avvik kronologisk fra en gitt dato', () => {

@@ -6,6 +6,11 @@ import { HOURS_ALWAYS_OPEN, HOURS_CLOSED, trimSeconds } from './rule';
  * Statussystemet fra designet: fem tilstander, hver med bakgrunn + ikon + tekst.
  * Farge bærer aldri betydning alene.
  */
+/**
+ * `warning` settes ikke lenger av `deriveStatus` — se kommentaren i
+ * `baseStatus`. Den er beholdt for tilstander der vi mangler *svar*, ikke
+ * åpningstider, f.eks. en tjeneste som ennå ikke ligger i dagcachen.
+ */
 export type StatusKind = 'open' | 'closed' | 'redDay' | 'warning' | 'masked';
 
 export interface DayStatus {
@@ -94,16 +99,16 @@ function baseStatus(day: QueryResponse): Omit<DayStatus, 'unstable'> {
     };
   }
 
-  if (day.warningMessage) {
-    return {
-      kind: 'warning',
-      label: 'Ikke satt opp',
-      detail: 'Ingen regel treffer',
-      intervals: [],
-      allDay: false,
-      holiday,
-    };
-  }
+  /*
+   * Ingen egen gren for `warningMessage`.
+   *
+   * Traff ingen regel — enten fordi tjenesten mangler gruppe eller fordi ingen
+   * regel dekker datoen — svarer backend med `DEFAULT_DISPLAY_DATA`, som er
+   * døgnåpent. Det er den avtalte betydningen, og alle som bruker API-et ser
+   * det slik. Å tegne «ikke satt opp» her ville gjort kalenderen uenig med
+   * tjenestene den beskriver. Manglende oppsett er en administrasjonssak, og
+   * fanges opp av `lib/health.ts` under /admin.
+   */
 
   if (day.redDay) {
     return {

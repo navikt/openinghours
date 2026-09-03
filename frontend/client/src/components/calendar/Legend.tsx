@@ -7,7 +7,6 @@ const ITEMS: Array<{ kind: StatusKind; label: string }> = [
   { kind: 'open', label: 'Åpen' },
   { kind: 'closed', label: 'Stengt' },
   { kind: 'redDay', label: 'Rød dag' },
-  { kind: 'warning', label: 'Ikke satt opp' },
 ];
 
 interface LegendProps {

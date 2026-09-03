@@ -340,18 +340,12 @@ function DeviationRow({ entry, loggedIn }: { entry: DeviationEntry; loggedIn: bo
 
       <Table.DataCell>
         <div className="oh-day__message">
-          {day.warningMessage ? (
-            <BodyShort size="small">Vi kan ikke si når tjenesten er åpen denne dagen.</BodyShort>
-          ) : (
-            <>
-              {day.displayHeader && (
-                <BodyShort size="small" weight="semibold">
-                  {day.displayHeader}
-                </BodyShort>
-              )}
-              {day.displayText && <BodyShort size="small">{day.displayText}</BodyShort>}
-            </>
+          {day.displayHeader && (
+            <BodyShort size="small" weight="semibold">
+              {day.displayHeader}
+            </BodyShort>
           )}
+          {day.displayText && <BodyShort size="small">{day.displayText}</BodyShort>}
           {loggedIn && (
             <Detail textColor="subtle">
               {day.matchedRule ? `Regel: ${day.matchedRule.name}` : 'Regel: ingen regel traff'}

@@ -167,15 +167,21 @@ describe('LandingPage', () => {
     expect(screen.getAllByText(/Kristi himmelfartsdag/).length).toBeGreaterThan(0);
   });
 
-  it('samler tjenester uten regler i én melding framfor å farge hele kalenderen', async () => {
-    const broken = monthOfDays('s2').map((d) => ({ ...d, warningMessage: 'Ingen regel treffer' }));
-    mockApi({ s1: monthOfDays('s1'), s2: broken });
+  it('tier om tjenester uten regler — de regnes som døgnåpne', async () => {
+    // Uten regler svarer backend med døgnåpent hver dag. Da er døgnåpent
+    // normalen, ingenting avviker, og kalenderen skal stå tom framfor å farge
+    // 42 dager røde for noe brukeren ikke kan gjøre noe med.
+    const utenRegler = monthOfDays('s2').map((d) => ({
+      ...d,
+      openingTime: '00:00',
+      closingTime: '23:59',
+      warningMessage: 'Ingen regel treffer',
+    }));
+    mockApi({ s1: monthOfDays('s1'), s2: utenRegler });
     renderPage(<LandingPage />);
 
-    expect(
-      await screen.findByText(/har ingen regler som treffer, og har derfor ingen normal/),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Ingen avvik denne måneden')).toBeInTheDocument();
+    expect(await screen.findByText('Ingen avvik denne måneden')).toBeInTheDocument();
+    expect(screen.queryByText(/ingen normal/)).not.toBeInTheDocument();
   });
 
   it('lar måneden styres fra URL-en', async () => {
