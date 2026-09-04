@@ -29,9 +29,28 @@ BFF-prosessen — den kommer aldri inn i klientbundelen.
 
 Krever Node 22+ og pnpm 11.
 
+### Installere avhengigheter (`@navikt`-pakker)
+
+`@navikt/*`-pakkene hentes fra GitHub Packages (satt opp i din globale
+`~/.npmrc` med `@navikt:registry=https://npm.pkg.github.com`). GitHub Packages
+har en kjent feil der tarball-URL-en for scopede pakker omdirigerer til en
+ugyldig, uscopet `registry.npmjs.org`-URL, som gir 404/401 på vanlig
+`pnpm install`.
+
+`frontend/.npmrc` peker derfor `@navikt`-scopet til en lokal proxy
+(`gh-proxy.cjs`) som henter riktig `dist.tarball`-URL fra pakke-metadataen og
+strømmer tarballen derfra. Slik installerer du:
+
 ```bash
+# Terminal 1 — start proxyen med en GitHub-PAT som har read:packages
+NPM_AUTH_TOKEN=<din-github-pat> pnpm proxy
+
+# Terminal 2
 pnpm install
 ```
+
+Proxyen trengs kun ved installasjon/oppdatering av avhengigheter, ikke ved
+`pnpm dev`/`build`/`test`.
 
 Start backend først (fra `../backend`):
 
