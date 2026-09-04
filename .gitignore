@@ -12,3 +12,6 @@ Thumbs.db
 
 ### Hemmeligheter ###
 .env
+
+### Lokale verktøy ###
+.tools/
