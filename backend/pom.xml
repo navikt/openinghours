@@ -25,7 +25,6 @@
         <commons-lang3.version>3.18.0</commons-lang3.version>
         <logback.version>1.5.37</logback.version>
         <postgresql.version>42.7.13</postgresql.version>
-        <log4j2.version>2.26.0</log4j2.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
