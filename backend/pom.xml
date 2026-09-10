@@ -28,8 +28,8 @@
         <!-- Not referenced via ${...} in this file; overrides the version Spring Boot's
              parent BOM (spring-boot-dependencies) manages transitively for log4j-api/
              log4j-to-slf4j, same mechanism as tomcat.version/spring-framework.version
-             above. Pins CVE-2026-49844 fix (2.24.3 -> 2.26.0). Do not remove. -->
-        <log4j2.version>2.26.0</log4j2.version>
+             above. Pins CVE-2026-49844 fix (2.26.0 -> 2.26.1). Do not remove. -->
+        <log4j2.version>2.26.1</log4j2.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
