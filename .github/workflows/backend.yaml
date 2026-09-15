@@ -74,6 +74,11 @@ jobs:
           # skillet ville de overskrevet hverandres lag.
           cache_from: type=gha,scope=backend
           cache_to: type=gha,mode=max,scope=backend
+          # Basisimagene bruker flytende tagger (f.eks. openjdk-21) som
+          # Chainguard patcher fortløpende. Uten pull=true kan GHA-cachen
+          # gjenbruke et gammelt FROM-lag selv om taggen har fått en ny
+          # digest, slik at CVE-fikser i basisimaget ikke plukkes opp.
+          pull: true
 
   deploy-prod:
     needs: build
