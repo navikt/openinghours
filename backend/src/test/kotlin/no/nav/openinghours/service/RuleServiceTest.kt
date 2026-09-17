@@ -231,4 +231,70 @@ class RuleServiceTest {
 
         assertThat(result.map { it.id }).containsExactlyInAnyOrder(groupA.id, groupB.id)
     }
+
+    @Test
+    fun `findByYear selects only rules anchored to that year`() {
+        val y2024 = ruleService.upsert("year-2024", "24.12.2024 ? ? 08:00-14:00", null, null)
+        val y2023 = ruleService.upsert("year-2023", "24.12.2023 ? ? 08:00-14:00", null, null)
+        val recurring = ruleService.upsert("year-recurring", "24.12.???? ? ? 08:00-14:00", null, null)
+
+        val found = ruleService.findByYear(2024).map { it.id }
+
+        assertThat(found).contains(y2024.id)
+        assertThat(found).doesNotContain(y2023.id, recurring.id)
+    }
+
+    @Test
+    fun `deleteByYear removes only that year and leaves other years and recurring rules`() {
+        val y2024 = ruleService.upsert("del-2024", "01.05.2024 ? ? 08:00-14:00", null, null)
+        val y2023 = ruleService.upsert("del-2023", "01.05.2023 ? ? 08:00-14:00", null, null)
+        val recurring = ruleService.upsert("del-recurring", "01.05.???? ? ? 08:00-14:00", null, null)
+
+        val deleted = ruleService.deleteByYear(2024).map { it.id }
+
+        assertThat(deleted).contains(y2024.id)
+        assertThat(ruleRepo.findById(y2024.id)).isEmpty
+        assertThat(ruleRepo.findById(y2023.id)).isPresent
+        assertThat(ruleRepo.findById(recurring.id)).isPresent
+    }
+
+    @Test
+    fun `the current year can never be selected for deletion`() {
+        val currentYear = java.time.Year.now().value
+        val rule = ruleService.upsert(
+            "current-year-rule",
+            "01.01.$currentYear ? ? 08:00-14:00",
+            null,
+            null
+        )
+
+        listOf(
+            { ruleService.findByYear(currentYear) },
+            { ruleService.deleteByYear(currentYear) }
+        ).forEach { call ->
+            val ex = assertThrows<ResponseStatusException> { call() }
+            assertThat(ex.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+            assertThat(ex.reason).contains("current year")
+        }
+
+        assertThat(ruleRepo.findById(rule.id)).isPresent
+    }
+
+    @Test
+    fun `future years are rejected`() {
+        val ex = assertThrows<ResponseStatusException> {
+            ruleService.deleteByYear(java.time.Year.now().value + 1)
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+        assertThat(ex.reason).contains("must be in the past")
+    }
+
+    @Test
+    fun `year must be four digits`() {
+        listOf(24, 999, 10000, 0, -2024).forEach { year ->
+            val ex = assertThrows<ResponseStatusException> { ruleService.deleteByYear(year) }
+            assertThat(ex.statusCode).describedAs("$year").isEqualTo(HttpStatus.BAD_REQUEST)
+            assertThat(ex.reason).describedAs("$year").contains("four-digit year")
+        }
+    }
 }

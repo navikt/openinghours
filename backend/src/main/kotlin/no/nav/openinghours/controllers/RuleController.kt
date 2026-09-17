@@ -14,6 +14,41 @@ import java.util.*
 class RuleController(
     private val service: RuleService
 ) {
+    @Operation(summary = "List rules anchored to the given year, e.g. year=2024. Recurring rules (wildcard year) are never included. The current year cannot be selected.")
+    @GetMapping("/outdated")
+    fun getOutdated(
+        @RequestParam(required = false) year: Int?
+    ): List<Rule> = service.findByYear(requireYear(year))
+
+    @Operation(summary = "Delete all rules from the given year, e.g. year=2024. Returns 409 listing the affected rules unless ?confirm=true is passed. The current year cannot be selected.")
+    @DeleteMapping("/outdated")
+    fun deleteOutdated(
+        @RequestParam(required = false) year: Int?,
+        @RequestParam(required = false, defaultValue = "false") confirm: Boolean
+    ): List<Rule> {
+        val selectedYear = requireYear(year)
+        if (!confirm) {
+            val candidates = service.findByYear(selectedYear)
+            if (candidates.isNotEmpty()) {
+                val names = candidates.joinToString(", ") { it.name }
+                throw ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "${candidates.size} rule(s) from $selectedYear would be deleted: $names. Pass ?confirm=true to proceed."
+                )
+            }
+            return emptyList()
+        }
+        return service.deleteByYear(selectedYear)
+    }
+
+    /**
+     * The year is deliberately optional at the framework level so that a missing value reaches us
+     * as `null`. Declaring it required would let Spring reject the request first, with a generic
+     * message that never mentions which parameter is expected or why.
+     */
+    private fun requireYear(year: Int?): Int =
+        year ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "You must specify the year")
+
     @Operation(summary = "Get opening hours rule id")
     @GetMapping("/{id}")
     fun get(@PathVariable id: UUID): Rule = service.get(id)
