@@ -14,6 +14,32 @@ import java.util.*
 class RuleController(
     private val service: RuleService
 ) {
+    @Operation(summary = "List rules anchored to the given year, e.g. year=2024. Recurring rules (wildcard year) are never included. The current year cannot be selected.")
+    @GetMapping("/outdated")
+    fun getOutdated(
+        @RequestParam year: Int
+    ): List<Rule> = service.findByYear(year)
+
+    @Operation(summary = "Delete all rules from the given year, e.g. year=2024. Returns 409 listing the affected rules unless ?confirm=true is passed. The current year cannot be selected.")
+    @DeleteMapping("/outdated")
+    fun deleteOutdated(
+        @RequestParam year: Int,
+        @RequestParam(required = false, defaultValue = "false") confirm: Boolean
+    ): List<Rule> {
+        if (!confirm) {
+            val candidates = service.findByYear(year)
+            if (candidates.isNotEmpty()) {
+                val names = candidates.joinToString(", ") { it.name }
+                throw ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "${candidates.size} rule(s) from $year would be deleted: $names. Pass ?confirm=true to proceed."
+                )
+            }
+            return emptyList()
+        }
+        return service.deleteByYear(year)
+    }
+
     @Operation(summary = "Get opening hours rule id")
     @GetMapping("/{id}")
     fun get(@PathVariable id: UUID): Rule = service.get(id)

@@ -2,6 +2,7 @@ package no.nav.openinghours.service
 
 import no.nav.openinghours.model.db.Rule
 import no.nav.openinghours.model.db.RuleRepository
+import no.nav.openinghours.validator.RuleExpiry
 import no.nav.openinghours.validator.RuleValidator
 import org.hibernate.exception.ConstraintViolationException
 import org.slf4j.LoggerFactory
@@ -10,6 +11,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.sql.SQLException
+import java.time.Clock
+import java.time.LocalDate
 import java.util.*
 import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.OhGroupRepository
@@ -19,7 +22,8 @@ import org.springframework.dao.DataIntegrityViolationException
 class RuleService(
     private val repo: RuleRepository,
     private val ohGroupRepo: OhGroupRepository,
-    private val validator: RuleValidator
+    private val validator: RuleValidator,
+    private val clock: Clock
 ) {
     private val log = LoggerFactory.getLogger(RuleService::class.java)
     private val ruleNameUniqueConstraint = "uq_rule_name"
@@ -189,6 +193,51 @@ class RuleService(
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Update opening hours: ${e.message}", e)
         }
 
+    }
+
+    /**
+     * Rules anchored to [year]. Throws 400 unless [year] is a past year: the current year is
+     * off limits because it still holds closures that have not happened yet, and a future year
+     * is not outdated by any reading.
+     */
+    fun findByYear(year: Int): List<Rule> {
+        requireDeletableYear(year)
+        return getAll().filter { RuleExpiry.belongsToYear(it.rule, year) }
+    }
+
+    @Transactional
+    fun deleteByYear(year: Int): List<Rule> {
+        val outdated = findByYear(year)
+        // Reuses delete() so each rule id is also stripped from every referencing group's array.
+        outdated.forEach { delete(it.id) }
+        log.info("Deleted {} rule(s) from year {}", outdated.size, year)
+        return outdated
+    }
+
+    /**
+     * Guards the year selection at the service layer, so no caller can reach the delete path with
+     * the current year however the endpoint is invoked.
+     */
+    private fun requireDeletableYear(year: Int) {
+        if (year !in RuleExpiry.SUPPORTED_YEARS) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "year must be a four-digit year in ${RuleExpiry.SUPPORTED_YEARS.first}..${RuleExpiry.SUPPORTED_YEARS.last}, got $year"
+            )
+        }
+        val currentYear = LocalDate.now(clock).year
+        if (year == currentYear) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Rules from the current year ($currentYear) cannot be deleted as outdated"
+            )
+        }
+        if (year > currentYear) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "year must be in the past, got $year (current year is $currentYear)"
+            )
+        }
     }
 
     private fun isRuleNameConflict(exception: DataIntegrityViolationException): Boolean {
