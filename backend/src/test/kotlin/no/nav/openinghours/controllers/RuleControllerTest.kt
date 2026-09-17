@@ -4,7 +4,10 @@ import no.nav.openinghours.model.db.OhGroup
 import no.nav.openinghours.model.db.Rule
 import no.nav.openinghours.service.RuleService
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.Mockito
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -330,6 +333,186 @@ class RuleControllerTest {
                 status { isOk() }
                 jsonPath("$.length()") { value(0) }
             }
+    }
+
+    // --- /outdated: year selection ------------------------------------------------------------
+
+    @Test
+    fun `GET outdated returns the rules for the selected year`() {
+        `when`(ruleService.findByYear(2024)).thenReturn(
+            listOf(
+                aRule(name = "juledag 2024", rule = "25.12.2024 ? ? 00:00-00:00"),
+                aRule(name = "nyttår 2024", rule = "31.12.2024 ? ? 09:00-14:00")
+            )
+        )
+
+        mockMvc.get("/api/openinghours/rule/outdated") {
+            param("year", "2024")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(2) }
+            jsonPath("$[0].name") { value("juledag 2024") }
+            jsonPath("$[1].name") { value("nyttår 2024") }
+        }
+
+        verify(ruleService).findByYear(2024)
+    }
+
+    @Test
+    fun `GET outdated returns 200 with empty list when the year holds no rules`() {
+        `when`(ruleService.findByYear(2019)).thenReturn(emptyList())
+
+        mockMvc.get("/api/openinghours/rule/outdated") {
+            param("year", "2019")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `GET outdated without a year returns 400`() {
+        mockMvc.get("/api/openinghours/rule/outdated")
+            .andExpect { status { isBadRequest() } }
+
+        verify(ruleService, never()).findByYear(anyInt())
+    }
+
+    @Test
+    fun `GET outdated with a non-numeric year returns 400`() {
+        mockMvc.get("/api/openinghours/rule/outdated") {
+            param("year", "toothousand")
+        }.andExpect { status { isBadRequest() } }
+
+        verify(ruleService, never()).findByYear(anyInt())
+    }
+
+    @Test
+    fun `GET outdated propagates the current-year rejection from the service`() {
+        `when`(ruleService.findByYear(2026)).thenThrow(
+            ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Rules from the current year (2026) cannot be deleted as outdated"
+            )
+        )
+
+        mockMvc.get("/api/openinghours/rule/outdated") {
+            param("year", "2026")
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value("Rules from the current year (2026) cannot be deleted as outdated") }
+        }
+    }
+
+    // --- /outdated: delete confirmation branching ----------------------------------------------
+
+    @Test
+    fun `DELETE outdated without confirm returns 409 previewing the rules and deletes nothing`() {
+        `when`(ruleService.findByYear(2024)).thenReturn(
+            listOf(
+                aRule(name = "juledag 2024", rule = "25.12.2024 ? ? 00:00-00:00"),
+                aRule(name = "nyttår 2024", rule = "31.12.2024 ? ? 09:00-14:00")
+            )
+        )
+
+        mockMvc.delete("/api/openinghours/rule/outdated") {
+            param("year", "2024")
+        }.andExpect {
+            status { isConflict() }
+            jsonPath("$.message") {
+                value("2 rule(s) from 2024 would be deleted: juledag 2024, nyttår 2024. Pass ?confirm=true to proceed.")
+            }
+        }
+
+        verify(ruleService, never()).deleteByYear(anyInt())
+    }
+
+    @Test
+    fun `DELETE outdated with confirm=false is treated the same as omitting it`() {
+        `when`(ruleService.findByYear(2024))
+            .thenReturn(listOf(aRule(name = "juledag 2024", rule = "25.12.2024 ? ? 00:00-00:00")))
+
+        mockMvc.delete("/api/openinghours/rule/outdated") {
+            param("year", "2024")
+            param("confirm", "false")
+        }.andExpect {
+            status { isConflict() }
+            jsonPath("$.message") {
+                value("1 rule(s) from 2024 would be deleted: juledag 2024. Pass ?confirm=true to proceed.")
+            }
+        }
+
+        verify(ruleService, never()).deleteByYear(anyInt())
+    }
+
+    @Test
+    fun `DELETE outdated without confirm returns 200 and empty list when there is nothing to delete`() {
+        `when`(ruleService.findByYear(2019)).thenReturn(emptyList())
+
+        mockMvc.delete("/api/openinghours/rule/outdated") {
+            param("year", "2019")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+
+        verify(ruleService, never()).deleteByYear(anyInt())
+    }
+
+    @Test
+    fun `DELETE outdated with confirm=true deletes and returns the removed rules`() {
+        `when`(ruleService.deleteByYear(2024))
+            .thenReturn(listOf(aRule(name = "juledag 2024", rule = "25.12.2024 ? ? 00:00-00:00")))
+
+        mockMvc.delete("/api/openinghours/rule/outdated") {
+            param("year", "2024")
+            param("confirm", "true")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].name") { value("juledag 2024") }
+        }
+
+        verify(ruleService).deleteByYear(2024)
+        // confirm=true skips the preview entirely
+        verify(ruleService, never()).findByYear(anyInt())
+    }
+
+    @Test
+    fun `DELETE outdated without a year returns 400 and touches nothing`() {
+        mockMvc.delete("/api/openinghours/rule/outdated")
+            .andExpect { status { isBadRequest() } }
+
+        verify(ruleService, never()).findByYear(anyInt())
+        verify(ruleService, never()).deleteByYear(anyInt())
+    }
+
+    @Test
+    fun `DELETE outdated with a non-numeric year returns 400 and touches nothing`() {
+        mockMvc.delete("/api/openinghours/rule/outdated") {
+            param("year", "2o24")
+        }.andExpect { status { isBadRequest() } }
+
+        verify(ruleService, never()).findByYear(anyInt())
+        verify(ruleService, never()).deleteByYear(anyInt())
+    }
+
+    @Test
+    fun `DELETE outdated with confirm=true still cannot delete the current year`() {
+        `when`(ruleService.deleteByYear(2026)).thenThrow(
+            ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Rules from the current year (2026) cannot be deleted as outdated"
+            )
+        )
+
+        mockMvc.delete("/api/openinghours/rule/outdated") {
+            param("year", "2026")
+            param("confirm", "true")
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value("Rules from the current year (2026) cannot be deleted as outdated") }
+        }
     }
 }
 
