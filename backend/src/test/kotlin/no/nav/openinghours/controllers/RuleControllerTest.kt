@@ -373,7 +373,22 @@ class RuleControllerTest {
     @Test
     fun `GET outdated without a year returns 400`() {
         mockMvc.get("/api/openinghours/rule/outdated")
-            .andExpect { status { isBadRequest() } }
+            .andExpect {
+                status { isBadRequest() }
+                jsonPath("$.message") { value("You must specify the year") }
+            }
+
+        verify(ruleService, never()).findByYear(anyInt())
+    }
+
+    @Test
+    fun `GET outdated with a blank year returns the same explicit 400`() {
+        mockMvc.get("/api/openinghours/rule/outdated") {
+            param("year", "")
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value("You must specify the year") }
+        }
 
         verify(ruleService, never()).findByYear(anyInt())
     }
@@ -481,9 +496,24 @@ class RuleControllerTest {
     @Test
     fun `DELETE outdated without a year returns 400 and touches nothing`() {
         mockMvc.delete("/api/openinghours/rule/outdated")
-            .andExpect { status { isBadRequest() } }
+            .andExpect {
+                status { isBadRequest() }
+                jsonPath("$.message") { value("You must specify the year") }
+            }
 
         verify(ruleService, never()).findByYear(anyInt())
+        verify(ruleService, never()).deleteByYear(anyInt())
+    }
+
+    @Test
+    fun `DELETE outdated without a year is rejected even when confirm is set`() {
+        mockMvc.delete("/api/openinghours/rule/outdated") {
+            param("confirm", "true")
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value("You must specify the year") }
+        }
+
         verify(ruleService, never()).deleteByYear(anyInt())
     }
 
