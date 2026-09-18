@@ -29,6 +29,11 @@ class RuleService(
     private val ruleNameUniqueConstraint = "uq_rule_name"
     private val uniqueConstraintViolationSqlState = "23505"
 
+    companion object {
+        /** Rules must be anchored to a year at least this many years in the past to be deletable as outdated. */
+        const val MIN_YEARS_BEFORE_DELETION = 3
+    }
+
     @Transactional
     fun upsert(
         name: String,
@@ -196,9 +201,8 @@ class RuleService(
     }
 
     /**
-     * Rules anchored to [year]. Throws 400 unless [year] is a past year: the current year is
-     * off limits because it still holds closures that have not happened yet, and a future year
-     * is not outdated by any reading.
+     * Rules anchored to [year]. Throws 400 unless [year] is at least three years in the past:
+     * anything more recent is not considered outdated enough to delete.
      */
     fun findByYear(year: Int): List<Rule> {
         requireDeletableYear(year)
@@ -216,7 +220,8 @@ class RuleService(
 
     /**
      * Guards the year selection at the service layer, so no caller can reach the delete path with
-     * the current year however the endpoint is invoked.
+     * a year that is not yet at least [MIN_YEARS_BEFORE_DELETION] years old, however the endpoint
+     * is invoked.
      */
     private fun requireDeletableYear(year: Int) {
         if (year !in RuleExpiry.SUPPORTED_YEARS) {
@@ -226,16 +231,12 @@ class RuleService(
             )
         }
         val currentYear = LocalDate.now(clock).year
-        if (year == currentYear) {
+        val oldestDeletableYear = currentYear - MIN_YEARS_BEFORE_DELETION
+        if (year > oldestDeletableYear) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
-                "Rules from the current year ($currentYear) cannot be deleted as outdated"
-            )
-        }
-        if (year > currentYear) {
-            throw ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "year must be in the past, got $year (current year is $currentYear)"
+                "Rules must be at least $MIN_YEARS_BEFORE_DELETION years old to be deleted as outdated, " +
+                    "got $year (current year is $currentYear)"
             )
         }
     }

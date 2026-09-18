@@ -14,13 +14,13 @@ import java.util.*
 class RuleController(
     private val service: RuleService
 ) {
-    @Operation(summary = "List rules anchored to the given year, e.g. year=2024. Recurring rules (wildcard year) are never included. The current year cannot be selected.")
+    @Operation(summary = "List rules anchored to the given year, e.g. year=2024. Recurring rules (wildcard year) are never included. Only years at least three years in the past can be selected.")
     @GetMapping("/outdated")
     fun getOutdated(
         @RequestParam(required = false) year: Int?
     ): List<Rule> = service.findByYear(requireYear(year))
 
-    @Operation(summary = "Delete all rules from the given year, e.g. year=2024. Returns 409 listing the affected rules unless ?confirm=true is passed. The current year cannot be selected.")
+    @Operation(summary = "Delete all rules from the given year, e.g. year=2024. Returns 409 listing the affected rules unless ?confirm=true is passed. Only years at least three years in the past can be selected.")
     @DeleteMapping("/outdated")
     fun deleteOutdated(
         @RequestParam(required = false) year: Int?,

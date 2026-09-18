@@ -403,11 +403,11 @@ class RuleControllerTest {
     }
 
     @Test
-    fun `GET outdated propagates the current-year rejection from the service`() {
+    fun `GET outdated propagates the recent-year rejection from the service`() {
         `when`(ruleService.findByYear(2026)).thenThrow(
             ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
-                "Rules from the current year (2026) cannot be deleted as outdated"
+                "Rules must be at least 3 years old to be deleted as outdated, got 2026 (current year is 2026)"
             )
         )
 
@@ -415,7 +415,7 @@ class RuleControllerTest {
             param("year", "2026")
         }.andExpect {
             status { isBadRequest() }
-            jsonPath("$.message") { value("Rules from the current year (2026) cannot be deleted as outdated") }
+            jsonPath("$.message") { value("Rules must be at least 3 years old to be deleted as outdated, got 2026 (current year is 2026)") }
         }
     }
 
@@ -528,11 +528,11 @@ class RuleControllerTest {
     }
 
     @Test
-    fun `DELETE outdated with confirm=true still cannot delete the current year`() {
+    fun `DELETE outdated with confirm=true still cannot delete a too-recent year`() {
         `when`(ruleService.deleteByYear(2026)).thenThrow(
             ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
-                "Rules from the current year (2026) cannot be deleted as outdated"
+                "Rules must be at least 3 years old to be deleted as outdated, got 2026 (current year is 2026)"
             )
         )
 
@@ -541,7 +541,7 @@ class RuleControllerTest {
             param("confirm", "true")
         }.andExpect {
             status { isBadRequest() }
-            jsonPath("$.message") { value("Rules from the current year (2026) cannot be deleted as outdated") }
+            jsonPath("$.message") { value("Rules must be at least 3 years old to be deleted as outdated, got 2026 (current year is 2026)") }
         }
     }
 }
