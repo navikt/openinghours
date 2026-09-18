@@ -40,40 +40,6 @@ class OhGroupController(
         request.ruleGroupIds
     )
 
-    @Operation(summary = "Delete an opening hours group by id. Returns 409 with a warning if the group is linked to services or referenced by other groups; pass ?confirm=true to proceed with deletion.")
-    @DeleteMapping("/{id}")
-    fun delete(
-        @PathVariable id: UUID,
-        @RequestParam(required = false, defaultValue = "false") confirm: Boolean
-    ): Boolean {
-        if (!confirm) {
-            val associations = try {
-                service.getAssociationsByGroupId(id)
-            } catch (e: ResponseStatusException) {
-                if (e.statusCode == HttpStatus.NOT_FOUND) return false else throw e
-            }
-            val serviceCount = associations.services.size
-            val groupCount = associations.groups.size
-            if (serviceCount > 0 || groupCount > 0) {
-                val parts = buildList {
-                    if (serviceCount > 0) {
-                        val names = associations.services.joinToString(", ") { it.name }
-                        add("$serviceCount service(s): $names")
-                    }
-                    if (groupCount > 0) {
-                        val names = associations.groups.joinToString(", ") { it.name }
-                        add("$groupCount group(s): $names")
-                    }
-                }
-                throw ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Group is in use by ${parts.joinToString(" and ")}. Pass ?confirm=true to delete anyway."
-                )
-            }
-        }
-        return service.delete(id)
-    }
-
     @Operation(summary = "List empty opening hours groups (no rules or child groups) whose most recent activity is at least one year old, excluding groups still linked to a service.")
     @GetMapping("/outdated")
     fun getOutdated(): List<OhGroup> = service.findEmptyOutdated()
