@@ -490,4 +490,75 @@ class OhGroupServiceTest {
         }
     }
 
+    /**
+     * Drives the real [OhGroupService.deleteEmptyOutdated] production path (not just the raw repository
+     * lock) to prove the service-level guarantee: a group that [OhGroupService.findEmptyOutdated] found
+     * empty and unlinked, but which a concurrent request links to a service while deleteEmptyOutdated is
+     * blocked acquiring [OhGroupRepository.findByIdForUpdate] on it, must not be deleted. If the
+     * revalidation (or its lock) were ever removed from deleteEmptyOutdated, this test would fail because
+     * the group would be deleted despite the concurrently-committed service link.
+     */
+    @Test
+    fun `deleteEmptyOutdated skips a candidate that gets linked to a service while it is waiting on the row lock`() {
+        val requiresNew = TransactionTemplate(txManager).apply {
+            propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
+        }
+
+        val groupId = requiresNew.execute {
+            val group = service.save("race-delete-group-${UUID.randomUUID()}", emptyList())
+            backdate(group.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+            group.id
+        }!!
+        val serviceId = requiresNew.execute {
+            serviceService.save(
+                name = "race-delete-service-${UUID.randomUUID()}",
+                type = ServiceType.TJENESTE,
+                team = "team-test",
+                ohGroupId = null
+            ).id
+        }!!
+
+        val groupLocked = CountDownLatch(1)
+        val proceedToLink = CountDownLatch(1)
+
+        // Holds the same lock deleteEmptyOutdated will try to acquire, then - once signalled - links the
+        // service to the group, simulating another request racing in while the batch waits on the lock.
+        val linkerThread = thread {
+            requiresNew.execute {
+                repo.findByIdForUpdate(groupId)
+                groupLocked.countDown()
+                proceedToLink.await(5, TimeUnit.SECONDS)
+                jdbcTemplate.update(
+                    "INSERT INTO service_oh_group (service_id, group_id) VALUES (?, ?)",
+                    serviceId, groupId
+                )
+            }
+        }
+
+        assertThat(groupLocked.await(5, TimeUnit.SECONDS)).isTrue()
+
+        var deletedIds: List<UUID> = emptyList()
+        val deleteThread = thread {
+            deletedIds = requiresNew.execute { service.deleteEmptyOutdated() }!!.map { it.id }
+        }
+
+        // Give deleteEmptyOutdated time to scan (sees the group as still unlinked) and then block trying
+        // to lock the same row, before we let the linker thread proceed to commit the service link.
+        Thread.sleep(300)
+        proceedToLink.countDown()
+
+        linkerThread.join(10_000)
+        deleteThread.join(10_000)
+
+        assertThat(deletedIds).doesNotContain(groupId)
+        assertThat(repo.findById(groupId)).isPresent
+        assertThat(service.getOhGroupForService(serviceId).id).isEqualTo(groupId)
+
+        requiresNew.execute {
+            jdbcTemplate.update("DELETE FROM service_oh_group WHERE service_id = ?", serviceId)
+            jdbcTemplate.update("DELETE FROM service WHERE id = ?", serviceId)
+            jdbcTemplate.update("DELETE FROM oh_group WHERE id = ?", groupId)
+        }
+    }
+
 }
