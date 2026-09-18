@@ -240,7 +240,7 @@ class OhGroupService(
     private fun isOutdated(group: OhGroup): Boolean {
         val cutoff = ZonedDateTime.now(clock).minusYears(EMPTY_GROUP_RETENTION_YEARS).toInstant()
         val lastActivity = group.updatedAt ?: group.createdAt
-        return lastActivity.isBefore(cutoff)
+        return !lastActivity.isAfter(cutoff)
     }
 
     private fun graphHasCycle(rootIds: List<UUID>, selfId: UUID? = null): Boolean {
