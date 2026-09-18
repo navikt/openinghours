@@ -36,6 +36,7 @@ class RuleServiceTest {
     @Autowired lateinit var groupService: OhGroupService
     @Autowired lateinit var groupRepo: OhGroupRepository
     @Autowired lateinit var ruleRepo: RuleRepository
+    @Autowired lateinit var clock: java.time.Clock
     @Test
     fun `delete cascades and removes rule id from parent group`() {
         val rule = ruleService.upsert("rule-cascade", VALID_RULE, null, null)
@@ -234,7 +235,7 @@ class RuleServiceTest {
 
     @Test
     fun `findByYear selects only rules anchored to that year`() {
-        val currentYear = java.time.Year.now().value
+        val currentYear = java.time.Year.now(clock).value
         val oldYear = currentYear - RuleService.MIN_YEARS_BEFORE_DELETION
         val olderYear = oldYear - 1
         val y1 = ruleService.upsert("year-old", "24.12.$oldYear ? ? 08:00-14:00", null, null)
@@ -249,7 +250,7 @@ class RuleServiceTest {
 
     @Test
     fun `deleteByYear removes only that year and leaves other years and recurring rules`() {
-        val currentYear = java.time.Year.now().value
+        val currentYear = java.time.Year.now(clock).value
         val oldYear = currentYear - RuleService.MIN_YEARS_BEFORE_DELETION
         val olderYear = oldYear - 1
         val y1 = ruleService.upsert("del-old", "01.05.$oldYear ? ? 08:00-14:00", null, null)
@@ -266,7 +267,7 @@ class RuleServiceTest {
 
     @Test
     fun `years younger than three years cannot be selected for deletion`() {
-        val currentYear = java.time.Year.now().value
+        val currentYear = java.time.Year.now(clock).value
         listOf(currentYear, currentYear - 1, currentYear - (RuleService.MIN_YEARS_BEFORE_DELETION - 1))
             .forEach { year ->
                 val rule = ruleService.upsert(
@@ -292,7 +293,7 @@ class RuleServiceTest {
     @Test
     fun `future years are rejected`() {
         val ex = assertThrows<ResponseStatusException> {
-            ruleService.deleteByYear(java.time.Year.now().value + 1)
+            ruleService.deleteByYear(java.time.Year.now(clock).value + 1)
         }
         assertThat(ex.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
         assertThat(ex.reason).contains("at least ${RuleService.MIN_YEARS_BEFORE_DELETION} years old")
