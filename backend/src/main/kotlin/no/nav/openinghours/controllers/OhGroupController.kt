@@ -74,6 +74,29 @@ class OhGroupController(
         return service.delete(id)
     }
 
+    @Operation(summary = "List empty opening hours groups (no rules or child groups) whose most recent activity is at least one year old.")
+    @GetMapping("/outdated")
+    fun getOutdated(): List<OhGroup> = service.findEmptyOutdated()
+
+    @Operation(summary = "Delete all empty opening hours groups (no rules or child groups) whose most recent activity is at least one year old, including groups still linked to services. Returns 409 listing the affected groups unless ?confirm=true is passed.")
+    @DeleteMapping("/outdated")
+    fun deleteOutdated(
+        @RequestParam(required = false, defaultValue = "false") confirm: Boolean
+    ): List<OhGroup> {
+        if (!confirm) {
+            val candidates = service.findEmptyOutdated()
+            if (candidates.isNotEmpty()) {
+                val names = candidates.joinToString(", ") { it.name }
+                throw ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "${candidates.size} empty group(s) would be deleted: $names. Pass ?confirm=true to proceed."
+                )
+            }
+            return emptyList()
+        }
+        return service.deleteEmptyOutdated()
+    }
+
     @Operation(summary = "Remove a child group from an opening hours group")
     @DeleteMapping("/{parentGroupId}/groups/{childGroupId}")
     fun removeGroup(@PathVariable parentGroupId: UUID, @PathVariable childGroupId: UUID): OhGroup =

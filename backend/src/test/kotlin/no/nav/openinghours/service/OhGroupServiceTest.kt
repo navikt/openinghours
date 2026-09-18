@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpStatus
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.transaction.annotation.Transactional
@@ -14,6 +15,8 @@ import org.springframework.web.server.ResponseStatusException
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import java.time.Clock
+import java.time.ZonedDateTime
 import java.util.UUID
 
 @SpringBootTest
@@ -38,6 +41,22 @@ class OhGroupServiceTest {
     @Autowired lateinit var serviceService: ServiceService
     @Autowired lateinit var ruleService: RuleService
     @Autowired lateinit var repo: OhGroupRepository
+    @Autowired lateinit var clock: Clock
+    @Autowired lateinit var jdbcTemplate: JdbcTemplate
+    @jakarta.persistence.PersistenceContext lateinit var entityManager: jakarta.persistence.EntityManager
+
+    /** Bypasses JPA lifecycle callbacks (which force updated_at to "now") to backdate a group's timestamps. */
+    private fun backdate(groupId: UUID, createdAt: java.time.Instant, updatedAt: java.time.Instant?) {
+        jdbcTemplate.update(
+            "UPDATE oh_group SET created_at = ?, updated_at = ? WHERE id = ?",
+            java.sql.Timestamp.from(createdAt),
+            updatedAt?.let { java.sql.Timestamp.from(it) },
+            groupId
+        )
+        // The persistence context still holds the entity with its original (auto-assigned) timestamps;
+        // clear it so subsequent reads go back to the database and see the backdated values.
+        entityManager.clear()
+    }
 
     @Test
     fun `save creates group`() {
@@ -291,6 +310,86 @@ class OhGroupServiceTest {
     fun `removeGroupFromGroup throws NOT_FOUND when parent group does not exist`() {
         val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
             service.removeGroupFromGroup(UUID.randomUUID(), UUID.randomUUID())
+        }
+        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
+    // --- findEmptyOutdated / deleteEmptyOutdated ------------------------------------------------
+
+    private fun oldEnoughInstant() =
+        ZonedDateTime.now(clock).minusYears(OhGroupService.EMPTY_GROUP_RETENTION_YEARS).minusDays(1).toInstant()
+
+    private fun recentInstant() =
+        ZonedDateTime.now(clock).minusYears(OhGroupService.EMPTY_GROUP_RETENTION_YEARS).plusDays(1).toInstant()
+
+    @Test
+    fun `findEmptyOutdated returns empty groups whose updatedAt is old enough`() {
+        val stale = service.save("empty-stale-updated", emptyList())
+        backdate(stale.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+        val fresh = service.save("empty-fresh-updated", emptyList())
+        backdate(fresh.id, createdAt = oldEnoughInstant(), updatedAt = recentInstant())
+
+        val found = service.findEmptyOutdated().map { it.id }
+
+        assertThat(found).contains(stale.id)
+        assertThat(found).doesNotContain(fresh.id)
+    }
+
+    @Test
+    fun `findEmptyOutdated falls back to createdAt when updatedAt is null`() {
+        val stale = service.save("empty-stale-created", emptyList())
+        backdate(stale.id, createdAt = oldEnoughInstant(), updatedAt = null)
+        val fresh = service.save("empty-fresh-created", emptyList())
+        backdate(fresh.id, createdAt = recentInstant(), updatedAt = null)
+
+        val found = service.findEmptyOutdated().map { it.id }
+
+        assertThat(found).contains(stale.id)
+        assertThat(found).doesNotContain(fresh.id)
+    }
+
+    @Test
+    fun `findEmptyOutdated excludes non-empty groups even when old`() {
+        val rule = ruleService.upsert("rule-for-nonempty-group", "??.??.???? ? ? 08:00-16:00", null, null)
+        val nonEmpty = service.save("non-empty-stale", listOf(rule.id))
+        backdate(nonEmpty.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+
+        val found = service.findEmptyOutdated().map { it.id }
+
+        assertThat(found).doesNotContain(nonEmpty.id)
+    }
+
+    @Test
+    fun `deleteEmptyOutdated removes qualifying groups and leaves others`() {
+        val stale = service.save("delete-empty-stale", emptyList())
+        backdate(stale.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+        val fresh = service.save("delete-empty-fresh", emptyList())
+        backdate(fresh.id, createdAt = oldEnoughInstant(), updatedAt = recentInstant())
+
+        val deleted = service.deleteEmptyOutdated().map { it.id }
+
+        assertThat(deleted).contains(stale.id)
+        assertThat(repo.findById(stale.id)).isEmpty
+        assertThat(repo.findById(fresh.id)).isPresent
+    }
+
+    @Test
+    fun `deleteEmptyOutdated removes empty groups even when still linked to a service`() {
+        val stale = service.save("linked-empty-stale", emptyList())
+        backdate(stale.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+        val svc = serviceService.save(
+            name = "service-on-stale-group",
+            type = ServiceType.TJENESTE,
+            team = "team-test",
+            ohGroupId = stale.id
+        )
+
+        val deleted = service.deleteEmptyOutdated().map { it.id }
+
+        assertThat(deleted).contains(stale.id)
+        assertThat(repo.findById(stale.id)).isEmpty
+        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+            service.getOhGroupForService(svc.id)
         }
         assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
     }
