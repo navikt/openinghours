@@ -209,8 +209,10 @@ class OhGroupService(
      * still linked to at least one service are excluded from the result.
      */
     @Transactional(readOnly = true)
-    fun findEmptyOutdated(): List<OhGroup> =
-        getAll().filter { isEmpty(it) && isOutdated(it) && !isLinkedToService(it) }
+    fun findEmptyOutdated(): List<OhGroup> {
+        val linkedGroupIds = serviceRepo.findAllLinkedGroupIds()
+        return getAll().filter { isEmpty(it) && isOutdated(it) && it.id !in linkedGroupIds }
+    }
 
     @Transactional
     fun deleteEmptyOutdated(): List<OhGroup> {
@@ -227,9 +229,6 @@ class OhGroupService(
         val lastActivity = group.updatedAt ?: group.createdAt
         return lastActivity.isBefore(cutoff)
     }
-
-    private fun isLinkedToService(group: OhGroup): Boolean =
-        serviceRepo.findServiceIdsByGroupId(group.id).isNotEmpty()
 
     private fun graphHasCycle(rootIds: List<UUID>, selfId: UUID? = null): Boolean {
         val visited = mutableSetOf<UUID>()
