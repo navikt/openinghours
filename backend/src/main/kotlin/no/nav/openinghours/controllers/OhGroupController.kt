@@ -74,11 +74,11 @@ class OhGroupController(
         return service.delete(id)
     }
 
-    @Operation(summary = "List empty opening hours groups (no rules or child groups) whose most recent activity is at least one year old.")
+    @Operation(summary = "List empty opening hours groups (no rules or child groups) whose most recent activity is at least one year old, excluding groups still linked to a service.")
     @GetMapping("/outdated")
     fun getOutdated(): List<OhGroup> = service.findEmptyOutdated()
 
-    @Operation(summary = "Delete all empty opening hours groups (no rules or child groups) whose most recent activity is at least one year old, including groups still linked to services. Returns 409 listing the affected groups unless ?confirm=true is passed.")
+    @Operation(summary = "Delete all empty opening hours groups (no rules or child groups) whose most recent activity is at least one year old, excluding groups still linked to a service. Returns 409 listing the affected groups unless ?confirm=true is passed.")
     @DeleteMapping("/outdated")
     fun deleteOutdated(
         @RequestParam(required = false, defaultValue = "false") confirm: Boolean

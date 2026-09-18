@@ -374,24 +374,37 @@ class OhGroupServiceTest {
     }
 
     @Test
-    fun `deleteEmptyOutdated removes empty groups even when still linked to a service`() {
-        val stale = service.save("linked-empty-stale", emptyList())
-        backdate(stale.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
-        val svc = serviceService.save(
+    fun `findEmptyOutdated excludes groups still linked to a service`() {
+        val linked = service.save("linked-empty-stale", emptyList())
+        backdate(linked.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+        serviceService.save(
             name = "service-on-stale-group",
             type = ServiceType.TJENESTE,
             team = "team-test",
-            ohGroupId = stale.id
+            ohGroupId = linked.id
+        )
+
+        val found = service.findEmptyOutdated().map { it.id }
+
+        assertThat(found).doesNotContain(linked.id)
+    }
+
+    @Test
+    fun `deleteEmptyOutdated leaves empty groups untouched while still linked to a service`() {
+        val linked = service.save("linked-empty-stale-delete", emptyList())
+        backdate(linked.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+        val svc = serviceService.save(
+            name = "service-on-stale-group-delete",
+            type = ServiceType.TJENESTE,
+            team = "team-test",
+            ohGroupId = linked.id
         )
 
         val deleted = service.deleteEmptyOutdated().map { it.id }
 
-        assertThat(deleted).contains(stale.id)
-        assertThat(repo.findById(stale.id)).isEmpty
-        val ex = org.junit.jupiter.api.assertThrows<ResponseStatusException> {
-            service.getOhGroupForService(svc.id)
-        }
-        assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+        assertThat(deleted).doesNotContain(linked.id)
+        assertThat(repo.findById(linked.id)).isPresent
+        assertThat(service.getOhGroupForService(svc.id).id).isEqualTo(linked.id)
     }
 
 }
