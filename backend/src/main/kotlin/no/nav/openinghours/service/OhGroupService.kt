@@ -216,10 +216,23 @@ class OhGroupService(
 
     @Transactional
     fun deleteEmptyOutdated(): List<OhGroup> {
-        val outdated = findEmptyOutdated()
-        outdated.forEach { delete(it.id) }
-        log.info("Deleted {} empty group(s) older than {} year(s)", outdated.size, EMPTY_GROUP_RETENTION_YEARS)
-        return outdated
+        val candidates = findEmptyOutdated()
+        val deleted = candidates.filter { revalidateAndDelete(it.id) }
+        log.info("Deleted {} empty group(s) older than {} year(s)", deleted.size, EMPTY_GROUP_RETENTION_YEARS)
+        return deleted
+    }
+
+    /**
+     * Re-checks the empty/outdated/unlinked predicates for [id] under a row lock before deleting
+     * it, closing the window between [findEmptyOutdated] scanning candidates and this method
+     * actually removing them, during which another request could have made the group non-empty,
+     * recently active, or linked to a service.
+     */
+    private fun revalidateAndDelete(id: UUID): Boolean {
+        val group = repo.findByIdForUpdate(id) ?: return false
+        if (!isEmpty(group) || !isOutdated(group)) return false
+        if (serviceRepo.findServiceIdsByGroupId(group.id).isNotEmpty()) return false
+        return delete(id)
     }
 
     private fun isEmpty(group: OhGroup): Boolean = group.ruleGroupUuids.isEmpty()
