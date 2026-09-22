@@ -52,6 +52,38 @@ class OhGroupServiceTest {
     @Autowired lateinit var txManager: PlatformTransactionManager
     @jakarta.persistence.PersistenceContext lateinit var entityManager: jakarta.persistence.EntityManager
 
+    /**
+     * Polls `pg_stat_activity` until some backend is observed waiting on a lock while running the
+     * native `FOR UPDATE` query from [OhGroupRepository.findByIdForUpdate]. This makes the delete
+     * thread's lock-wait an observable condition instead of assuming it via a fixed sleep, which could
+     * otherwise elapse before a slow scan even reaches the lock acquisition on a loaded CI worker.
+     */
+    /**
+     * Polls `pg_stat_activity` until some backend is observed waiting on another transaction's row
+     * lock (`wait_event_type = 'Lock'`, `wait_event = 'transactionid'` - the wait state Postgres
+     * reports while a `SELECT ... FOR UPDATE` blocks on a row held by another still-open
+     * transaction). This makes the delete thread's lock-wait an observable condition instead of
+     * assuming it via a fixed sleep, which could otherwise elapse before a slow scan even reaches the
+     * lock acquisition on a loaded CI worker. The blocked backend's `query` text is not usable here:
+     * Postgres reports it as blank while parked in this wait state.
+     */
+    private fun awaitBlockedOnRowLock(timeoutMs: Long = 5_000): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            @Suppress("SqlResolve", "SqlNoDataSourceInspection")
+            val blocked = jdbcTemplate.queryForObject(
+                """
+                SELECT count(*) FROM pg_stat_activity
+                WHERE wait_event_type = 'Lock' AND wait_event = 'transactionid'
+                """.trimIndent(),
+                Int::class.java
+            ) ?: 0
+            if (blocked > 0) return true
+            Thread.sleep(20)
+        }
+        return false
+    }
+
     /** Bypasses JPA lifecycle callbacks (which force updated_at to "now") to backdate a group's timestamps. */
     private fun backdate(groupId: UUID, createdAt: java.time.Instant, updatedAt: java.time.Instant?) {
         jdbcTemplate.update(
@@ -542,9 +574,10 @@ class OhGroupServiceTest {
             deletedIds = requiresNew.execute { service.deleteEmptyOutdated() }!!.map { it.id }
         }
 
-        // Give deleteEmptyOutdated time to scan (sees the group as still unlinked) and then block trying
-        // to lock the same row, before we let the linker thread proceed to commit the service link.
-        Thread.sleep(300)
+        // Wait until deleteEmptyOutdated has actually scanned (seeing the group as still unlinked) and is
+        // blocked in Postgres trying to acquire the same row lock, instead of guessing with a fixed delay
+        // that could race ahead of a slow scan on a loaded CI worker.
+        assertThat(awaitBlockedOnRowLock()).isTrue()
         proceedToLink.countDown()
 
         linkerThread.join(10_000)
