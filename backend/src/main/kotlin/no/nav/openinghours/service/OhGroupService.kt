@@ -6,6 +6,7 @@ import no.nav.openinghours.model.db.RuleRepository
 import no.nav.openinghours.model.db.Service as ServiceEntity
 import no.nav.openinghours.model.db.ServiceOhGroupRepository
 import no.nav.openinghours.model.db.ServiceRepository
+import jakarta.persistence.EntityManager
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
@@ -24,7 +25,8 @@ class OhGroupService(
     private val serviceRepo: ServiceOhGroupRepository,
     private val serviceRepository: ServiceRepository,
     private val ruleRepository: RuleRepository,
-    private val clock: Clock
+    private val clock: Clock,
+    private val entityManager: EntityManager
 ) {
     private val log = LoggerFactory.getLogger(OhGroupService::class.java)
 
@@ -227,9 +229,17 @@ class OhGroupService(
      * it, closing the window between [findEmptyOutdated] scanning candidates and this method
      * actually removing them, during which another request could have made the group non-empty,
      * recently active, or linked to a service.
+     *
+     * [id] originates from an entity already loaded (and thus managed) by [findEmptyOutdated] in
+     * the same transaction. Since [OhGroupRepository.findByIdForUpdate] is a native query, it
+     * won't overwrite the fields of an already-managed instance found in the persistence context
+     * first-level cache, so the returned [OhGroup] could still reflect stale pre-lock state even
+     * though the row lock was acquired. Forcing an [EntityManager.refresh] after the lock is held
+     * guarantees the predicates below observe the latest committed data.
      */
     private fun revalidateAndDelete(id: UUID): Boolean {
         val group = repo.findByIdForUpdate(id) ?: return false
+        entityManager.refresh(group)
         if (!isEmpty(group) || !isOutdated(group)) return false
         if (serviceRepo.findServiceIdsByGroupId(group.id).isNotEmpty()) return false
         return delete(id)
