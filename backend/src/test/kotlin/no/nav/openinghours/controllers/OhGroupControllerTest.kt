@@ -7,6 +7,8 @@ import no.nav.openinghours.service.GroupAssociations
 import no.nav.openinghours.service.OhGroupService
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
@@ -400,5 +402,96 @@ class OhGroupControllerTest {
                 status { isNotFound() }
                 jsonPath("$.message") { value("Group not found: $parentId") }
             }
+    }
+
+    // --- /outdated: empty group cleanup --------------------------------------------------------
+
+    @Test
+    fun `GET outdated returns the empty groups that are old enough`() {
+        `when`(ohGroupService.findEmptyOutdated()).thenReturn(
+            listOf(aGroup(name = "stale-a"), aGroup(name = "stale-b"))
+        )
+
+        mockMvc.get("/api/openinghours/group/outdated")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(2) }
+                jsonPath("$[0].name") { value("stale-a") }
+                jsonPath("$[1].name") { value("stale-b") }
+            }
+    }
+
+    @Test
+    fun `GET outdated returns 200 with empty list when nothing qualifies`() {
+        `when`(ohGroupService.findEmptyOutdated()).thenReturn(emptyList())
+
+        mockMvc.get("/api/openinghours/group/outdated")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(0) }
+            }
+    }
+
+    @Test
+    fun `DELETE outdated without confirm returns 409 previewing the groups and deletes nothing`() {
+        `when`(ohGroupService.findEmptyOutdated()).thenReturn(
+            listOf(aGroup(name = "stale-a"), aGroup(name = "stale-b"))
+        )
+
+        mockMvc.delete("/api/openinghours/group/outdated")
+            .andExpect {
+                status { isConflict() }
+                jsonPath("$.message") {
+                    value("2 empty group(s) would be deleted: stale-a, stale-b. Pass ?confirm=true to proceed.")
+                }
+            }
+
+        verify(ohGroupService, never()).deleteEmptyOutdated()
+    }
+
+    @Test
+    fun `DELETE outdated with confirm=false is treated the same as omitting it`() {
+        `when`(ohGroupService.findEmptyOutdated()).thenReturn(listOf(aGroup(name = "stale-a")))
+
+        mockMvc.delete("/api/openinghours/group/outdated") {
+            param("confirm", "false")
+        }.andExpect {
+            status { isConflict() }
+            jsonPath("$.message") {
+                value("1 empty group(s) would be deleted: stale-a. Pass ?confirm=true to proceed.")
+            }
+        }
+
+        verify(ohGroupService, never()).deleteEmptyOutdated()
+    }
+
+    @Test
+    fun `DELETE outdated without confirm returns 200 and empty list when there is nothing to delete`() {
+        `when`(ohGroupService.findEmptyOutdated()).thenReturn(emptyList())
+
+        mockMvc.delete("/api/openinghours/group/outdated")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(0) }
+            }
+
+        verify(ohGroupService, never()).deleteEmptyOutdated()
+    }
+
+    @Test
+    fun `DELETE outdated with confirm=true deletes and returns the removed groups`() {
+        `when`(ohGroupService.deleteEmptyOutdated()).thenReturn(listOf(aGroup(name = "stale-a")))
+
+        mockMvc.delete("/api/openinghours/group/outdated") {
+            param("confirm", "true")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].name") { value("stale-a") }
+        }
+
+        verify(ohGroupService).deleteEmptyOutdated()
+        // confirm=true skips the preview entirely
+        verify(ohGroupService, never()).findEmptyOutdated()
     }
 }

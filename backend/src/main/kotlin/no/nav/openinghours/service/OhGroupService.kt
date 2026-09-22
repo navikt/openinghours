@@ -6,12 +6,15 @@ import no.nav.openinghours.model.db.RuleRepository
 import no.nav.openinghours.model.db.Service as ServiceEntity
 import no.nav.openinghours.model.db.ServiceOhGroupRepository
 import no.nav.openinghours.model.db.ServiceRepository
+import jakarta.persistence.EntityManager
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.time.Clock
+import java.time.ZonedDateTime
 import java.util.UUID
 
 data class GroupAssociations(val services: List<ServiceEntity>, val groups: List<OhGroup>)
@@ -21,9 +24,16 @@ class OhGroupService(
     private val repo: OhGroupRepository,
     private val serviceRepo: ServiceOhGroupRepository,
     private val serviceRepository: ServiceRepository,
-    private val ruleRepository: RuleRepository
+    private val ruleRepository: RuleRepository,
+    private val clock: Clock,
+    private val entityManager: EntityManager
 ) {
     private val log = LoggerFactory.getLogger(OhGroupService::class.java)
+
+    companion object {
+        /** Empty groups are only deletable as outdated once their last update is this many years old. */
+        const val EMPTY_GROUP_RETENTION_YEARS = 1L
+    }
 
     fun save(name: String, ruleGroupIds: List<UUID>): OhGroup {
         if (name.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank")
@@ -192,6 +202,55 @@ class OhGroupService(
             log.error("Delete oh_group failed id={} msg={}", id, e.message, e)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Delete group: ${e.message}", e)
         }
+    }
+
+    /**
+     * Empty groups (no rules and no child groups) whose most recent activity is older than
+     * [EMPTY_GROUP_RETENTION_YEARS]. "Most recent activity" is [OhGroup.updatedAt] when present,
+     * falling back to [OhGroup.createdAt] for groups that have never been updated. Groups that are
+     * still linked to at least one service are excluded from the result.
+     */
+    @Transactional(readOnly = true)
+    fun findEmptyOutdated(): List<OhGroup> {
+        val linkedGroupIds = serviceRepo.findAllLinkedGroupIds()
+        return getAll().filter { isEmpty(it) && isOutdated(it) && it.id !in linkedGroupIds }
+    }
+
+    @Transactional
+    fun deleteEmptyOutdated(): List<OhGroup> {
+        val candidates = findEmptyOutdated()
+        val deleted = candidates.filter { revalidateAndDelete(it.id) }
+        log.info("Deleted {} empty group(s) older than {} year(s)", deleted.size, EMPTY_GROUP_RETENTION_YEARS)
+        return deleted
+    }
+
+    /**
+     * Re-checks the empty/outdated/unlinked predicates for [id] under a row lock before deleting
+     * it, closing the window between [findEmptyOutdated] scanning candidates and this method
+     * actually removing them, during which another request could have made the group non-empty,
+     * recently active, or linked to a service.
+     *
+     * [id] originates from an entity already loaded (and thus managed) by [findEmptyOutdated] in
+     * the same transaction. Since [OhGroupRepository.findByIdForUpdate] is a native query, it
+     * won't overwrite the fields of an already-managed instance found in the persistence context
+     * first-level cache, so the returned [OhGroup] could still reflect stale pre-lock state even
+     * though the row lock was acquired. Forcing an [EntityManager.refresh] after the lock is held
+     * guarantees the predicates below observe the latest committed data.
+     */
+    private fun revalidateAndDelete(id: UUID): Boolean {
+        val group = repo.findByIdForUpdate(id) ?: return false
+        entityManager.refresh(group)
+        if (!isEmpty(group) || !isOutdated(group)) return false
+        if (serviceRepo.findServiceIdsByGroupId(group.id).isNotEmpty()) return false
+        return delete(id)
+    }
+
+    private fun isEmpty(group: OhGroup): Boolean = group.ruleGroupUuids.isEmpty()
+
+    private fun isOutdated(group: OhGroup): Boolean {
+        val cutoff = ZonedDateTime.now(clock).minusYears(EMPTY_GROUP_RETENTION_YEARS).toInstant()
+        val lastActivity = group.updatedAt ?: group.createdAt
+        return !lastActivity.isAfter(cutoff)
     }
 
     private fun graphHasCycle(rootIds: List<UUID>, selfId: UUID? = null): Boolean {

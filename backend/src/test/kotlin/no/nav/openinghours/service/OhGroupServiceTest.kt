@@ -7,14 +7,23 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpStatus
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import java.time.Clock
+import java.time.ZonedDateTime
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 
 @SpringBootTest
 @Testcontainers
@@ -38,6 +47,55 @@ class OhGroupServiceTest {
     @Autowired lateinit var serviceService: ServiceService
     @Autowired lateinit var ruleService: RuleService
     @Autowired lateinit var repo: OhGroupRepository
+    @Autowired lateinit var clock: Clock
+    @Autowired lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired lateinit var txManager: PlatformTransactionManager
+    @jakarta.persistence.PersistenceContext lateinit var entityManager: jakarta.persistence.EntityManager
+
+    /**
+     * Polls `pg_stat_activity` until some backend is observed waiting on a lock while running the
+     * native `FOR UPDATE` query from [OhGroupRepository.findByIdForUpdate]. This makes the delete
+     * thread's lock-wait an observable condition instead of assuming it via a fixed sleep, which could
+     * otherwise elapse before a slow scan even reaches the lock acquisition on a loaded CI worker.
+     */
+    /**
+     * Polls `pg_stat_activity` until some backend is observed waiting on another transaction's row
+     * lock (`wait_event_type = 'Lock'`, `wait_event = 'transactionid'` - the wait state Postgres
+     * reports while a `SELECT ... FOR UPDATE` blocks on a row held by another still-open
+     * transaction). This makes the delete thread's lock-wait an observable condition instead of
+     * assuming it via a fixed sleep, which could otherwise elapse before a slow scan even reaches the
+     * lock acquisition on a loaded CI worker. The blocked backend's `query` text is not usable here:
+     * Postgres reports it as blank while parked in this wait state.
+     */
+    private fun awaitBlockedOnRowLock(timeoutMs: Long = 5_000): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            @Suppress("SqlResolve", "SqlNoDataSourceInspection")
+            val blocked = jdbcTemplate.queryForObject(
+                """
+                SELECT count(*) FROM pg_stat_activity
+                WHERE wait_event_type = 'Lock' AND wait_event = 'transactionid'
+                """.trimIndent(),
+                Int::class.java
+            ) ?: 0
+            if (blocked > 0) return true
+            Thread.sleep(20)
+        }
+        return false
+    }
+
+    /** Bypasses JPA lifecycle callbacks (which force updated_at to "now") to backdate a group's timestamps. */
+    private fun backdate(groupId: UUID, createdAt: java.time.Instant, updatedAt: java.time.Instant?) {
+        jdbcTemplate.update(
+            "UPDATE oh_group SET created_at = ?, updated_at = ? WHERE id = ?",
+            java.sql.Timestamp.from(createdAt),
+            updatedAt?.let { java.sql.Timestamp.from(it) },
+            groupId
+        )
+        // The persistence context still holds the entity with its original (auto-assigned) timestamps;
+        // clear it so subsequent reads go back to the database and see the backdated values.
+        entityManager.clear()
+    }
 
     @Test
     fun `save creates group`() {
@@ -293,6 +351,247 @@ class OhGroupServiceTest {
             service.removeGroupFromGroup(UUID.randomUUID(), UUID.randomUUID())
         }
         assertThat(ex.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
+
+    // --- findEmptyOutdated / deleteEmptyOutdated ------------------------------------------------
+
+    private fun oldEnoughInstant() =
+        ZonedDateTime.now(clock).minusYears(OhGroupService.EMPTY_GROUP_RETENTION_YEARS).minusDays(1).toInstant()
+
+    private fun recentInstant() =
+        ZonedDateTime.now(clock).minusYears(OhGroupService.EMPTY_GROUP_RETENTION_YEARS).plusDays(1).toInstant()
+
+    @Test
+    fun `findEmptyOutdated returns empty groups whose updatedAt is old enough`() {
+        val stale = service.save("empty-stale-updated", emptyList())
+        backdate(stale.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+        val fresh = service.save("empty-fresh-updated", emptyList())
+        backdate(fresh.id, createdAt = oldEnoughInstant(), updatedAt = recentInstant())
+
+        val found = service.findEmptyOutdated().map { it.id }
+
+        assertThat(found).contains(stale.id)
+        assertThat(found).doesNotContain(fresh.id)
+    }
+
+    @Test
+    fun `findEmptyOutdated falls back to createdAt when updatedAt is null`() {
+        val stale = service.save("empty-stale-created", emptyList())
+        backdate(stale.id, createdAt = oldEnoughInstant(), updatedAt = null)
+        val fresh = service.save("empty-fresh-created", emptyList())
+        backdate(fresh.id, createdAt = recentInstant(), updatedAt = null)
+
+        val found = service.findEmptyOutdated().map { it.id }
+
+        assertThat(found).contains(stale.id)
+        assertThat(found).doesNotContain(fresh.id)
+    }
+
+    @Test
+    fun `findEmptyOutdated excludes non-empty groups even when old`() {
+        val rule = ruleService.upsert("rule-for-nonempty-group", "??.??.???? ? ? 08:00-16:00", null, null)
+        val nonEmpty = service.save("non-empty-stale", listOf(rule.id))
+        backdate(nonEmpty.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+
+        val found = service.findEmptyOutdated().map { it.id }
+
+        assertThat(found).doesNotContain(nonEmpty.id)
+    }
+
+    @Test
+    fun `deleteEmptyOutdated removes qualifying groups and leaves others`() {
+        val stale = service.save("delete-empty-stale", emptyList())
+        backdate(stale.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+        val fresh = service.save("delete-empty-fresh", emptyList())
+        backdate(fresh.id, createdAt = oldEnoughInstant(), updatedAt = recentInstant())
+
+        val deleted = service.deleteEmptyOutdated().map { it.id }
+
+        assertThat(deleted).contains(stale.id)
+        assertThat(repo.findById(stale.id)).isEmpty
+        assertThat(repo.findById(fresh.id)).isPresent
+    }
+
+    @Test
+    fun `findEmptyOutdated excludes groups still linked to a service`() {
+        val linked = service.save("linked-empty-stale", emptyList())
+        backdate(linked.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+        serviceService.save(
+            name = "service-on-stale-group",
+            type = ServiceType.TJENESTE,
+            team = "team-test",
+            ohGroupId = linked.id
+        )
+
+        val found = service.findEmptyOutdated().map { it.id }
+
+        assertThat(found).doesNotContain(linked.id)
+    }
+
+    @Test
+    fun `deleteEmptyOutdated leaves empty groups untouched while still linked to a service`() {
+        val linked = service.save("linked-empty-stale-delete", emptyList())
+        backdate(linked.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+        val svc = serviceService.save(
+            name = "service-on-stale-group-delete",
+            type = ServiceType.TJENESTE,
+            team = "team-test",
+            ohGroupId = linked.id
+        )
+
+        val deleted = service.deleteEmptyOutdated().map { it.id }
+
+        assertThat(deleted).doesNotContain(linked.id)
+        assertThat(repo.findById(linked.id)).isPresent
+        assertThat(service.getOhGroupForService(svc.id).id).isEqualTo(linked.id)
+    }
+
+    /**
+     * Directly exercises the row lock added to close the race between [OhGroupService.findEmptyOutdated]
+     * scanning candidates and [OhGroupService.deleteEmptyOutdated] deleting them: while one transaction
+     * holds the [OhGroupRepository.findByIdForUpdate] lock on a candidate group, a concurrent attempt to
+     * link a service to that same group must block, and can only proceed once the lock-holding
+     * transaction has committed - by which point the group is gone, so the link insert fails instead of
+     * silently attaching to a group that is about to be (or already was) deleted.
+     *
+     * Uses REQUIRES_NEW transactions on separate threads because the group and service must be visible
+     * to a genuinely concurrent connection, which the class-level @Transactional rollback would not allow.
+     */
+    @Test
+    fun `row lock on candidate group blocks a concurrent service link until the delete transaction completes`() {
+        val requiresNew = TransactionTemplate(txManager).apply {
+            propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
+        }
+
+        val groupId = requiresNew.execute {
+            service.save("race-group-${UUID.randomUUID()}", emptyList()).id
+        }!!
+        val serviceId = requiresNew.execute {
+            serviceService.save(
+                name = "race-service-${UUID.randomUUID()}",
+                type = ServiceType.TJENESTE,
+                team = "team-test",
+                ohGroupId = null
+            ).id
+        }!!
+
+        val lockAcquired = CountDownLatch(1)
+        val insertAttempted = CountDownLatch(1)
+        var insertFailed = false
+
+        val lockThread = thread {
+            requiresNew.execute {
+                repo.findByIdForUpdate(groupId)
+                lockAcquired.countDown()
+                // Hold the lock until the concurrent insert has had a chance to start and block on it.
+                insertAttempted.await(5, TimeUnit.SECONDS)
+                Thread.sleep(300)
+                jdbcTemplate.update("DELETE FROM oh_group WHERE id = ?", groupId)
+            }
+        }
+
+        assertThat(lockAcquired.await(5, TimeUnit.SECONDS)).isTrue()
+
+        val insertThread = thread {
+            insertAttempted.countDown()
+            try {
+                requiresNew.execute {
+                    jdbcTemplate.update(
+                        "INSERT INTO service_oh_group (service_id, group_id) VALUES (?, ?)",
+                        serviceId, groupId
+                    )
+                }
+            } catch (e: Exception) {
+                insertFailed = true
+            }
+        }
+
+        lockThread.join(10_000)
+        insertThread.join(10_000)
+
+        assertThat(insertFailed)
+            .withFailMessage(
+                "Expected the concurrent service link insert to fail because the row lock delayed it " +
+                    "until after the group was deleted"
+            )
+            .isTrue()
+
+        requiresNew.execute {
+            jdbcTemplate.update("DELETE FROM service_oh_group WHERE service_id = ?", serviceId)
+            jdbcTemplate.update("DELETE FROM service WHERE id = ?", serviceId)
+        }
+    }
+
+    /**
+     * Drives the real [OhGroupService.deleteEmptyOutdated] production path (not just the raw repository
+     * lock) to prove the service-level guarantee: a group that [OhGroupService.findEmptyOutdated] found
+     * empty and unlinked, but which a concurrent request links to a service while deleteEmptyOutdated is
+     * blocked acquiring [OhGroupRepository.findByIdForUpdate] on it, must not be deleted. If the
+     * revalidation (or its lock) were ever removed from deleteEmptyOutdated, this test would fail because
+     * the group would be deleted despite the concurrently-committed service link.
+     */
+    @Test
+    fun `deleteEmptyOutdated skips a candidate that gets linked to a service while it is waiting on the row lock`() {
+        val requiresNew = TransactionTemplate(txManager).apply {
+            propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
+        }
+
+        val groupId = requiresNew.execute {
+            val group = service.save("race-delete-group-${UUID.randomUUID()}", emptyList())
+            backdate(group.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
+            group.id
+        }!!
+        val serviceId = requiresNew.execute {
+            serviceService.save(
+                name = "race-delete-service-${UUID.randomUUID()}",
+                type = ServiceType.TJENESTE,
+                team = "team-test",
+                ohGroupId = null
+            ).id
+        }!!
+
+        val groupLocked = CountDownLatch(1)
+        val proceedToLink = CountDownLatch(1)
+
+        // Holds the same lock deleteEmptyOutdated will try to acquire, then - once signalled - links the
+        // service to the group, simulating another request racing in while the batch waits on the lock.
+        val linkerThread = thread {
+            requiresNew.execute {
+                repo.findByIdForUpdate(groupId)
+                groupLocked.countDown()
+                proceedToLink.await(5, TimeUnit.SECONDS)
+                jdbcTemplate.update(
+                    "INSERT INTO service_oh_group (service_id, group_id) VALUES (?, ?)",
+                    serviceId, groupId
+                )
+            }
+        }
+
+        assertThat(groupLocked.await(5, TimeUnit.SECONDS)).isTrue()
+
+        var deletedIds: List<UUID> = emptyList()
+        val deleteThread = thread {
+            deletedIds = requiresNew.execute { service.deleteEmptyOutdated() }!!.map { it.id }
+        }
+
+        // Wait until deleteEmptyOutdated has actually scanned (seeing the group as still unlinked) and is
+        // blocked in Postgres trying to acquire the same row lock, instead of guessing with a fixed delay
+        // that could race ahead of a slow scan on a loaded CI worker.
+        assertThat(awaitBlockedOnRowLock()).isTrue()
+        proceedToLink.countDown()
+
+        linkerThread.join(10_000)
+        deleteThread.join(10_000)
+
+        assertThat(deletedIds).doesNotContain(groupId)
+        assertThat(repo.findById(groupId)).isPresent
+        assertThat(service.getOhGroupForService(serviceId).id).isEqualTo(groupId)
+
+        requiresNew.execute {
+            jdbcTemplate.update("DELETE FROM service_oh_group WHERE service_id = ?", serviceId)
+            jdbcTemplate.update("DELETE FROM service WHERE id = ?", serviceId)
+            jdbcTemplate.update("DELETE FROM oh_group WHERE id = ?", groupId)
+        }
     }
 
 }
