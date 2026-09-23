@@ -23,10 +23,4 @@ interface ServiceOhGroupRepository : JpaRepository<ServiceOhGroup, ServiceOhGrou
     @Modifying
     @Query("DELETE FROM ServiceOhGroup s WHERE s.id.groupId = :groupId")
     fun deleteAllLinksByGroup(@Param("groupId") groupId: UUID): Int
-
-    @Query(
-        value = "SELECT DISTINCT group_id FROM service_oh_group",
-        nativeQuery = true
-    )
-    fun findAllLinkedGroupIds(): Set<UUID>
 }

@@ -413,7 +413,7 @@ class OhGroupServiceTest {
     }
 
     @Test
-    fun `findEmptyOutdated excludes groups still linked to a service`() {
+    fun `findEmptyOutdated includes groups still linked to a service`() {
         val linked = service.save("linked-empty-stale", emptyList())
         backdate(linked.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
         serviceService.save(
@@ -425,11 +425,11 @@ class OhGroupServiceTest {
 
         val found = service.findEmptyOutdated().map { it.id }
 
-        assertThat(found).doesNotContain(linked.id)
+        assertThat(found).contains(linked.id)
     }
 
     @Test
-    fun `deleteEmptyOutdated leaves empty groups untouched while still linked to a service`() {
+    fun `deleteEmptyOutdated deletes empty groups still linked to a service and removes the link`() {
         val linked = service.save("linked-empty-stale-delete", emptyList())
         backdate(linked.id, createdAt = oldEnoughInstant(), updatedAt = oldEnoughInstant())
         val svc = serviceService.save(
@@ -441,9 +441,13 @@ class OhGroupServiceTest {
 
         val deleted = service.deleteEmptyOutdated().map { it.id }
 
-        assertThat(deleted).doesNotContain(linked.id)
-        assertThat(repo.findById(linked.id)).isPresent
-        assertThat(service.getOhGroupForService(svc.id).id).isEqualTo(linked.id)
+        assertThat(deleted).contains(linked.id)
+        assertThat(repo.findById(linked.id)).isEmpty
+        assertThat(
+            org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+                service.getOhGroupForService(svc.id)
+            }.statusCode
+        ).isEqualTo(HttpStatus.NOT_FOUND)
     }
 
     /**
@@ -524,14 +528,13 @@ class OhGroupServiceTest {
 
     /**
      * Drives the real [OhGroupService.deleteEmptyOutdated] production path (not just the raw repository
-     * lock) to prove the service-level guarantee: a group that [OhGroupService.findEmptyOutdated] found
-     * empty and unlinked, but which a concurrent request links to a service while deleteEmptyOutdated is
-     * blocked acquiring [OhGroupRepository.findByIdForUpdate] on it, must not be deleted. If the
-     * revalidation (or its lock) were ever removed from deleteEmptyOutdated, this test would fail because
-     * the group would be deleted despite the concurrently-committed service link.
+     * lock) to prove that a group which becomes linked to a service while deleteEmptyOutdated is blocked
+     * acquiring [OhGroupRepository.findByIdForUpdate] on it is still deleted once the lock is released -
+     * the link no longer protects an otherwise qualifying empty/outdated group - and that the
+     * concurrently-committed service link is removed along with the group.
      */
     @Test
-    fun `deleteEmptyOutdated skips a candidate that gets linked to a service while it is waiting on the row lock`() {
+    fun `deleteEmptyOutdated still deletes a candidate that gets linked to a service while it is waiting on the row lock`() {
         val requiresNew = TransactionTemplate(txManager).apply {
             propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
         }
@@ -583,9 +586,13 @@ class OhGroupServiceTest {
         linkerThread.join(10_000)
         deleteThread.join(10_000)
 
-        assertThat(deletedIds).doesNotContain(groupId)
-        assertThat(repo.findById(groupId)).isPresent
-        assertThat(service.getOhGroupForService(serviceId).id).isEqualTo(groupId)
+        assertThat(deletedIds).contains(groupId)
+        assertThat(repo.findById(groupId)).isEmpty
+        assertThat(
+            org.junit.jupiter.api.assertThrows<ResponseStatusException> {
+                service.getOhGroupForService(serviceId)
+            }.statusCode
+        ).isEqualTo(HttpStatus.NOT_FOUND)
 
         requiresNew.execute {
             jdbcTemplate.update("DELETE FROM service_oh_group WHERE service_id = ?", serviceId)

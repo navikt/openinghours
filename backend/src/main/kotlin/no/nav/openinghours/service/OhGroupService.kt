@@ -207,14 +207,11 @@ class OhGroupService(
     /**
      * Empty groups (no rules and no child groups) whose most recent activity is older than
      * [EMPTY_GROUP_RETENTION_YEARS]. "Most recent activity" is [OhGroup.updatedAt] when present,
-     * falling back to [OhGroup.createdAt] for groups that have never been updated. Groups that are
-     * still linked to at least one service are excluded from the result.
+     * falling back to [OhGroup.createdAt] for groups that have never been updated. Groups still
+     * linked to a service are included; deleting them also removes the service link.
      */
     @Transactional(readOnly = true)
-    fun findEmptyOutdated(): List<OhGroup> {
-        val linkedGroupIds = serviceRepo.findAllLinkedGroupIds()
-        return getAll().filter { isEmpty(it) && isOutdated(it) && it.id !in linkedGroupIds }
-    }
+    fun findEmptyOutdated(): List<OhGroup> = getAll().filter { isEmpty(it) && isOutdated(it) }
 
     @Transactional
     fun deleteEmptyOutdated(): List<OhGroup> {
@@ -225,10 +222,10 @@ class OhGroupService(
     }
 
     /**
-     * Re-checks the empty/outdated/unlinked predicates for [id] under a row lock before deleting
-     * it, closing the window between [findEmptyOutdated] scanning candidates and this method
-     * actually removing them, during which another request could have made the group non-empty,
-     * recently active, or linked to a service.
+     * Re-checks the empty/outdated predicates for [id] under a row lock before deleting it,
+     * closing the window between [findEmptyOutdated] scanning candidates and this method actually
+     * removing them, during which another request could have made the group non-empty or recently
+     * active. Groups still linked to a service are deleted regardless; [delete] removes the link.
      *
      * [id] originates from an entity already loaded (and thus managed) by [findEmptyOutdated] in
      * the same transaction. Since [OhGroupRepository.findByIdForUpdate] is a native query, it
@@ -241,7 +238,6 @@ class OhGroupService(
         val group = repo.findByIdForUpdate(id) ?: return false
         entityManager.refresh(group)
         if (!isEmpty(group) || !isOutdated(group)) return false
-        if (serviceRepo.findServiceIdsByGroupId(group.id).isNotEmpty()) return false
         return delete(id)
     }
 
