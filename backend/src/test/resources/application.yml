@@ -20,16 +20,10 @@ api:
     key: test-api-key
     header-name: X-API-Key
 
-jira:
-  url: http://localhost
-  username: test
-  password: test
+statusplattform:
+  base-url: http://statusplattform.test
+  sync:
+    cron: "-"
 
 openinghours:
   timezone: Europe/Oslo
-  api:
-    url: http://localhost/
-    token: test-token
-  client:
-    id: test-client-id
-    secret: test-client-secret

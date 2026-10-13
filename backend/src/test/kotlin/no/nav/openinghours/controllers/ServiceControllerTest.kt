@@ -3,6 +3,8 @@ package no.nav.openinghours.controllers
 import no.nav.openinghours.model.db.Service
 import no.nav.openinghours.model.db.ServiceType
 import no.nav.openinghours.service.ServiceService
+import no.nav.openinghours.statusplattform.StatusplattformSyncService
+import no.nav.openinghours.statusplattform.SyncResult
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.doNothing
@@ -32,6 +34,22 @@ class ServiceControllerTest {
 
     @MockitoBean
     private lateinit var serviceService: ServiceService
+
+    @MockitoBean
+    private lateinit var statusplattformSync: StatusplattformSyncService
+
+    @Test
+    fun `POST sync returns sync result`() {
+        `when`(statusplattformSync.sync()).thenReturn(SyncResult(fetched = 3, inserted = 2, skippedExisting = 1, skippedInvalid = 0))
+
+        mockMvc.post("/api/openinghours/service/sync")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.fetched") { value(3) }
+                jsonPath("$.inserted") { value(2) }
+                jsonPath("$.skippedExisting") { value(1) }
+            }
+    }
 
     private fun aService(id: UUID = UUID.randomUUID(), name: String = "Gosys", type: ServiceType = ServiceType.TJENESTE, team: String = "Team X") =
         Service.create(id = id, name = name, type = type, team = team)

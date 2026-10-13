@@ -6,16 +6,35 @@ import jakarta.validation.constraints.NotBlank
 import no.nav.openinghours.model.db.Service
 import no.nav.openinghours.model.db.ServiceType
 import no.nav.openinghours.service.ServiceService
+import no.nav.openinghours.statusplattform.StatusplattformSyncService
+import no.nav.openinghours.statusplattform.SyncResult
+import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.client.ResourceAccessException
+import org.springframework.web.server.ResponseStatusException
 import java.util.UUID
 
 @RestController
 @RequestMapping("/api/openinghours/service")
 @Validated
 class ServiceController(
-    private val service: ServiceService
+    private val service: ServiceService,
+    private val statusplattformSync: StatusplattformSyncService
 ) {
+    @Operation(summary = "Add new services from Statusplattform (existing services are left unchanged)")
+    @PostMapping("/sync")
+    fun syncFromStatusplattform(): SyncResult =
+        try {
+            statusplattformSync.sync()
+        } catch (e: ResourceAccessException) {
+            throw ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Statusplattform is unreachable: ${e.rootCause?.message ?: e.message}",
+                e
+            )
+        }
+
     @Operation(summary = "Get a service by id")
     @GetMapping("/{id}")
     fun getService(@PathVariable id: UUID): Service = service.get(id)

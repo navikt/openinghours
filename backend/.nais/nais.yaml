@@ -29,6 +29,9 @@ spec:
         - application: openinghours-frontend
           namespace: navdig
           cluster: prod-gcp
+    outbound:
+      rules:
+        - application: statusplattform-api
   gcp:
     sqlInstances:
         - name: openinghours
