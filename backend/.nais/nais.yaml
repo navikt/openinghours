@@ -32,6 +32,8 @@ spec:
     outbound:
       rules:
         - application: statusplattform-api
+      external:
+        - host: statusplattform-v2.intern.nav.no
   gcp:
     sqlInstances:
         - name: openinghours
