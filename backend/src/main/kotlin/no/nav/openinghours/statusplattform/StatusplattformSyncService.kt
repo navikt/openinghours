@@ -4,6 +4,8 @@ import no.nav.openinghours.dailycache.OpeningHoursDailyCache
 import no.nav.openinghours.model.db.ServiceRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 
 data class SyncResult(
     val fetched: Int,
@@ -16,9 +18,11 @@ data class SyncResult(
 class StatusplattformSyncService(
     private val client: StatusplattformClient,
     private val repo: ServiceRepository,
-    private val cache: OpeningHoursDailyCache
+    private val cache: OpeningHoursDailyCache,
+    transactionManager: PlatformTransactionManager
 ) {
     private val log = LoggerFactory.getLogger(StatusplattformSyncService::class.java)
+    private val transactionTemplate = TransactionTemplate(transactionManager)
 
     companion object {
         const val NAME_MAX = 100
@@ -30,6 +34,16 @@ class StatusplattformSyncService(
     @Synchronized
     fun sync(): SyncResult {
         val remote = client.fetchAll()
+        val result = transactionTemplate.execute {
+            insertRemoteServices(remote)
+        } ?: throw IllegalStateException("Statusplattform sync transaction returned no result")
+
+        log.info("Statusplattform sync finished {}", result)
+        cache.populate()
+        return result
+    }
+
+    private fun insertRemoteServices(remote: List<StatusplattformService>): SyncResult {
         var inserted = 0
         var invalid = 0
 
@@ -50,15 +64,11 @@ class StatusplattformSyncService(
             }
         }
 
-        val result = SyncResult(
+        return SyncResult(
             fetched = remote.size,
             inserted = inserted,
             skippedExisting = remote.size - inserted - invalid,
             skippedInvalid = invalid
         )
-        log.info("Statusplattform sync finished {}", result)
-
-        cache.populate()
-        return result
     }
 }
