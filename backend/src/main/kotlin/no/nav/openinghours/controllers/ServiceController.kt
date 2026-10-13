@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank
 import no.nav.openinghours.model.db.Service
 import no.nav.openinghours.model.db.ServiceType
 import no.nav.openinghours.service.ServiceService
+import no.nav.openinghours.statusplattform.StatusplattformApiException
 import no.nav.openinghours.statusplattform.StatusplattformSyncService
 import no.nav.openinghours.statusplattform.SyncResult
 import org.springframework.http.HttpStatus
@@ -27,6 +28,12 @@ class ServiceController(
     fun syncFromStatusplattform(): SyncResult =
         try {
             statusplattformSync.sync()
+        } catch (e: StatusplattformApiException) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_GATEWAY,
+                e.message,
+                e
+            )
         } catch (e: ResourceAccessException) {
             throw ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,

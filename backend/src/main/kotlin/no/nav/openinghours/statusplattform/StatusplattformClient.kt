@@ -2,6 +2,7 @@ package no.nav.openinghours.statusplattform
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import no.nav.openinghours.model.db.ServiceType
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.HttpMethod
@@ -24,7 +25,7 @@ data class StatusplattformService(
 
 @Component
 class StatusplattformClient(
-    private val restTemplate: RestTemplate,
+    @Qualifier("statusplattformRestTemplate") private val restTemplate: RestTemplate,
     @Value("\${statusplattform.base-url}") private val baseUrl: String
 ) {
     fun fetchAll(): List<StatusplattformService> =

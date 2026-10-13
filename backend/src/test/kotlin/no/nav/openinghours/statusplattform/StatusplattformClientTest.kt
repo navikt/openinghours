@@ -11,13 +11,14 @@ import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withServerError
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
-import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestTemplate
 import java.util.UUID
 
 class StatusplattformClientTest {
 
-    private val restTemplate = RestTemplate()
+    private val restTemplate = RestTemplate().apply {
+        errorHandler = StatusplattformResponseErrorHandler()
+    }
     private val server = MockRestServiceServer.bindTo(restTemplate).build()
     private val client = StatusplattformClient(restTemplate, "http://statusplattform.test/")
 
@@ -52,6 +53,7 @@ class StatusplattformClientTest {
         server.expect(requestTo("http://statusplattform.test/api/v1/services/minimal?type=TJENESTE"))
             .andRespond(withServerError())
 
-        assertThrows<RestClientException> { client.fetchAll() }
+        val exception = assertThrows<StatusplattformApiException> { client.fetchAll() }
+        assertThat(exception.message).contains("Statusplattform API", "500")
     }
 }
