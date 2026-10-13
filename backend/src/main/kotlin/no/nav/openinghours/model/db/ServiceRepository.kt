@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 interface ServiceOhGroupLink {
@@ -43,4 +44,22 @@ interface ServiceRepository : JpaRepository<Service, UUID> {
         nativeQuery = true
     )
     fun findAllServiceGroupLinks(): List<ServiceOhGroupLink>
+
+    @Transactional
+    @Modifying
+    @Query(
+        value = """
+            INSERT INTO service (id, name, type, team, monitorlink, created_at)
+            VALUES (:id, :name, :type, :team, :monitorlink, NOW())
+            ON CONFLICT DO NOTHING
+        """,
+        nativeQuery = true
+    )
+    fun insertIfAbsent(
+        @Param("id") id: UUID,
+        @Param("name") name: String,
+        @Param("type") type: String,
+        @Param("team") team: String,
+        @Param("monitorlink") monitorlink: String?
+    ): Int
 }
