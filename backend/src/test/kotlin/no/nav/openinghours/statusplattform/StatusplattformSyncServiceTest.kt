@@ -82,7 +82,7 @@ class StatusplattformSyncServiceTest {
         val reloaded = repo.findById(existing.id).orElseThrow()
         assertThat(reloaded.name).isEqualTo("Existing")
         assertThat(reloaded.team).isEqualTo("Original team")
-        verify(cache, never()).populate()
+        verify(cache).populate()
     }
 
     @Test

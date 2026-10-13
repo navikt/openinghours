@@ -58,7 +58,7 @@ class StatusplattformSyncService(
         )
         log.info("Statusplattform sync finished {}", result)
 
-        if (inserted > 0) cache.populate()
+        cache.populate()
         return result
     }
 }
