@@ -21,7 +21,6 @@ spec:
   port: 8081
   envFrom:
     - secret: openinghours-app-swagger-secret
-    - secret: openinghours-slack-secret
     #- secret: openinghours-secret
   webproxy: true
   accessPolicy:
