@@ -39,6 +39,7 @@ class StatusplattformSyncServiceTest {
 
         @JvmStatic
         @DynamicPropertySource
+        @Suppress("unused")
         fun overrideProps(registry: DynamicPropertyRegistry) {
             registry.add("spring.datasource.url", postgres::getJdbcUrl)
             registry.add("spring.datasource.username", postgres::getUsername)
@@ -61,24 +62,26 @@ class StatusplattformSyncServiceTest {
     fun `inserts new services and components with Statusplattform id`() {
         val tjeneste = remote(ServiceType.TJENESTE, name = "Gosys", monitorlink = "https://monitor")
         val komponent = remote(ServiceType.KOMPONENT, name = "Database")
+        val tjenesteId = requireNotNull(tjeneste.dto.id)
+        val komponentId = requireNotNull(komponent.dto.id)
         `when`(client.fetchAll()).thenReturn(listOf(tjeneste, komponent))
         clearInvocations(cache)
 
         val result = syncService.sync()
 
         assertThat(result).isEqualTo(SyncResult(fetched = 2, inserted = 2, skippedExisting = 0, skippedInvalid = 0))
-        val savedTjeneste = repo.findById(tjeneste.dto.id!!).orElseThrow()
+        val savedTjeneste = repo.findById(tjenesteId).orElseThrow()
         assertThat(savedTjeneste.name).isEqualTo("Gosys")
         assertThat(savedTjeneste.type).isEqualTo(ServiceType.TJENESTE)
         assertThat(savedTjeneste.team).isEqualTo("Team X")
         assertThat(savedTjeneste.monitorlink).isEqualTo("https://monitor")
-        assertThat(repo.findById(komponent.dto.id!!).orElseThrow().type).isEqualTo(ServiceType.KOMPONENT)
+        assertThat(repo.findById(komponentId).orElseThrow().type).isEqualTo(ServiceType.KOMPONENT)
         verify(cache).populate()
         assertThat(events.stream(ServicesAddedEvent::class.java)).containsExactly(
             ServicesAddedEvent(
                 listOf(
-                    AddedService(tjeneste.dto.id!!, "Gosys", ServiceType.TJENESTE, "Team X"),
-                    AddedService(komponent.dto.id!!, "Database", ServiceType.KOMPONENT, "Team X")
+                    AddedService(tjenesteId, "Gosys", ServiceType.TJENESTE, "Team X"),
+                    AddedService(komponentId, "Database", ServiceType.KOMPONENT, "Team X")
                 ),
                 ServiceAddedSource.STATUSPLATTFORM_SYNC
             )
