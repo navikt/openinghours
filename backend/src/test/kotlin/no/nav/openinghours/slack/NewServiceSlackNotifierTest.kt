@@ -89,10 +89,11 @@ class NewServiceSlackNotifierTest {
         }
 
         val message = notifier().buildMessage(ServicesAddedEvent(many, ServiceAddedSource.STATUSPLATTFORM_SYNC))
+        val metadata = requireNotNull(message.metadata)
 
         assertThat(message.text).startsWith("*${many.size} new services added to OpeningHours* (Statusplattform sync)")
         assertThat(message.text).endsWith("…and 3 more")
-        assertThat(message.metadata!!.eventPayload["count"]).isEqualTo(many.size)
-        assertThat(message.metadata!!.eventPayload["services"] as List<*>).hasSize(NewServiceSlackNotifier.MAX_LISTED)
+        assertThat(metadata.eventPayload["count"]).isEqualTo(many.size)
+        assertThat(metadata.eventPayload["services"] as List<*>).hasSize(NewServiceSlackNotifier.MAX_LISTED)
     }
 }
