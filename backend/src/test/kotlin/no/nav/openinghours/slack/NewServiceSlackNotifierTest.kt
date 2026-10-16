@@ -1,5 +1,6 @@
 package no.nav.openinghours.slack
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import no.nav.openinghours.model.db.ServiceType
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -14,16 +15,16 @@ import org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPat
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
-import org.springframework.web.client.RestTemplate
 import java.util.UUID
 
 class NewServiceSlackNotifierTest {
 
-    private val restTemplate = RestTemplate()
+    private val objectMapper = jacksonObjectMapper()
+    private val restTemplate = SlackConfig().slackRestTemplate(objectMapper)
     private val server = MockRestServiceServer.bindTo(restTemplate).build()
 
     private fun notifier(token: String = "xoxb-test", channel: String = "C123") =
-        NewServiceSlackNotifier(SlackClient(restTemplate, "http://slack.test/api/", token, channel))
+        NewServiceSlackNotifier(SlackClient(restTemplate, "http://slack.test/api/", token, channel), objectMapper)
 
     private val id = UUID.randomUUID()
     private val event = ServicesAddedEvent(
@@ -83,17 +84,72 @@ class NewServiceSlackNotifierTest {
     }
 
     @Test
-    fun `caps listed services and reports remainder`() {
-        val many = (1..NewServiceSlackNotifier.MAX_LISTED + 3).map {
+    fun `splits large events without dropping services`() {
+        val many = (1..53).map {
             AddedService(UUID.randomUUID(), "svc-$it", ServiceType.KOMPONENT, "team")
         }
 
-        val message = notifier().buildMessage(ServicesAddedEvent(many, ServiceAddedSource.STATUSPLATTFORM_SYNC))
-        val metadata = requireNotNull(message.metadata)
+        assertSizeSafeDelivery(many)
+    }
 
-        assertThat(message.text).startsWith("*${many.size} new services added to OpeningHours* (Statusplattform sync)")
-        assertThat(message.text).endsWith("…and 3 more")
-        assertThat(metadata.eventPayload["count"]).isEqualTo(many.size)
-        assertThat(metadata.eventPayload["services"] as List<*>).hasSize(NewServiceSlackNotifier.MAX_LISTED)
+    @Test
+    fun `splits metadata using UTF-8 bytes including escaped names and teams`() {
+        val many = (1..12).map {
+            AddedService(UUID.randomUUID(), "\u754c".repeat(100), ServiceType.TJENESTE, "\"\\\n".repeat(33))
+        }
+        assertSizeSafeDelivery(many)
+    }
+
+    @Test
+    fun `allows exactly the metadata limit and splits one byte over it`() {
+        val services = listOf(
+            AddedService(UUID.randomUUID(), "", ServiceType.TJENESTE, "team"),
+            AddedService(UUID.randomUUID(), "", ServiceType.TJENESTE, "team")
+        )
+        val source = ServiceAddedSource.STATUSPLATTFORM_SYNC
+        val initial = notifier().buildMessages(ServicesAddedEvent(services, source)).single()
+        val padding = NewServiceSlackNotifier.MAX_METADATA_BYTES -
+            objectMapper.writeValueAsBytes(initial.metadata).size
+        val atLimit = listOf(services[0].copy(name = "x".repeat(padding)), services[1])
+        val message = notifier().buildMessages(ServicesAddedEvent(atLimit, source)).single()
+
+        assertThat(objectMapper.writeValueAsBytes(message.metadata)).hasSize(NewServiceSlackNotifier.MAX_METADATA_BYTES)
+        val overLimit = listOf(atLimit[0].copy(name = atLimit[0].name + "x"), atLimit[1])
+        assertThat(notifier().buildMessages(ServicesAddedEvent(overLimit, source))).hasSize(2)
+        assertSizeSafeDelivery(overLimit)
+    }
+
+    @Test
+    fun `rejects a service that cannot fit in one metadata payload`() {
+        val oversized = event.copy(services = listOf(event.services.single().copy(name = "x".repeat(2000))))
+        assertThrows<IllegalArgumentException> { notifier().buildMessages(oversized) }
+    }
+
+    private fun assertSizeSafeDelivery(services: List<AddedService>) {
+        val source = ServiceAddedSource.STATUSPLATTFORM_SYNC
+        val messages = notifier().buildMessages(ServicesAddedEvent(services, source))
+        assertThat(messages.size).isGreaterThan(1)
+        val delivered = mutableListOf<String>()
+        messages.forEach {
+            server.expect(requestTo("http://slack.test/api/chat.postMessage"))
+                .andExpect { request ->
+                    val body = (request as org.springframework.mock.http.client.MockClientHttpRequest).bodyAsString
+                    val metadata = objectMapper.readTree(body).get("metadata")
+                    assertThat(objectMapper.writeValueAsBytes(metadata).size)
+                        .isLessThanOrEqualTo(NewServiceSlackNotifier.MAX_METADATA_BYTES)
+                    val batch = metadata.get("event_payload").get("services")
+                    assertThat(metadata.get("event_payload").get("count").asInt()).isEqualTo(batch.size())
+                    batch.forEach { service ->
+                        delivered += service.get("id").asText()
+                        val original = services.single { it.id.toString() == service.get("id").asText() }
+                        assertThat(service.get("name").asText()).isEqualTo(original.name)
+                        assertThat(service.get("team").asText()).isEqualTo(original.team)
+                    }
+                }
+                .andRespond(withSuccess("""{"ok":true}""", MediaType.APPLICATION_JSON))
+        }
+        notifier().onServicesAdded(ServicesAddedEvent(services, source))
+        assertThat(delivered).containsExactlyElementsOf(services.map { it.id.toString() })
+        server.verify()
     }
 }
