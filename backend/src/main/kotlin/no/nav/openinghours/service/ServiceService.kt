@@ -6,7 +6,11 @@ import no.nav.openinghours.model.db.OhGroupRepository
 import no.nav.openinghours.model.db.Service
 import no.nav.openinghours.model.db.ServiceRepository
 import no.nav.openinghours.model.db.ServiceType
+import no.nav.openinghours.slack.AddedService
+import no.nav.openinghours.slack.ServiceAddedSource
+import no.nav.openinghours.slack.ServicesAddedEvent
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service as SpringService
@@ -22,7 +26,8 @@ data class ServiceNameAndGroup(val name: String, val group: ResolvedGroup?)
 class ServiceService(
     private val repo: ServiceRepository,
     private val ohGroupRepo: OhGroupRepository,
-    private val resolver: OpeningHoursTreeResolver
+    private val resolver: OpeningHoursTreeResolver,
+    private val events: ApplicationEventPublisher
 ) {
     private val log = LoggerFactory.getLogger(ServiceService::class.java)
 
@@ -51,6 +56,10 @@ class ServiceService(
                     monitorlink = monitorlink, logglink = logglink, description = description))
             ohGroupId?.let { repo.linkOhGroup(saved.id, it) }
             log.info("Saved service name={} type={}", name, type)
+            events.publishEvent(ServicesAddedEvent(
+                listOf(AddedService(saved.id, saved.name, saved.type, saved.team)),
+                ServiceAddedSource.API
+            ))
             saved
         } catch (e: DataIntegrityViolationException) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Service with name '$name' and type '$type' already exists")

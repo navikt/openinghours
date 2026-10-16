@@ -4,6 +4,9 @@ import no.nav.openinghours.dailycache.OpeningHoursDailyCache
 import no.nav.openinghours.model.db.ServiceRepository
 import no.nav.openinghours.model.db.ServiceType
 import no.nav.openinghours.service.ServiceService
+import no.nav.openinghours.slack.AddedService
+import no.nav.openinghours.slack.ServiceAddedSource
+import no.nav.openinghours.slack.ServicesAddedEvent
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -16,6 +19,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.bean.override.mockito.MockitoBean
+import org.springframework.test.context.event.ApplicationEvents
+import org.springframework.test.context.event.RecordApplicationEvents
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
@@ -25,6 +30,7 @@ import java.util.UUID
 @SpringBootTest
 @Testcontainers
 @Transactional
+@RecordApplicationEvents
 class StatusplattformSyncServiceTest {
 
     companion object {
@@ -43,6 +49,7 @@ class StatusplattformSyncServiceTest {
     @Autowired lateinit var syncService: StatusplattformSyncService
     @Autowired lateinit var serviceService: ServiceService
     @Autowired lateinit var repo: ServiceRepository
+    @Autowired lateinit var events: ApplicationEvents
 
     @MockitoBean lateinit var client: StatusplattformClient
     @MockitoBean lateinit var cache: OpeningHoursDailyCache
@@ -67,6 +74,15 @@ class StatusplattformSyncServiceTest {
         assertThat(savedTjeneste.monitorlink).isEqualTo("https://monitor")
         assertThat(repo.findById(komponent.dto.id!!).orElseThrow().type).isEqualTo(ServiceType.KOMPONENT)
         verify(cache).populate()
+        assertThat(events.stream(ServicesAddedEvent::class.java)).containsExactly(
+            ServicesAddedEvent(
+                listOf(
+                    AddedService(tjeneste.dto.id!!, "Gosys", ServiceType.TJENESTE, "Team X"),
+                    AddedService(komponent.dto.id!!, "Database", ServiceType.KOMPONENT, "Team X")
+                ),
+                ServiceAddedSource.STATUSPLATTFORM_SYNC
+            )
+        )
     }
 
     @Test
@@ -78,6 +94,8 @@ class StatusplattformSyncServiceTest {
         val result = syncService.sync()
 
         assertThat(result).isEqualTo(SyncResult(fetched = 1, inserted = 0, skippedExisting = 1, skippedInvalid = 0))
+        assertThat(events.stream(ServicesAddedEvent::class.java)
+            .filter { it.source == ServiceAddedSource.STATUSPLATTFORM_SYNC }).isEmpty()
         repo.flush()
         val reloaded = repo.findById(existing.id).orElseThrow()
         assertThat(reloaded.name).isEqualTo("Existing")

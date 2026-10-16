@@ -35,6 +35,11 @@ statusplattform:
   sync:
     cron: ${STATUSPLATTFORM_SYNC_CRON:0 0 1 * * *}
 
+slack:
+  base-url: ${SLACK_API_URL:https://slack.com/api}
+  bot-token: ${SLACK_BOT_TOKEN:}
+  channel-id: ${SLACK_OPENINGHOURS_CHANNEL_ID:}
+
 management:
   endpoints:
     web:
