@@ -2,6 +2,9 @@ package no.nav.openinghours.service
 
 import no.nav.openinghours.model.db.ServiceRepository
 import no.nav.openinghours.model.db.ServiceType
+import no.nav.openinghours.slack.AddedService
+import no.nav.openinghours.slack.ServiceAddedSource
+import no.nav.openinghours.slack.ServicesAddedEvent
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -10,6 +13,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
+import org.springframework.test.context.event.ApplicationEvents
+import org.springframework.test.context.event.RecordApplicationEvents
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import org.testcontainers.containers.PostgreSQLContainer
@@ -20,6 +25,7 @@ import java.util.UUID
 @SpringBootTest
 @Testcontainers
 @Transactional
+@RecordApplicationEvents
 class ServiceServiceTest {
 
     companion object {
@@ -28,6 +34,7 @@ class ServiceServiceTest {
 
         @JvmStatic
         @DynamicPropertySource
+        @Suppress("unused")
         fun overrideProps(registry: DynamicPropertyRegistry) {
             registry.add("spring.datasource.url", postgres::getJdbcUrl)
             registry.add("spring.datasource.username", postgres::getUsername)
@@ -38,6 +45,21 @@ class ServiceServiceTest {
     @Autowired lateinit var service: ServiceService
     @Autowired lateinit var groupService: OhGroupService
     @Autowired lateinit var repo: ServiceRepository
+    @Autowired lateinit var events: ApplicationEvents
+
+    @Test
+    fun `save publishes ServicesAddedEvent with id, name and team`() {
+        val s = service.save("svc-event", ServiceType.TJENESTE, "team-x")
+        assertThat(events.stream(ServicesAddedEvent::class.java)).containsExactly(
+            ServicesAddedEvent(listOf(AddedService(s.id, "svc-event", ServiceType.TJENESTE, "team-x")), ServiceAddedSource.API)
+        )
+    }
+
+    @Test
+    fun `failed save publishes no event`() {
+        assertThrows<ResponseStatusException> { service.save("", ServiceType.TJENESTE, "team-x") }
+        assertThat(events.stream(ServicesAddedEvent::class.java)).isEmpty()
+    }
 
     @Test
     fun `save creates service`() {

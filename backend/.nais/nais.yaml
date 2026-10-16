@@ -21,6 +21,7 @@ spec:
   port: 8081
   envFrom:
     - secret: openinghours-app-swagger-secret
+    - secret: openinghours-slack-secret
     #- secret: openinghours-secret
   webproxy: true
   accessPolicy:
@@ -34,6 +35,7 @@ spec:
         - application: statusplattform-api
       external:
         - host: statusplattform-v2.intern.nav.no
+        - host: slack.com
   gcp:
     sqlInstances:
         - name: openinghours

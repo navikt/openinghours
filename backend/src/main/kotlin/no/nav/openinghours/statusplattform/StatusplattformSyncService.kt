@@ -2,7 +2,11 @@ package no.nav.openinghours.statusplattform
 
 import no.nav.openinghours.dailycache.OpeningHoursDailyCache
 import no.nav.openinghours.model.db.ServiceRepository
+import no.nav.openinghours.slack.AddedService
+import no.nav.openinghours.slack.ServiceAddedSource
+import no.nav.openinghours.slack.ServicesAddedEvent
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
@@ -19,6 +23,7 @@ class StatusplattformSyncService(
     private val client: StatusplattformClient,
     private val repo: ServiceRepository,
     private val cache: OpeningHoursDailyCache,
+    private val events: ApplicationEventPublisher,
     transactionManager: PlatformTransactionManager
 ) {
     private val log = LoggerFactory.getLogger(StatusplattformSyncService::class.java)
@@ -44,7 +49,7 @@ class StatusplattformSyncService(
     }
 
     private fun insertRemoteServices(remote: List<StatusplattformService>): SyncResult {
-        var inserted = 0
+        val added = mutableListOf<AddedService>()
         var invalid = 0
 
         remote.forEach { (type, dto) ->
@@ -60,10 +65,14 @@ class StatusplattformSyncService(
 
             if (repo.insertIfAbsent(id, name, type.name, team, monitorlink) > 0) {
                 log.info("Added service from Statusplattform id={} name={} type={}", id, name, type)
-                inserted++
+                added += AddedService(id, name, type, team)
             }
         }
 
+        if (added.isNotEmpty()) {
+            events.publishEvent(ServicesAddedEvent(added, ServiceAddedSource.STATUSPLATTFORM_SYNC))
+        }
+        val inserted = added.size
         return SyncResult(
             fetched = remote.size,
             inserted = inserted,

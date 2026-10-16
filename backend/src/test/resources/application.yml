@@ -25,5 +25,10 @@ statusplattform:
   sync:
     cron: "-"
 
+slack:
+  base-url: http://slack.test/api
+  bot-token: ""
+  channel-id: ""
+
 openinghours:
   timezone: Europe/Oslo
