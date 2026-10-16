@@ -61,7 +61,7 @@ class ServiceService(
                 ServiceAddedSource.API
             ))
             saved
-        } catch (e: DataIntegrityViolationException) {
+        } catch (_: DataIntegrityViolationException) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Service with name '$name' and type '$type' already exists")
         } catch (e: ResponseStatusException) {
             throw e
@@ -115,12 +115,12 @@ class ServiceService(
                     "Service with name '${service.name}' and type '${service.type}' already exists"
                 )
             }
-        } catch (e: IncorrectResultSizeDataAccessException) {
+        } catch (_: IncorrectResultSizeDataAccessException) {
             throw ResponseStatusException(
                 HttpStatus.CONFLICT,
                 "Service with name '${service.name}' and type '${service.type}' already exists"
             )
-        } catch (e: DataIntegrityViolationException) {
+        } catch (_: DataIntegrityViolationException) {
             throw ResponseStatusException(
                 HttpStatus.CONFLICT,
                 "Service with name '${service.name}' and type '${service.type}' already exists"
@@ -135,7 +135,7 @@ class ServiceService(
 
         return try {
             repo.saveAndFlush(service).also { log.info("Updated service id={}", id) }
-        } catch (e: DataIntegrityViolationException) {
+        } catch (_: DataIntegrityViolationException) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Service '${service.name}' already exists")
         } catch (e: Exception) {
             log.error("Update service failed id={} msg={}", id, e.message, e)
