@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.client.ExpectedCount.never
 import org.springframework.test.web.client.MockRestServiceServer
@@ -15,6 +16,7 @@ import org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPat
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
+import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
 import java.util.UUID
 
 class NewServiceSlackNotifierTest {
@@ -22,9 +24,11 @@ class NewServiceSlackNotifierTest {
     private val objectMapper = jacksonObjectMapper()
     private val restTemplate = SlackConfig().slackRestTemplate(objectMapper)
     private val server = MockRestServiceServer.bindTo(restTemplate).build()
+    private var now = 0L
+    private val delivery = SlackChannelDelivery({ now }, { now += it })
 
     private fun notifier(token: String = "xoxb-test", channel: String = "C123") =
-        NewServiceSlackNotifier(SlackClient(restTemplate, "http://slack.test/api/", token, channel), objectMapper)
+        NewServiceSlackNotifier(SlackClient(restTemplate, "http://slack.test/api/", token, channel, delivery), objectMapper)
 
     private val id = UUID.randomUUID()
     private val event = ServicesAddedEvent(
@@ -78,7 +82,7 @@ class NewServiceSlackNotifierTest {
         server.expect(requestTo("http://slack.test/api/chat.postMessage"))
             .andRespond(withSuccess("""{"ok":false,"error":"not_in_channel"}""", MediaType.APPLICATION_JSON))
 
-        val client = SlackClient(restTemplate, "http://slack.test/api", "xoxb-test", "C123")
+        val client = SlackClient(restTemplate, "http://slack.test/api", "xoxb-test", "C123", delivery)
         val e = assertThrows<SlackApiException> { client.postMessage(SlackMessage("hi")) }
         assertThat(e.message).contains("not_in_channel")
     }
@@ -123,6 +127,42 @@ class NewServiceSlackNotifierTest {
     fun `rejects a service that cannot fit in one metadata payload`() {
         val oversized = event.copy(services = listOf(event.services.single().copy(name = "x".repeat(2000))))
         assertThrows<IllegalArgumentException> { notifier().buildMessages(oversized) }
+    }
+
+    @Test
+    fun `retries the same batch using Retry-After before sending remaining batches`() {
+        val services = (1..30).map {
+            AddedService(UUID.randomUUID(), "svc-$it", ServiceType.TJENESTE, "team")
+        }
+        val added = ServicesAddedEvent(services, ServiceAddedSource.STATUSPLATTFORM_SYNC)
+        val messages = notifier().buildMessages(added)
+        assertThat(messages.size).isGreaterThan(1)
+        val firstMetadata = objectMapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(messages.first().metadata)
+        repeat(2) { attempt ->
+            server.expect(requestTo("http://slack.test/api/chat.postMessage"))
+                .andExpect { request ->
+                    val body = (request as org.springframework.mock.http.client.MockClientHttpRequest).bodyAsString
+                    assertThat(objectMapper.readTree(body).get("metadata")).isEqualTo(firstMetadata)
+                    assertThat(now).isEqualTo(if (attempt == 0) 0L else 3000L)
+                }
+                .andRespond(
+                    if (attempt == 0) withStatus(HttpStatus.TOO_MANY_REQUESTS).header("Retry-After", "3")
+                    else withSuccess("""{"ok":true}""", MediaType.APPLICATION_JSON)
+                )
+        }
+        messages.drop(1).forEachIndexed { index, message ->
+            server.expect(requestTo("http://slack.test/api/chat.postMessage"))
+                .andExpect { request ->
+                    val body = (request as org.springframework.mock.http.client.MockClientHttpRequest).bodyAsString
+                    assertThat(objectMapper.readTree(body).get("metadata"))
+                        .isEqualTo(objectMapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(message.metadata))
+                    assertThat(now).isEqualTo(4000L + index * 1000L)
+                }
+                .andRespond(withSuccess("""{"ok":true}""", MediaType.APPLICATION_JSON))
+        }
+
+        notifier().onServicesAdded(added)
+        server.verify()
     }
 
     private fun assertSizeSafeDelivery(services: List<AddedService>) {

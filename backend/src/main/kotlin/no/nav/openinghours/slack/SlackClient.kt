@@ -34,7 +34,8 @@ class SlackClient(
     @Qualifier("slackRestTemplate") private val restTemplate: RestTemplate,
     @Value("\${slack.base-url}") private val baseUrl: String,
     @Value("\${slack.bot-token:}") private val botToken: String,
-    @Value("\${slack.channel-id:}") private val channelId: String
+    @Value("\${slack.channel-id:}") private val channelId: String,
+    private val delivery: SlackChannelDelivery
 ) {
     val enabled: Boolean get() = botToken.isNotBlank() && channelId.isNotBlank()
 
@@ -48,11 +49,13 @@ class SlackClient(
             put("text", message.text)
             message.metadata?.let { put("metadata", it) }
         }
-        val response = restTemplate.postForObject(
-            baseUrl.trimEnd('/') + "/chat.postMessage",
-            HttpEntity(body, headers),
-            SlackApiResponse::class.java
-        )
+        val response = delivery.send {
+            restTemplate.postForObject(
+                baseUrl.trimEnd('/') + "/chat.postMessage",
+                HttpEntity(body, headers),
+                SlackApiResponse::class.java
+            )
+        }
         if (response?.ok != true) {
             throw SlackApiException("Slack chat.postMessage failed: ${response?.error ?: "empty response"}")
         }

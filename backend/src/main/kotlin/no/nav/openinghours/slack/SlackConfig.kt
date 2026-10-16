@@ -8,10 +8,18 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.web.client.RestTemplate
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 
 @Configuration
 @EnableAsync
 class SlackConfig {
+
+    @Bean
+    fun slackChannelDelivery(): SlackChannelDelivery =
+        SlackChannelDelivery(
+            { TimeUnit.NANOSECONDS.toMillis(System.nanoTime()) },
+            { Thread.sleep(it) }
+        )
 
     @Bean("slackRestTemplate")
     fun slackRestTemplate(objectMapper: ObjectMapper): RestTemplate {
