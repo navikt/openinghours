@@ -34,6 +34,7 @@ class ServiceServiceTest {
 
         @JvmStatic
         @DynamicPropertySource
+        @Suppress("unused")
         fun overrideProps(registry: DynamicPropertyRegistry) {
             registry.add("spring.datasource.url", postgres::getJdbcUrl)
             registry.add("spring.datasource.username", postgres::getUsername)
