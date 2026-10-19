@@ -1,4 +1,6 @@
 spring:
+  jackson:
+    use-jackson2-defaults: true
   datasource:
     url: jdbc:postgresql://localhost:5432/test
     username: test

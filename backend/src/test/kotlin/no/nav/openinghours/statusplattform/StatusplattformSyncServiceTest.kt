@@ -22,7 +22,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.event.ApplicationEvents
 import org.springframework.test.context.event.RecordApplicationEvents
 import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.util.UUID
@@ -35,7 +35,7 @@ class StatusplattformSyncServiceTest {
 
     companion object {
         @Container
-        val postgres = PostgreSQLContainer<Nothing>("postgres:15")
+        val postgres = PostgreSQLContainer("postgres:15")
 
         @JvmStatic
         @DynamicPropertySource

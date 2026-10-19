@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.scheduling.TriggerContext
@@ -18,7 +19,12 @@ import org.springframework.scheduling.config.ScheduledTaskHolder
 import org.springframework.scheduling.support.CronTrigger
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import org.testcontainers.containers.PostgreSQLContainer
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.options
+import org.springframework.test.web.servlet.put
+import tools.jackson.databind.json.JsonMapper
+import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.Clock
@@ -43,7 +49,8 @@ import java.time.Instant
  *   ApplicationReadyEvent → scheduler.refresh() → cache.populate()
  * actually fired and did real work.
  */
-@SpringBootTest
+@SpringBootTest(properties = ["api.security.enabled=true"])
+@AutoConfigureMockMvc
 @Testcontainers
 class ApplicationContextTest {
 
@@ -71,7 +78,7 @@ class ApplicationContextTest {
 
     companion object {
         @Container
-        val postgres = PostgreSQLContainer<Nothing>("postgres:15")
+        val postgres = PostgreSQLContainer("postgres:15")
 
         @JvmStatic
         @DynamicPropertySource
@@ -88,6 +95,73 @@ class ApplicationContextTest {
     @Autowired private lateinit var cache: OpeningHoursDailyCache
     @Autowired private lateinit var scheduler: OpeningHoursDailyCacheScheduler
     @Autowired private lateinit var scheduledTaskHolder: ScheduledTaskHolder
+    @Autowired private lateinit var mockMvc: MockMvc
+    @Autowired private lateinit var jsonMapper: JsonMapper
+
+    @Test
+    fun `API rejects missing and invalid API keys`() {
+        mockMvc.get("/api/openinghours/service")
+            .andExpect { status { isUnauthorized() } }
+        mockMvc.get("/api/openinghours/service") { header("X-API-Key", "invalid") }
+            .andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `valid API key retains JSON enum UUID timestamp and null contracts`() {
+        val result = mockMvc.get("/api/openinghours/service") { header("X-API-Key", "test-api-key") }
+            .andExpect {
+                status { isOk() }
+                header { string("X-Frame-Options", "DENY") }
+                jsonPath("$[0].type") { value("TJENESTE") }
+            }
+            .andReturn()
+        val service = jsonMapper.readTree(result.response.contentAsString).first()
+        assertThat(service["id"].isString).isTrue()
+        assertThat(java.util.UUID.fromString(service["id"].asString())).isNotNull()
+        assertThat(service["createdAt"].isString).isTrue()
+        assertThat(Instant.parse(service["createdAt"].asString())).isNotNull()
+        assertThat(service["updatedAt"].isNull).isTrue()
+    }
+
+    @Test
+    fun `authenticated writes still reach application validation without CSRF token`() {
+        mockMvc.put("/api/openinghours/rule") { header("X-API-Key", "test-api-key") }
+            .andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `health and OpenAPI remain publicly available`() {
+        mockMvc.get("/actuator/health")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.status") { value("UP") }
+            }
+        mockMvc.get("/v3/api-docs")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.openapi") { exists() }
+                jsonPath("$.paths['/api/openinghours/service']") { exists() }
+            }
+        mockMvc.get("/swagger-ui/index.html")
+            .andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `CORS permits configured origins and rejects untrusted origins`() {
+        mockMvc.options("/api/openinghours/service") {
+            header("Origin", "https://openinghours.nav.no")
+            header("Access-Control-Request-Method", "GET")
+            header("Access-Control-Request-Headers", "X-API-Key")
+        }.andExpect {
+            status { isOk() }
+            header { string("Access-Control-Allow-Origin", "https://openinghours.nav.no") }
+            header { doesNotExist("Access-Control-Allow-Credentials") }
+        }
+        mockMvc.options("/api/openinghours/service") {
+            header("Origin", "https://untrusted.example")
+            header("Access-Control-Request-Method", "GET")
+        }.andExpect { status { isForbidden() } }
+    }
 
     // ── Context ──────────────────────────────────────────────────────────────
 
