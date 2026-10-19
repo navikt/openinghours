@@ -6,8 +6,10 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.web.client.ResponseErrorHandler
 import org.springframework.web.client.RestTemplate
 import org.springframework.http.HttpStatus
+import org.springframework.http.HttpMethod
 import org.springframework.http.client.ClientHttpResponse
 import java.io.IOException
+import java.net.URI
 import java.nio.charset.StandardCharsets
 
 @Configuration
@@ -46,7 +48,7 @@ class RestTemplateConfig {
                     !response.statusCode.is2xxSuccessful
 
                 @Throws(IOException::class)
-                override fun handleError(response: ClientHttpResponse) {
+                override fun handleError(url: URI, method: HttpMethod, response: ClientHttpResponse) {
                     val responseBody = try {
                         response.body.readBytes().toString(StandardCharsets.UTF_8)
                     } catch (e: Exception) {

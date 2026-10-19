@@ -1,10 +1,10 @@
 package no.nav.openinghours.slack
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.client.SimpleClientHttpRequestFactory
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.web.client.RestTemplate
 import java.time.Duration
@@ -22,14 +22,15 @@ class SlackConfig {
         )
 
     @Bean("slackRestTemplate")
-    fun slackRestTemplate(objectMapper: ObjectMapper): RestTemplate {
+    fun slackRestTemplate(objectMapper: JsonMapper): RestTemplate {
         val requestFactory = SimpleClientHttpRequestFactory().apply {
             setConnectTimeout(Duration.ofSeconds(3))
             setReadTimeout(Duration.ofSeconds(10))
         }
         return RestTemplate(requestFactory).apply {
-            messageConverters.filterIsInstance<MappingJackson2HttpMessageConverter>()
-                .forEach { it.objectMapper = objectMapper }
+            messageConverters.replaceAll {
+                if (it is JacksonJsonHttpMessageConverter) JacksonJsonHttpMessageConverter(objectMapper) else it
+            }
         }
     }
 }

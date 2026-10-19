@@ -5,9 +5,11 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.client.ClientHttpResponse
 import org.springframework.http.client.SimpleClientHttpRequestFactory
+import org.springframework.http.HttpMethod
 import org.springframework.web.client.ResponseErrorHandler
 import org.springframework.web.client.RestTemplate
 import java.time.Duration
+import java.net.URI
 
 @Configuration
 class StatusplattformHttpClientConfig {
@@ -30,7 +32,7 @@ class StatusplattformResponseErrorHandler : ResponseErrorHandler {
     override fun hasError(response: ClientHttpResponse): Boolean =
         !response.statusCode.is2xxSuccessful
 
-    override fun handleError(response: ClientHttpResponse) {
+    override fun handleError(url: URI, method: HttpMethod, response: ClientHttpResponse) {
         val statusCode = response.statusCode
         log.error("Statusplattform API returned HTTP status={}", statusCode.value())
         throw StatusplattformApiException(statusCode.value())

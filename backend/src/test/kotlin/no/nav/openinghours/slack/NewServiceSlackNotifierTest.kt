@@ -1,6 +1,8 @@
 package no.nav.openinghours.slack
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.json.JsonMapper
+import tools.jackson.module.kotlin.KotlinModule
 import no.nav.openinghours.model.db.ServiceType
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -21,7 +23,7 @@ import java.util.UUID
 
 class NewServiceSlackNotifierTest {
 
-    private val objectMapper = jacksonObjectMapper()
+    private val objectMapper = JsonMapper.builder().addModule(KotlinModule.Builder().build()).build()
     private val restTemplate = SlackConfig().slackRestTemplate(objectMapper)
     private val server = MockRestServiceServer.bindTo(restTemplate).build()
     private var now = 0L
@@ -137,7 +139,7 @@ class NewServiceSlackNotifierTest {
         val added = ServicesAddedEvent(services, ServiceAddedSource.STATUSPLATTFORM_SYNC)
         val messages = notifier().buildMessages(added)
         assertThat(messages.size).isGreaterThan(1)
-        val firstMetadata = objectMapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(messages.first().metadata)
+        val firstMetadata = objectMapper.valueToTree<JsonNode>(messages.first().metadata)
         repeat(2) { attempt ->
             server.expect(requestTo("http://slack.test/api/chat.postMessage"))
                 .andExpect { request ->
@@ -155,7 +157,7 @@ class NewServiceSlackNotifierTest {
                 .andExpect { request ->
                     val body = (request as org.springframework.mock.http.client.MockClientHttpRequest).bodyAsString
                     assertThat(objectMapper.readTree(body).get("metadata"))
-                        .isEqualTo(objectMapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(message.metadata))
+                        .isEqualTo(objectMapper.valueToTree<JsonNode>(message.metadata))
                     assertThat(now).isEqualTo(4000L + index * 1000L)
                 }
                 .andRespond(withSuccess("""{"ok":true}""", MediaType.APPLICATION_JSON))
