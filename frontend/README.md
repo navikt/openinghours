@@ -121,6 +121,11 @@ All tilstand ligger i URL-en, slik at en visning kan deles som lenke.
 
 Admin krever innlogging og lastes som egen bundel — uinnloggede laster den aldri.
 
+Menyen i headeren (`AppNav`) lenker til alle sidene. «Dag for dag» regner ut
+dagens dato når menyen åpnes, ikke når headeren rendres, slik at en fane som står
+åpen over midnatt ikke lenker til gårsdagen. «Administrasjon» rendres kun for
+medlemmer av admingruppen.
+
 `dag` er ankeret som bestemmer perioden, `dato` er dagen som er valgt i
 detaljpanelet. De tre visningene deler samme range-endepunkt og skiller seg bare i
 hvilket tidsrom de spør om — logikken ligger i `lib/view.ts`.
