@@ -10,6 +10,16 @@ Monorepo for Navs åpningstidstjeneste.
 De to delene er selvstendige: hver har sin egen `Dockerfile`, `.nais/nais.yaml`
 og byggekjede. Frontend snakker med backend over HTTP, ikke gjennom delt kode.
 
+## Aktiviteter
+
+Vedlikehold og andre planlagte hendelser registreres som *aktiviteter*
+(`/api/openinghours/activity`), ikke som åpningstidsregler. En aktivitet
+gjelder én eller flere tjenester, har overskrift, melding og start/slutt
+(lokal tid, `Europe/Oslo`). Aktiviteter påvirker ikke `isOpen`, og
+en tjeneste kan ha flere aktiviteter samme dag. Spørringer finnes for i dag,
+en gitt dato og et datointervall – per tjeneste eller for alle tjenester. Se
+Swagger (`/swagger-ui.html`) for detaljer.
+
 ## Utvikling
 
 Hver del bygges fra sin egen katalog:

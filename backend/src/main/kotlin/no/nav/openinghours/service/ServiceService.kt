@@ -2,6 +2,7 @@ package no.nav.openinghours.service
 
 import no.nav.openinghours.evaluator.OpeningHoursTreeResolver
 import no.nav.openinghours.evaluator.ResolvedGroup
+import no.nav.openinghours.model.db.ActivityRepository
 import no.nav.openinghours.model.db.OhGroupRepository
 import no.nav.openinghours.model.db.Service
 import no.nav.openinghours.model.db.ServiceRepository
@@ -26,6 +27,7 @@ data class ServiceNameAndGroup(val name: String, val group: ResolvedGroup?)
 class ServiceService(
     private val repo: ServiceRepository,
     private val ohGroupRepo: OhGroupRepository,
+    private val activityRepo: ActivityRepository,
     private val resolver: OpeningHoursTreeResolver,
     private val events: ApplicationEventPublisher
 ) {
@@ -148,8 +150,11 @@ class ServiceService(
         if (!repo.existsById(id)) return false
         return try {
             repo.deleteServiceGroupLinks(id)
+            // Activities shared with other services keep running for them; their link to this
+            // service is removed by the FK cascade. Activities covering only this service go away.
+            val removedActivities = activityRepo.deleteActivitiesOnlyLinkedTo(id)
             repo.deleteById(id)
-            log.info("Deleted service id={}", id)
+            log.info("Deleted service id={} (and {} activit(y/ies) linked only to it)", id, removedActivities)
             true
         } catch (e: DataIntegrityViolationException) {
             log.warn("Delete service blocked by dependent data id={} msg={}", id, e.message, e)
