@@ -1,4 +1,4 @@
-import { BodyLong, BodyShort, Button, Heading, Modal, Tag, VStack } from '@navikt/ds-react';
+import { Alert, BodyLong, BodyShort, Button, Heading, Modal, Tag, VStack } from '@navikt/ds-react';
 import { Link } from 'react-router-dom';
 import { ExclamationmarkTriangleIcon } from '@navikt/aksel-icons';
 import './DeleteDialog.css';
@@ -25,6 +25,7 @@ interface Props {
   resolveHref?: string;
   resolveLabel?: string;
   deleting?: boolean;
+  error?: string;
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -48,6 +49,7 @@ export function DeleteDialog({
   resolveHref,
   resolveLabel = 'Gå til gruppene',
   deleting = false,
+  error,
   onClose,
   onConfirm,
 }: Props) {
@@ -58,6 +60,7 @@ export function DeleteDialog({
     <Modal
       open={open}
       onClose={onClose}
+      onBeforeClose={() => !deleting}
       width="small"
       aria-label={blocked ? `${noun} kan ikke slettes ennå` : `Vil du slette ${name}?`}
     >
@@ -75,6 +78,7 @@ export function DeleteDialog({
       </Modal.Header>
 
       <Modal.Body>
+        {error && <Alert variant="error">{error}</Alert>}
         {blocked ? (
           <VStack gap="4">
             <BodyLong>

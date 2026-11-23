@@ -18,6 +18,7 @@ import { useAllServicesRange, useServices } from '../hooks/queries';
 import { useNow } from '../hooks/useNow';
 import { formatMonth, monthGrid, monthOf, shiftMonth, todayIso } from '../lib/date';
 import { AppLink } from '../components/common/AppLink';
+import { ActivityFeed } from '../components/activities/ActivityFeed';
 import { DeviationLegend, DeviationMonth } from '../components/overview/DeviationMonth';
 import { ErrorState } from '../components/common/ErrorState';
 import '../components/overview/DeviationMark.css';
@@ -30,8 +31,8 @@ const ISO_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
  *
  * Premisset: den som åpner siden kjenner allerede tjenestenes normale
  * åpningstider. Det de kommer for å finne ut er hva som *bryter* med dem, og
- * når. Siden viser derfor bare avvik, i en kalender som kan skummes: er en dag
- * tom, er det ingenting å vite om den dagen.
+ * når. Kalenderen viser derfor bare avvik i åpningstidene, i en kalender som
+ * kan skummes.
  *
  * Hva som er «normalt» avgjøres ikke her, men av tjenestens egne regler — se
  * `lib/deviation.ts`.
@@ -113,8 +114,8 @@ export function LandingPage() {
           Avvik i åpningstidene
         </Heading>
         <BodyLong size="large">
-          Her står dagene tjenestene er stengt eller har andre åpningstider enn vanlig. Er en dag
-          tom, skjer det ingenting du trenger å vite om.
+          Her står dagene tjenestene er stengt eller har andre åpningstider enn vanlig. Kalenderen
+          viser bare avvik i åpningstidene.
         </BodyLong>
       </div>
 
@@ -170,6 +171,8 @@ export function LandingPage() {
           )}
         </div>
       </Box.New>
+
+      <ActivityFeed today={today} services={services.data ?? []} />
 
       {failed > 0 && (
         <Alert variant="warning" size="small">

@@ -126,6 +126,100 @@ describe('/me', () => {
 });
 
 describe('proxy-tilgang', () => {
+  it('holder aktiviteter interne selv når kalenderen er offentlig', async () => {
+    const fetchMock = mockUpstream([]);
+    const res = await call('/api/openinghours/activity/range', { public: true });
+    expect(res.status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('lar ansatte lese aktiviteter og videresender bare periodeparametrene', async () => {
+    const activity = {
+      id: SERVICE_ID, serviceIds: [], header: 'Driftsmelding', message: 'Planlagt arbeid',
+      start: null, end: null, ongoing: false, onlyShowForNavEmployees: true,
+    };
+    const fetchMock = mockUpstream([activity]);
+    const res = await call('/api/openinghours/activity/range', {
+      headers: authHeader('Ansatt', []),
+      query: { from: '2026-11-23', to: '2026-12-23', confirm: 'true', extra: 'true' },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([activity]);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledWith(
+      new URL('http://backend.test/api/openinghours/activity/range?from=2026-11-23&to=2026-12-23'),
+      expect.anything(),
+    );
+  });
+
+  it.each([
+    ['POST', '/api/openinghours/activity'],
+    ['PUT', `/api/openinghours/activity/${SERVICE_ID}`],
+    ['DELETE', `/api/openinghours/activity/${SERVICE_ID}`],
+  ] as const)('gir 403 for %s på aktiviteter fra ansatte uten admin', async (method, path) => {
+    const fetchMock = mockUpstream({});
+    const res = await call(path, { method, headers: authHeader('Ansatt', []) });
+    expect(res.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['POST', '/api/openinghours/activity'],
+    ['PUT', `/api/openinghours/activity/${SERVICE_ID}`],
+    ['DELETE', `/api/openinghours/activity/${SERVICE_ID}`],
+  ] as const)('avviser uinnlogget %s på aktiviteter selv med offentlig kalender', async (method, path) => {
+    const fetchMock = mockUpstream({});
+    const res = await call(path, { method, public: true });
+    expect(res.status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('videresender adminoppretting som JSON med valgfrie felt', async () => {
+    const payload = {
+      serviceIds: [], header: 'Driftsmelding', message: 'Planlagt arbeid',
+      start: null, end: null, onlyShowForNavEmployees: false,
+    };
+    const fetchMock = mockUpstream({ id: SERVICE_ID, ...payload, ongoing: false });
+    const res = await call('/api/openinghours/activity', {
+      method: 'POST', headers: authHeader('Admin'), payload, query: { extra: 'true' },
+    });
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledWith(
+      new URL('http://backend.test/api/openinghours/activity'),
+      expect.objectContaining({
+        method: 'POST', body: JSON.stringify(payload),
+        headers: expect.objectContaining({ 'Content-Type': 'application/json', 'X-API-Key': config.apiKey }),
+      }),
+    );
+  });
+
+  it('avviser batchoppretting også for admin uten å kontakte backend', async () => {
+    const fetchMock = mockUpstream([]);
+    const res = await call('/api/openinghours/activity/batch', {
+      method: 'POST', headers: authHeader('Admin'), payload: [],
+    });
+    expect(res.status).toBe(404);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['PUT', 'DELETE'] as const)('videresender %s på en aktivitet for admin', async (method) => {
+    const payload = {
+      serviceIds: [SERVICE_ID], header: 'Vedlikehold', message: 'Arbeid pågår',
+      start: '2026-11-23T12:00', end: null, onlyShowForNavEmployees: true,
+    };
+    const fetchMock = mockUpstream(method === 'DELETE' ? true : { id: SERVICE_ID, ...payload });
+    const res = await call(`/api/openinghours/activity/${SERVICE_ID}`, {
+      method, headers: authHeader('Admin'),
+      ...(method === 'PUT' ? { payload } : {}),
+    });
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      new URL(`http://backend.test/api/openinghours/activity/${SERVICE_ID}`),
+      expect.objectContaining({ method, body: method === 'PUT' ? JSON.stringify(payload) : undefined }),
+    );
+  });
+
   it('slipper gjennom kalenderoppslag og legger på API-nøkkelen', async () => {
     const fetchMock = mockUpstream([{ id: SERVICE_ID, name: 'Dagpenger' }]);
 

@@ -1,0 +1,112 @@
+.oh-activities__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ax-space-16);
+  align-items: end;
+}
+
+.oh-activities__filters label,
+.oh-activityform__times label {
+  display: grid;
+  gap: var(--ax-space-4);
+  font-weight: var(--ax-font-weight-bold);
+}
+
+.oh-activities__filters input,
+.oh-activityform__times input {
+  min-height: var(--ax-space-44);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--ax-space-8);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: var(--ax-radius-4);
+  background: var(--ax-bg-default);
+  color: var(--ax-text-neutral);
+  font: inherit;
+}
+
+.oh-activities__list {
+  display: grid;
+  gap: var(--ax-space-16);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oh-activity-card {
+  display: grid;
+  gap: var(--ax-space-12);
+  padding: var(--ax-space-20);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: var(--ax-radius-8);
+  background: var(--ax-bg-raised);
+  color: var(--ax-text-neutral);
+}
+
+.oh-activity-card__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ax-space-8);
+}
+
+.oh-activity-card__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ax-space-16) var(--ax-space-32);
+  margin: 0;
+}
+
+.oh-activity-card__details > div {
+  display: grid;
+  gap: var(--ax-space-4);
+}
+
+.oh-activity-card__details dt {
+  color: var(--ax-text-neutral-subtle);
+  font-size: var(--ax-font-size-small);
+}
+
+.oh-activity-card__details dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ax-space-4) var(--ax-space-8);
+  margin: 0;
+}
+
+.oh-activity-card__actions {
+  flex-wrap: wrap;
+}
+
+.oh-activities__status {
+  color: var(--ax-text-neutral-subtle);
+}
+
+.oh-activityform__services {
+  display: grid;
+  gap: var(--ax-space-12);
+}
+
+.oh-activityform__times {
+  display: grid;
+  gap: var(--ax-space-12);
+  margin: 0;
+  padding: var(--ax-space-12);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: var(--ax-radius-4);
+}
+
+.oh-activityform__times legend {
+  padding: 0 var(--ax-space-4);
+  font-weight: var(--ax-font-weight-bold);
+}
+
+.oh-activityform__timezone {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 40rem) {
+  .oh-activityform__times {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
