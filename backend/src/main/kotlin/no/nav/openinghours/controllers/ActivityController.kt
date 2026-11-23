@@ -1,9 +1,10 @@
 package no.nav.openinghours.controllers
 
 import io.swagger.v3.oas.annotations.Operation
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.validation.Valid
+import jakarta.validation.constraints.AssertTrue
 import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.Size
 import no.nav.openinghours.service.ActivityInput
 import no.nav.openinghours.service.ActivityService
@@ -78,12 +79,19 @@ class ActivityController(
 }
 
 data class ActivityRequest(
-    @field:NotEmpty val serviceIds: Set<UUID>,
+    val serviceIds: Set<UUID> = emptySet(),
     @field:NotBlank @field:Size(max = ActivityService.HEADER_MAX) val header: String,
     @field:NotBlank val message: String,
     val start: LocalDateTime,
     val end: LocalDateTime,
-    val onlyShowForNavEmployees: Boolean = false
+    val onlyShowForNavEmployees: Boolean = false,
+    /** Names of affected services, including services that are not in the catalog. */
+    val serviceNames: Set<String> = emptySet()
 ) {
-    fun toInput() = ActivityInput(serviceIds, header, message, start, end, onlyShowForNavEmployees)
+    @Suppress("unused")
+    @get:JsonIgnore
+    @get:AssertTrue(message = "At least one service id or service name is required")
+    val serviceGiven: Boolean get() = serviceIds.isNotEmpty() || serviceNames.any { it.isNotBlank() }
+
+    fun toInput() = ActivityInput(serviceIds, header, message, start, end, onlyShowForNavEmployees, serviceNames)
 }

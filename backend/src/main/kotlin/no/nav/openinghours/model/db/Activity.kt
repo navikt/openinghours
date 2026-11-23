@@ -5,6 +5,8 @@ import org.hibernate.annotations.BatchSize
 import java.time.Instant
 import java.util.UUID
 
+enum class ActivitySource { MANUAL, SLACK }
+
 @Entity
 @Table(name = "activity")
 class Activity(
@@ -17,6 +19,16 @@ class Activity(
     @Column(name = "service_id", nullable = false)
     @BatchSize(size = 100)
     var serviceIds: MutableSet<UUID> = mutableSetOf(),
+
+    @ElementCollection
+    @CollectionTable(name = "activity_service_name", joinColumns = [JoinColumn(name = "activity_id")])
+    @Column(name = "name", nullable = false, length = 200)
+    @BatchSize(size = 100)
+    var serviceNames: MutableSet<String> = mutableSetOf(),
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false, length = 20)
+    var source: ActivitySource = ActivitySource.MANUAL,
 
     @Column(name = "header", nullable = false, length = 200)
     var header: String,
@@ -50,10 +62,14 @@ class Activity(
             message: String,
             startAt: Instant,
             endAt: Instant,
-            onlyShowForNavEmployees: Boolean = false
+            onlyShowForNavEmployees: Boolean = false,
+            serviceNames: Set<String> = emptySet(),
+            source: ActivitySource = ActivitySource.MANUAL
         ) = Activity(
             id = id,
             serviceIds = serviceIds.toMutableSet(),
+            serviceNames = serviceNames.toMutableSet(),
+            source = source,
             header = header,
             message = message,
             startAt = startAt,

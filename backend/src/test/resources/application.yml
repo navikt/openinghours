@@ -31,6 +31,14 @@ slack:
   base-url: http://slack.test/api
   bot-token: ""
   channel-id: ""
+  downtime:
+    channel-id: ""
+    poll-cron: "-"
+
+azure-openai:
+  endpoint: ""
+  api-key: ""
+  deployment: ""
 
 openinghours:
   timezone: Europe/Oslo

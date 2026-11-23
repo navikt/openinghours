@@ -41,6 +41,20 @@ slack:
   base-url: ${SLACK_API_URL:https://slack.com/api}
   bot-token: ${SLACK_BOT_TOKEN:}
   channel-id: ${SLACK_OPENINGHOURS_CHANNEL_ID:}
+  downtime:
+    channel-id: ${SLACK_DOWNTIME_CHANNEL_ID:}
+    poll-cron: ${SLACK_DOWNTIME_POLL_CRON:0 */5 * * * *}
+    lookback-hours: ${SLACK_DOWNTIME_LOOKBACK_HOURS:24}
+    max-attempts: ${SLACK_DOWNTIME_MAX_ATTEMPTS:3}
+    batch-size: ${SLACK_DOWNTIME_BATCH_SIZE:20}
+    follow-up-window-hours: ${SLACK_DOWNTIME_FOLLOW_UP_WINDOW_HOURS:24}
+    only-show-for-nav-employees: ${SLACK_DOWNTIME_ONLY_SHOW_FOR_NAV_EMPLOYEES:true}
+
+azure-openai:
+  endpoint: ${AZURE_OPENAI_ENDPOINT:}
+  api-key: ${AZURE_OPENAI_API_KEY:}
+  deployment: ${AZURE_OPENAI_DEPLOYMENT:}
+  api-version: ${AZURE_OPENAI_API_VERSION:2024-10-21}
 
 management:
   endpoints:

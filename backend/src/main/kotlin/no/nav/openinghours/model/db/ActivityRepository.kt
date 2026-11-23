@@ -24,6 +24,18 @@ interface ActivityRepository : JpaRepository<Activity, UUID> {
     @Query("select a from Activity a where a.startAt < :to and a.endAt > :from order by a.startAt, a.endAt")
     fun findOverlapping(@Param("from") from: Instant, @Param("to") to: Instant): List<Activity>
 
+    /** Slack-created activities linked to any Slack message posted within [from, to]. */
+    @Query(
+        value = """
+            SELECT DISTINCT a.* FROM activity a
+            JOIN slack_downtime_message_activity l ON l.activity_id = a.id
+            JOIN slack_downtime_message m ON m.id = l.message_id
+            WHERE a.source = 'SLACK' AND m.posted_at >= :from AND m.posted_at <= :to
+        """,
+        nativeQuery = true
+    )
+    fun findSlackActivitiesAnnouncedBetween(@Param("from") from: Instant, @Param("to") to: Instant): List<Activity>
+
     /**
      * Deletes activities whose only linked service is [serviceId]. Must run before the service
      * itself is deleted; links to other services are removed by the FK cascade afterwards.
