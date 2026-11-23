@@ -224,6 +224,10 @@ class ActivityServiceTest {
 
         assertThat(created.serviceIds).isEmpty()
         assertThat(created.serviceNames).containsExactly("ID-porten", "Maskinporten")
+        entityManager.flush()
+        entityManager.clear()
+        assertThat(activities.getForAllServices(day, day).single { it.id == created.id }.serviceNames)
+            .containsExactly("ID-porten", "Maskinporten")
         assertThat(activities.getForAllServices(day, day).map { it.id }).contains(created.id)
     }
 
