@@ -33,7 +33,7 @@ resultatet blir likt fra gang til gang. Modellsvaret, antagelsene som ble gjort
 og koblingen til aktivitetene lagres på meldingen (`reason`). Feilede uttrekk
 prøves på nytt inntil `SLACK_DOWNTIME_MAX_ATTEMPTS` ganger.
 
-**Tjenester.** Kjente tjenester lagres med ID, slik at aktiviteten vises i
+**Tjenester.** Kjente tjenester lagres med ID og navn fra katalogen, slik at aktiviteten vises i
 tjenestens kalender. Tjenester som ikke finnes i katalogen (f.eks. ID-porten,
 Tableau eller «alle *.nav.no-tjenester») lagres med navn
 (`activity.serviceNames`) i stedet for å forkastes. En aktivitet må ha minst én

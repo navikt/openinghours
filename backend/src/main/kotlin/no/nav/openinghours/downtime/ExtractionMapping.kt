@@ -39,7 +39,7 @@ internal data class ServiceTargets(val ids: Set<UUID>, val names: Set<String>, v
                 val known = rawId?.let { runCatching { UUID.fromString(it) }.getOrNull() }?.let(catalog::get)
                 if (rawId != null && known == null) notes += "unknown serviceId '$rawId' ignored"
                 known?.let { ids += it.id }
-                (s.name?.trim()?.takeIf { it.isNotEmpty() } ?: known?.name)?.let { names += it.take(ActivityService.SERVICE_NAME_MAX) }
+                (known?.name ?: s.name?.trim()?.takeIf { it.isNotEmpty() })?.let { names += it.take(ActivityService.SERVICE_NAME_MAX) }
             }
             return ServiceTargets(ids, ActivityService.normalizeNames(names), notes)
         }

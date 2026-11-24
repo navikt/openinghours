@@ -20,6 +20,7 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.EnumSource
+import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.never
 import org.mockito.Mockito.times
@@ -456,6 +457,38 @@ class SlackDowntimeIngestionServiceTest {
         val parent = repo.findById(parentId).orElseThrow()
         assertThat(parent.activityIds).isEmpty()
         assertThat(parent.reason).contains("deleted: cancelled before start")
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `cancellation uses the catalog name instead of leaving an announcement alias behind`(withExternalService: Boolean) {
+        val catalogName = services.get(serviceId).name
+        val targets = listOf(ExtractedService("GS", serviceId.toString())) +
+            if (withExternalService) listOf(ExtractedService("ID-porten")) else emptyList()
+        val (parentId, _) = announce(
+            "GS vedlikehold", -600,
+            ExtractedActivity(targets, start = "${future}T20:00", end = "${future}T22:00")
+        )
+        val activityId = repo.findById(parentId).orElseThrow().activityIds.single()
+        val created = activities.get(activityId)
+        assertThat(created.serviceIds).containsExactly(serviceId)
+        assertThat(created.serviceNames).contains(catalogName).doesNotContain("GS")
+        if (withExternalService) assertThat(created.serviceNames).containsExactlyInAnyOrder(catalogName, "ID-porten")
+
+        val (_, status) = followUp(
+            MessageKind.CANCELLATION,
+            ExtractedActivity(listOf(ExtractedService(catalogName, serviceId.toString())))
+        )
+
+        if (withExternalService) {
+            assertThat(status).isEqualTo(SlackDowntimeMessageStatus.ACTIVITY_UPDATED)
+            val remaining = activities.get(activityId)
+            assertThat(remaining.serviceIds).isEmpty()
+            assertThat(remaining.serviceNames).containsExactly("ID-porten")
+        } else {
+            assertThat(status).isEqualTo(SlackDowntimeMessageStatus.ACTIVITY_CANCELLED)
+            assertThat(activityRepo.existsById(activityId)).isFalse()
+        }
     }
 
     @Test
