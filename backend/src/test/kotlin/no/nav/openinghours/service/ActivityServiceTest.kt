@@ -217,6 +217,20 @@ class ActivityServiceTest {
     }
 
     @Test
+    fun `deleting a catalog service preserves activities affecting named services`() {
+        val mixed = activities.create(input("08:00", "09:00").copy(serviceNames = setOf("ID-porten")))
+
+        assertThat(services.delete(serviceId)).isTrue()
+        entityManager.flush()
+        entityManager.clear()
+
+        val remaining = activities.getForAllServices(day, day)
+        assertThat(remaining.map { it.id }).containsExactly(mixed.id)
+        assertThat(remaining.single().serviceIds).isEmpty()
+        assertThat(remaining.single().serviceNames).containsExactly("ID-porten")
+    }
+
+    @Test
     fun `activity can name services outside the catalog instead of linking them`() {
         val created = activities.create(
             input("08:00", "09:00", svc = emptySet()).copy(serviceNames = setOf(" ID-porten ", "id-porten", "Maskinporten"))

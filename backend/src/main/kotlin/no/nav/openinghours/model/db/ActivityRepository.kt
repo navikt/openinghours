@@ -37,7 +37,7 @@ interface ActivityRepository : JpaRepository<Activity, UUID> {
     fun findSlackActivitiesAnnouncedBetween(@Param("from") from: Instant, @Param("to") to: Instant): List<Activity>
 
     /**
-     * Deletes activities whose only linked service is [serviceId]. Must run before the service
+     * Deletes activities with no service names whose only linked service is [serviceId]. Must run before the service
      * itself is deleted; links to other services are removed by the FK cascade afterwards.
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -46,6 +46,7 @@ interface ActivityRepository : JpaRepository<Activity, UUID> {
             DELETE FROM activity a
             WHERE EXISTS (SELECT 1 FROM activity_service s WHERE s.activity_id = a.id AND s.service_id = :serviceId)
               AND NOT EXISTS (SELECT 1 FROM activity_service s WHERE s.activity_id = a.id AND s.service_id <> :serviceId)
+              AND NOT EXISTS (SELECT 1 FROM activity_service_name n WHERE n.activity_id = a.id)
         """,
         nativeQuery = true
     )
