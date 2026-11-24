@@ -43,6 +43,16 @@ const MUTABLE_ROUTES: RegExp[] = [
   /^\/openinghours\/group(\/.*)?$/,
 ];
 
+const ACTIVITY_ID = /^\/openinghours\/activity\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ACTIVITY_RANGE = '/openinghours/activity/range';
+
+function isActivityMutation(path: string, method: string): boolean {
+  return (
+    (method === 'POST' && path === '/openinghours/activity') ||
+    ((method === 'PUT' || method === 'DELETE') && ACTIVITY_ID.test(path))
+  );
+}
+
 const SAFE_METHODS = new Set(['GET', 'HEAD']);
 
 /**
@@ -59,6 +69,7 @@ const FORBIDDEN_PARAMS = new Set(['confirm']);
  */
 /** Ba forespørselen om noe som krever admintilgang? Styrer 403 mot 404. */
 function isAdminRequest(path: string, method: string): boolean {
+  if (isActivityMutation(path, method)) return true;
   if (!SAFE_METHODS.has(method)) return MUTABLE_ROUTES.some((r) => r.test(path));
   return ADMIN_ROUTES.some((r) => r.test(path));
 }
@@ -70,6 +81,14 @@ export function isAllowed(
   publicAccess = false,
   admin = false,
 ): boolean {
+  // Aktiviteter er interne også dersom åpningstidskalenderen blir offentlig.
+  if (path === ACTIVITY_RANGE || ACTIVITY_ID.test(path)) {
+    if (method === 'GET') return loggedIn;
+    return loggedIn && admin && isActivityMutation(path, method);
+  }
+  if (path === '/openinghours/activity') {
+    return loggedIn && admin && isActivityMutation(path, method);
+  }
   // Alt som endrer data krever medlemskap i admingruppen, uten unntak.
   if (!SAFE_METHODS.has(method)) {
     return admin && MUTABLE_ROUTES.some((r) => r.test(path));
@@ -112,8 +131,14 @@ export function createProxy(config: Config) {
     }
 
     const target = new URL(`/api${path}`, config.backendUrl);
+    const activityRequest = path === '/openinghours/activity' || path.startsWith('/openinghours/activity/');
     for (const [key, value] of Object.entries(req.query)) {
-      if (typeof value === 'string' && !FORBIDDEN_PARAMS.has(key)) {
+      const activityParam = path === ACTIVITY_RANGE && (key === 'from' || key === 'to');
+      if (
+        typeof value === 'string' &&
+        !FORBIDDEN_PARAMS.has(key) &&
+        (!activityRequest || activityParam)
+      ) {
         target.searchParams.set(key, value);
       }
     }

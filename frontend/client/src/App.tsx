@@ -38,6 +38,9 @@ const GroupDetailPage = lazy(() =>
 const ServicesPage = lazy(() =>
   import('./pages/admin/ServicesPage').then((m) => ({ default: m.ServicesPage })),
 );
+const ActivitiesPage = lazy(() =>
+  import('./pages/admin/ActivitiesPage').then((m) => ({ default: m.ActivitiesPage })),
+);
 
 export function App() {
   return (
@@ -59,6 +62,7 @@ export function App() {
               <Route path="grupper" element={<GroupsPage />} />
               <Route path="grupper/:groupId" element={<GroupDetailPage />} />
               <Route path="tjenester" element={<ServicesPage />} />
+              <Route path="aktiviteter" element={<ActivitiesPage />} />
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

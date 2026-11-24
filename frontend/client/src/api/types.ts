@@ -14,6 +14,27 @@ export interface Service {
   updatedAt: string | null;
 }
 
+export interface Activity {
+  id: string;
+  serviceIds: string[];
+  header: string;
+  message: string;
+  start: string | null;
+  end: string | null;
+  onlyShowForNavEmployees: boolean;
+  ongoing: boolean;
+}
+
+/** Datetime-verdier er lokale Oslo-datetime-strenger, ikke UTC-tidspunkter. */
+export interface ActivityInput {
+  serviceIds: string[];
+  header: string;
+  message: string;
+  start: string | null;
+  end: string | null;
+  onlyShowForNavEmployees: boolean;
+}
+
 export interface MatchedRule {
   name: string;
   rule: string;

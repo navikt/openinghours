@@ -6,6 +6,46 @@ import { isAdmin } from './auth.ts';
 const SERVICE_ID = '11111111-2222-3333-4444-555555555555';
 
 describe('isAllowed', () => {
+  it('krever innlogging for aktivitetslesing selv når kalenderen er offentlig', () => {
+    for (const path of ['/openinghours/activity/range', `/openinghours/activity/${SERVICE_ID}`]) {
+      expect(isAllowed(path, 'GET', false, true)).toBe(false);
+      expect(isAllowed(path, 'GET', false, true, true)).toBe(false);
+      expect(isAllowed(path, 'GET', true, true)).toBe(true);
+    }
+  });
+
+  it('tillater bare aktivitetsoppretting, erstatning og sletting for innloggede admins', () => {
+    const requests = [
+      ['/openinghours/activity', 'POST'],
+      [`/openinghours/activity/${SERVICE_ID}`, 'PUT'],
+      [`/openinghours/activity/${SERVICE_ID}`, 'DELETE'],
+    ];
+    for (const [path, method] of requests) {
+      expect(isAllowed(path, method, true, false, true)).toBe(true);
+      expect(isAllowed(path, method, true, true, false)).toBe(false);
+      expect(isAllowed(path, method, false, true, true)).toBe(false);
+    }
+  });
+
+  it('avviser ubrukte aktivitetsruter og feil metode selv for admins', () => {
+    const requests = [
+      ['/openinghours/activity/batch', 'POST'],
+      ['/openinghours/activity', 'GET'],
+      ['/openinghours/activity', 'PUT'],
+      ['/openinghours/activity', 'DELETE'],
+      [`/openinghours/activity/${SERVICE_ID}`, 'POST'],
+      [`/openinghours/activity/${SERVICE_ID}`, 'PATCH'],
+      ['/openinghours/activity/range', 'PUT'],
+      ['/openinghours/activity/range', 'HEAD'],
+      ['/openinghours/activity/date', 'GET'],
+      ['/openinghours/activity/------------------------------------', 'GET'],
+      [`/openinghours/activity/${SERVICE_ID}/extra`, 'GET'],
+    ];
+    for (const [path, method] of requests) {
+      expect(isAllowed(path, method, true, false, true)).toBe(false);
+    }
+  });
+
   // Hele appen ligger bak ansatt.nav.no med autoLogin, så alt krever innlogging.
   // Sjekken er forsvar i dybden mot kall som omgår Wonderwall-sidecaren.
   // Slik appen kjører i dag: bak ansatt.nav.no, der alt krever innlogging.

@@ -8,6 +8,22 @@ import type { QueryResponse, Service } from '../api/types';
 import { LandingPage } from './LandingPage';
 import { DayPage } from './DayPage';
 
+const activityRange = vi.hoisted(() => ({
+  calls: [] as Array<{ from: string; to: string; enabled: boolean }>,
+}));
+
+vi.mock('../hooks/activities', () => ({
+  useActivitiesRange: vi.fn((from: string, to: string, enabled: boolean) => {
+    activityRange.calls.push({ from, to, enabled });
+    return {
+      data: [],
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    };
+  }),
+}));
+
 /*
  * Fixturene speiler backendens faktiske svar, ikke en forenklet idé om dem.
  * Grunnregelen er en ukesregel (`??.??.???? ?`), avviket er festet til en dato
@@ -76,7 +92,10 @@ function monthOfDays(resourceId: string, overrides: Record<string, QueryResponse
   return days;
 }
 
-function mockApi(byService: Record<string, QueryResponse[]>) {
+function mockApi(
+  byService: Record<string, QueryResponse[]>,
+  session: { loggedIn: boolean; isAdmin?: boolean } = { loggedIn: false },
+) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
@@ -84,7 +103,7 @@ function mockApi(byService: Record<string, QueryResponse[]>) {
       const json = (body: unknown) =>
         new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
 
-      if (url === '/me') return json({ loggedIn: false, isAdmin: false });
+      if (url === '/me') return json(session);
       if (url.includes('/range')) {
         const id = /service\/([^/?]+)\/range/.exec(url)?.[1] ?? '';
         return json(byService[id] ?? []);
@@ -114,6 +133,7 @@ function renderPage(ui: React.ReactNode, path = '/') {
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   vi.setSystemTime(new Date(TODAY));
+  activityRange.calls.length = 0;
 });
 
 afterEach(() => {
@@ -190,6 +210,32 @@ describe('LandingPage', () => {
     renderPage(<LandingPage />, '/?maned=2025-05');
 
     expect(await screen.findByRole('heading', { name: 'Mai 2025' })).toBeInTheDocument();
+  });
+
+  it('viser aktiviteter mellom dagskortet og kalenderen med uendret periode ved månedsskifte', async () => {
+    mockApi(
+      { s1: monthOfDays('s1'), s2: monthOfDays('s2') },
+      { loggedIn: true, isAdmin: false },
+    );
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { container } = renderPage(<LandingPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Aktiviteter' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Mai 2025' })).toBeInTheDocument();
+    const children = Array.from(container.querySelector('.oh-landing')!.children);
+    const todayIndex = children.findIndex((element) => element.classList.contains('oh-today'));
+    const feedIndex = children.findIndex((element) => element.classList.contains('oh-activity-feed'));
+    const monthIndex = children.findIndex((element) => element.classList.contains('oh-month'));
+    expect(todayIndex).toBeLessThan(feedIndex);
+    expect(feedIndex).toBeLessThan(monthIndex);
+
+    const initialRange = activityRange.calls.filter((call) => call.enabled).at(-1);
+    expect(initialRange).toEqual({ from: '2025-05-13', to: '2025-06-12', enabled: true });
+
+    await user.click(screen.getByRole('button', { name: 'Neste' }));
+    expect(await screen.findByRole('heading', { name: 'Juni 2025' })).toBeInTheDocument();
+    const updatedRange = activityRange.calls.filter((call) => call.enabled).at(-1);
+    expect(updatedRange).toEqual(initialRange);
   });
 
   it('sier fra når en tjeneste ikke svarer, framfor å la avvik forsvinne stille', async () => {
