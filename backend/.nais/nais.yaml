@@ -35,6 +35,7 @@ spec:
       external:
         - host: statusplattform-v2.intern.nav.no
         - host: slack.com
+        - host: nav-openinghours-openai.openai.azure.com
   gcp:
     sqlInstances:
         - name: openinghours
