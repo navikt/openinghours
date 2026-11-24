@@ -150,7 +150,11 @@ class LlmDowntimeExtractor(
             - COMPLETION: work announced earlier is finished, or an incident is resolved ("ferdig", "løst",
               "oppe igjen", "verifisert", "feilen er rettet"). Set "end" only if a finish time is stated.
             - CANCELLATION: announced work is cancelled ("avlyst", "kansellert") or stopped ("avbrutt"). Set
-              "end" only if a stop time is stated. List services only if just some of them are cancelled.
+              "end" only if a stop time is stated. For cancellations outside a thread, always list the
+              affected services, even when all announced work is cancelled. For example,
+              "Gosys-vedlikeholdet er avlyst" must target Gosys.
+              Leave services empty only when a thread reply cancels everything in its parent.
+              For a partial cancellation in a thread, list only the cancelled services.
             - POSTPONEMENT: announced work is moved ("utsatt", "flyttet"). Give the new times; give no times at
               all if it is postponed indefinitely.
             - OTHER: questions, chatter, requests and anything else. Return an empty activities list.

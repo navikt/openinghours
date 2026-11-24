@@ -33,14 +33,20 @@ class LlmDowntimeExtractorTest {
     )
     private val gosys = Service.create(id = UUID.randomUUID(), name = "Gosys", type = ServiceType.TJENESTE, team = "Team X")
 
-    private fun respond(content: String) {
+    private fun respond(content: String, text: String = "Gosys er nede i kveld") {
         val escaped = objectMapper.writeValueAsString(content)
         server.expect(requestTo(org.hamcrest.Matchers.startsWith("https://aoai.test/")))
+            .andExpect(jsonPath("$.messages[0].content").value(allOf(
+                containsString("For cancellations outside a thread, always list the"),
+                containsString("affected services, even when all announced work is cancelled."),
+                containsString("Leave services empty only when a thread reply cancels everything in its parent."),
+                containsString("For a partial cancellation in a thread, list only the cancelled services.")
+            )))
             .andExpect(jsonPath("$.messages[1].content").value(allOf(
                 containsString("Current time: 2030-06-10T10:00:00+02:00"),
                 containsString("Message posted at: 2030-06-10T09:30:00+02:00"),
                 containsString("${gosys.id} | Gosys | TJENESTE | Team X"),
-                containsString("Gosys er nede i kveld")
+                containsString(text)
             )))
             .andRespond(withSuccess("""{"choices":[{"message":{"content":$escaped},"finish_reason":"stop"}]}""", MediaType.APPLICATION_JSON))
     }
@@ -64,6 +70,36 @@ class LlmDowntimeExtractorTest {
                 duration = ExtractedDuration(2.0, "HOURS")
             )
         )
+        server.verify()
+    }
+
+    @Test
+    fun `top-level cancellation retains the affected service`() {
+        val text = "Gosys-vedlikeholdet er avlyst"
+        respond(
+            """{"kind":"CANCELLATION","activities":[{"services":[{"name":"Gosys","serviceId":"${gosys.id}"}]}]}""",
+            text
+        )
+
+        val result = extractor.extract(text, Instant.parse("2030-06-10T07:30:00Z"), listOf(gosys))
+
+        assertThat(result.extraction.messageKind).isEqualTo(MessageKind.CANCELLATION)
+        assertThat(result.extraction.activities.single().services)
+            .containsExactly(ExtractedService("Gosys", gosys.id.toString()))
+        server.verify()
+    }
+
+    @Test
+    fun `full cancellation in a thread can leave service targets empty`() {
+        respond("""{"kind":"CANCELLATION","activities":[{"services":[]}]}""", "Alt er avlyst")
+
+        val result = extractor.extract(
+            "Alt er avlyst", Instant.parse("2030-06-10T07:30:00Z"), listOf(gosys),
+            parentText = "Gosys er nede i kveld"
+        )
+
+        assertThat(result.extraction.messageKind).isEqualTo(MessageKind.CANCELLATION)
+        assertThat(result.extraction.activities.single().services).isEmpty()
         server.verify()
     }
 
