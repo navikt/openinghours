@@ -256,6 +256,21 @@ describe('proxy-tilgang', () => {
     expect(url.searchParams.get('to')).toBe('2025-08-31');
   });
 
+  it('videresender tjenestetypefilteret til backend', async () => {
+    const fetchMock = mockUpstream([]);
+
+    const res = await call('/api/openinghours/service', {
+      headers: authHeader('Ansatt'),
+      query: { type: 'TJENESTE' },
+    });
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      new URL('http://backend.test/api/openinghours/service?type=TJENESTE'),
+      expect.any(Object),
+    );
+  });
+
   it('avviser paths utenfor whitelisten uten å kontakte backend', async () => {
     const fetchMock = mockUpstream({});
 

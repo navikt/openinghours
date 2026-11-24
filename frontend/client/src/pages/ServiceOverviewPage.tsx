@@ -12,7 +12,6 @@ import {
 } from '@navikt/ds-react';
 import { ArrowLeftIcon, ExternalLinkIcon } from '@navikt/aksel-icons';
 import { useSearchParams } from 'react-router-dom';
-import type { ServiceType } from '../api/types';
 import { useDailyStatus, useServices, useSession } from '../hooks/queries';
 import { formatHours, HOURS_ALWAYS_OPEN, HOURS_CLOSED } from '../lib/rule';
 import { AppLink } from '../components/common/AppLink';
@@ -33,7 +32,6 @@ export function ServiceOverviewPage() {
 
   const search = params.get('sok') ?? '';
   const team = params.get('team') ?? '';
-  const type = params.get('type') ?? '';
   const loggedIn = session.data?.loggedIn ?? false;
 
   const setParam = (key: string, value: string) => {
@@ -70,9 +68,8 @@ export function ServiceOverviewPage() {
     return (services.data ?? [])
       .filter((s) => (needle ? s.name.toLowerCase().includes(needle) : true))
       .filter((s) => (team ? s.team === team : true))
-      .filter((s) => (type ? s.type === (type as ServiceType) : true))
       .sort((a, b) => a[sortBy].localeCompare(b[sortBy], 'nb'));
-  }, [services.data, search, team, type, sortBy]);
+  }, [services.data, search, team, sortBy]);
 
   const timestamp = new Intl.DateTimeFormat('nb-NO', {
     weekday: 'long',
@@ -129,16 +126,6 @@ export function ServiceOverviewPage() {
             </option>
           ))}
         </Select>
-        <Select
-          label="Type"
-          size="small"
-          value={type}
-          onChange={(e) => setParam('type', e.target.value)}
-        >
-          <option value="">Alle typer</option>
-          <option value="TJENESTE">Tjeneste</option>
-          <option value="KOMPONENT">Komponent</option>
-        </Select>
       </div>
 
       <div className="oh-overview__count">
@@ -155,7 +142,7 @@ export function ServiceOverviewPage() {
       {!services.isPending && filtered.length === 0 && (
         <EmptyState
           title="Ingen tjenester matcher søket"
-          description="Prøv et kortere søkeord, eller nullstill filtrene for team og type."
+          description="Prøv et kortere søkeord, eller nullstill filtrene for søk og team."
           actionLabel="Nullstill filtrene"
           onAction={() => setParams(new URLSearchParams(), { replace: true })}
         />
