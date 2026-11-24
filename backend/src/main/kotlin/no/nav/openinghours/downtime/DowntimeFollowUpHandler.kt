@@ -105,38 +105,43 @@ class DowntimeFollowUpHandler(
 
         fun complete(label: String, entry: ExtractedActivity, matches: List<Activity>) {
             val at = statedTime(label, entry) ?: return
-            val activity = matches.filter { !it.startAt.isAfter(at) }.maxByOrNull { it.startAt }
-                ?: return noMatch(label)
-            if (!at.isAfter(activity.startAt)) {
-                notes += "$label: finish time is not after the start of activity ${activity.id}; ignored"
-                return
+            selectActivities(label, matches.filter { !it.startAt.isAfter(at) }).forEach { activity ->
+                if (!at.isAfter(activity.startAt)) {
+                    notes += "$label: finish time is not after the start of activity ${activity.id}; ignored"
+                } else {
+                    setEnd(label, activity, at, "completed")
+                }
             }
-            setEnd(label, activity, at, "completed")
         }
 
         fun cancel(label: String, entry: ExtractedActivity, targets: ServiceTargets, matches: List<Activity>) {
             val at = statedTime(label, entry) ?: return
-            val activity = matches.maxByOrNull { it.startAt } ?: return noMatch(label)
-            when {
-                !targets.isEmpty && !targets.coversAll(activity, catalog) -> removeServices(label, activity, targets)
-                !activity.startAt.isBefore(at) -> delete(label, activity, "cancelled before start")
-                activity.endAt.isAfter(at) -> setEnd(label, activity, at, "stopped")
-                else -> notes += "$label: activity ${activity.id} had already ended; unchanged"
+            selectActivities(label, matches).forEach { activity ->
+                when {
+                    !targets.isEmpty && !targets.coversAll(activity, catalog) -> removeServices(label, activity, targets)
+                    !activity.startAt.isBefore(at) -> delete(label, activity, "cancelled before start")
+                    activity.endAt.isAfter(at) -> setEnd(label, activity, at, "stopped")
+                    else -> notes += "$label: activity ${activity.id} had already ended; unchanged"
+                }
             }
         }
 
         fun postpone(label: String, entry: ExtractedActivity, matches: List<Activity>) {
-            val activity = matches.maxByOrNull { it.startAt } ?: return noMatch(label)
+            val selected = selectActivities(label, matches)
+            if (selected.isEmpty()) return
             val mapped = ExtractionMapping.hints(entry)
             mapped.notes.forEach { notes += "$label: $it" }
             val hints = mapped.hints ?: run {
                 notes += "$label: ${mapped.error}"
                 return
             }
-            if (!hints.hasTimeInfo) return delete(label, activity, "postponed without a new time")
+            if (!hints.hasTimeInfo) {
+                selected.forEach { delete(label, it, "postponed without a new time") }
+                return
+            }
             when (val w = TimeWindowResolver.resolve(hints, posted)) {
                 is ResolvedWindow.Rejected -> notes += "$label: new window rejected: ${w.reason}"
-                is ResolvedWindow.Window -> {
+                is ResolvedWindow.Window -> selected.forEach { activity ->
                     val before = describe(activity)
                     activity.startAt = instant(w.start)
                     activity.endAt = instant(w.end)
@@ -146,6 +151,10 @@ class DowntimeFollowUpHandler(
                 }
             }
         }
+
+        private fun selectActivities(label: String, matches: List<Activity>): List<Activity> =
+            (if (message.isReply) matches else listOfNotNull(matches.maxByOrNull { it.startAt }))
+                .also { if (it.isEmpty()) noMatch(label) }
 
         /** The stated time for a completion or cancellation, or the message time when none is stated. */
         private fun statedTime(label: String, entry: ExtractedActivity): Instant? {

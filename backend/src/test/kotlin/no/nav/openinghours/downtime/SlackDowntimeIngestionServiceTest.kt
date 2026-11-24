@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.EnumSource
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.never
 import org.mockito.Mockito.times
@@ -315,6 +316,91 @@ class SlackDowntimeIngestionServiceTest {
         assertThat(reply.threadTs).isEqualTo(parentTs)
         assertThat(reply.activityIds).containsExactly(activityId)
         assertThat(reply.reason).contains("completed")
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "true, COMPLETION", "true, CANCELLATION", "true, POSTPONEMENT",
+        "false, COMPLETION", "false, CANCELLATION", "false, POSTPONEMENT"
+    )
+    fun `thread follow-ups update every match while top-level follow-ups update only the latest`(
+        threadReply: Boolean, kind: MessageKind
+    ) {
+        val earlierStart = now().minusHours(2)
+        val laterStart = now().minusHours(1)
+        val (parentId, parentTs) = announce(
+            "Gosys og Arena", -600,
+            activity(start = local(earlierStart), end = local(earlierStart.plusHours(4))),
+            activity(ids = listOf(otherServiceId.toString()), start = local(laterStart), end = local(laterStart.plusHours(4)))
+        )
+        val before = repo.findById(parentId).orElseThrow().activityIds.map(activities::get).sortedBy { it.start }
+        val later = future.plusDays(1)
+        val entry = ExtractedActivity(
+            services = if (threadReply) emptyList() else listOf(svc(), svc(otherServiceId)),
+            start = if (kind == MessageKind.POSTPONEMENT) "${later}T20:00" else null,
+            duration = if (kind == MessageKind.POSTPONEMENT) ExtractedDuration(1.0, "HOURS") else null
+        )
+
+        val (replyId, status) = followUp(kind, entry, threadTs = parentTs.takeIf { threadReply })
+
+        assertThat(status).isEqualTo(SlackDowntimeMessageStatus.ACTIVITY_UPDATED)
+        val expected = if (threadReply) before else listOf(before.last())
+        assertThat(repo.findById(replyId).orElseThrow().activityIds).containsExactlyInAnyOrderElementsOf(expected.map { it.id })
+        expected.forEach { original ->
+            val updated = activities.get(original.id)
+            if (kind == MessageKind.POSTPONEMENT) {
+                assertThat(updated.start.toLocalDateTime()).isEqualTo(later.atTime(20, 0))
+                assertThat(updated.end.toLocalDateTime()).isEqualTo(later.atTime(21, 0))
+            } else {
+                assertThat(updated.start).isEqualTo(original.start)
+                assertThat(updated.end.toLocalDateTime()).isEqualTo(now())
+            }
+        }
+        if (!threadReply) assertThat(activities.get(before.first().id)).isEqualTo(before.first())
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MessageKind::class, names = ["CANCELLATION", "POSTPONEMENT"])
+    fun `thread-wide cancellation or indefinite postponement deletes every parent activity`(kind: MessageKind) {
+        val (parentId, parentTs) = announce(
+            "Gosys vedlikehold", -600,
+            activity(),
+            activity(start = "${future.plusDays(1)}T20:00", end = "${future.plusDays(1)}T22:00")
+        )
+        val activityIds = repo.findById(parentId).orElseThrow().activityIds.toSet()
+        assertThat(activityIds).hasSize(2)
+
+        val (_, status) = followUp(kind, ExtractedActivity(), threadTs = parentTs)
+
+        assertThat(status).isEqualTo(SlackDowntimeMessageStatus.ACTIVITY_CANCELLED)
+        activityIds.forEach { assertThat(activityRepo.existsById(it)).isFalse() }
+        assertThat(repo.findById(parentId).orElseThrow().activityIds).isEmpty()
+    }
+
+    @Test
+    fun `partial thread cancellation updates all matching windows but leaves other services alone`() {
+        val (parentId, parentTs) = announce(
+            "Gosys og Arena vedlikehold", -600,
+            activity(ids = listOf(serviceId.toString(), otherServiceId.toString())),
+            activity(
+                ids = listOf(serviceId.toString(), otherServiceId.toString()),
+                start = "${future.plusDays(1)}T20:00", end = "${future.plusDays(1)}T22:00"
+            ),
+            activity(ids = listOf(otherServiceId.toString()), start = "${future.plusDays(2)}T20:00", end = "${future.plusDays(2)}T22:00")
+        )
+        val before = repo.findById(parentId).orElseThrow().activityIds.map(activities::get)
+        val matching = before.filter { serviceId in it.serviceIds }
+        val unrelated = before.single { serviceId !in it.serviceIds }
+
+        val (replyId, status) = followUp(
+            MessageKind.CANCELLATION, ExtractedActivity(listOf(svc())), threadTs = parentTs
+        )
+
+        assertThat(status).isEqualTo(SlackDowntimeMessageStatus.ACTIVITY_UPDATED)
+        assertThat(matching).hasSize(2)
+        matching.forEach { assertThat(activities.get(it.id).serviceIds).containsExactly(otherServiceId) }
+        assertThat(activities.get(unrelated.id)).isEqualTo(unrelated)
+        assertThat(repo.findById(replyId).orElseThrow().activityIds).containsExactlyInAnyOrderElementsOf(matching.map { it.id })
     }
 
     @ParameterizedTest

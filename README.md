@@ -60,8 +60,9 @@ tjeneste med overlappende tid, opprettes ingen ny.
 
 **Oppfølging.** Meldinger som melder at arbeidet er ferdig, avlyst eller
 utsatt, endrer aktiviteter som er opprettet fra Slack. Et trådsvar gjelder
-aktivitetene til trådstarten; ellers brukes Slack-aktiviteter for samme tjeneste
-som er meldt innen `SLACK_DOWNTIME_FOLLOW_UP_WINDOW_HOURS` (standard 24).
+alle relevante aktiviteter til trådstarten; ellers brukes den sist startede
+matchende Slack-aktiviteten som er meldt innen
+`SLACK_DOWNTIME_FOLLOW_UP_WINDOW_HOURS` (standard 24).
 Trådsvar endrer aldri aktiviteter fra andre meldinger, selv om aktivitetene til
 trådstarten er slettet eller endret manuelt.
 
