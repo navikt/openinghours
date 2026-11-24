@@ -58,6 +58,11 @@ object TimeWindowResolver {
         val start = hints.start
         val end = hints.end
         val wholeDay = hints.date?.takeIf { start == null && end == null && it != posted.toLocalDate() }
+        val durationSetsWindow = !(start != null && end != null) && wholeDay == null
+        // Checked before any date arithmetic, since a huge duration would overflow LocalDateTime.
+        if (duration != null && durationSetsWindow && duration > MAX_WINDOW) {
+            return ResolvedWindow.Rejected("duration is longer than ${MAX_WINDOW.toDays()} days")
+        }
 
         val (from, to) = when {
             start != null && end != null -> start to nextDayIfNotAfter(start, end, notes)

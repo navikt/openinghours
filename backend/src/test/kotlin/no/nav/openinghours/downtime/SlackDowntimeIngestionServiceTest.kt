@@ -574,6 +574,84 @@ class SlackDowntimeIngestionServiceTest {
     }
 
     @Test
+    fun `creates an activity for services not covered by an overlapping activity`() {
+        val (existingMessage, _) = announce("Gosys i kveld", -600, activity())
+        val existing = repo.findById(existingMessage).orElseThrow().activityIds.single()
+        val id = storeOne("Gosys og den andre tjenesten i kveld")
+        extractor.next = { DowntimeExtraction(listOf(activity(ids = listOf(serviceId.toString(), otherServiceId.toString())))) }
+
+        assertThat(ingestion.processPending()).containsExactly(SlackDowntimeMessageStatus.ACTIVITY_CREATED)
+
+        val message = repo.findById(id).orElseThrow()
+        val created = activities.get(message.activityIds.single())
+        assertThat(created.serviceIds).containsExactly(otherServiceId)
+        assertThat(activities.get(existing).serviceIds).containsExactly(serviceId)
+        assertThat(message.reason).contains("already covered by activity $existing")
+    }
+
+    @Test
+    fun `thread reply waits until its parent has been processed`() {
+        val start = now().minusMinutes(30)
+        val (parentId, parentTs) = storeAt("Gosys patches now", -1800)
+        val (replyId, _) = storeAt("ferdig", 0, parentTs)
+        extractor.failure = LlmException("temporarily unavailable")
+
+        assertThat(ingestion.processPending()).containsExactly(SlackDowntimeMessageStatus.PENDING)
+        assertThat(extractor.calls).isEqualTo(1)
+        assertThat(repo.findById(replyId).orElseThrow().attempts).isZero()
+
+        extractor.failure = null
+        val responses = ArrayDeque(listOf(
+            DowntimeExtraction(listOf(ExtractedActivity(listOf(svc()), "Gosys", "Patching", local(start), local(start.plusHours(3))))),
+            DowntimeExtraction(listOf(ExtractedActivity()), kind = MessageKind.COMPLETION.name)
+        ))
+        extractor.next = { responses.removeFirst() }
+
+        assertThat(ingestion.processPending())
+            .containsExactly(SlackDowntimeMessageStatus.ACTIVITY_CREATED, SlackDowntimeMessageStatus.ACTIVITY_UPDATED)
+        val activityId = repo.findById(parentId).orElseThrow().activityIds.single()
+        assertThat(activities.get(activityId).end.toLocalDateTime()).isEqualTo(now())
+    }
+
+    @Test
+    fun `top-level follow-up waits while an earlier announcement is pending a retry`() {
+        val start = now().minusMinutes(30)
+        val (announcementId, _) = storeAt("Gosys patches now", -1800)
+        val (followUpId, _) = storeAt("Gosys er ferdig", 0)
+        extractor.failure = LlmException("timeout")
+
+        assertThat(ingestion.processPending()).containsExactly(SlackDowntimeMessageStatus.PENDING)
+        assertThat(extractor.calls).isEqualTo(1)
+        assertThat(repo.findById(followUpId).orElseThrow().status).isEqualTo(SlackDowntimeMessageStatus.PENDING)
+
+        extractor.failure = null
+        val responses = ArrayDeque(listOf(
+            DowntimeExtraction(listOf(ExtractedActivity(listOf(svc()), "Gosys", "Patching", local(start), local(start.plusHours(3))))),
+            DowntimeExtraction(listOf(ExtractedActivity(listOf(svc()))), kind = MessageKind.COMPLETION.name)
+        ))
+        extractor.next = { responses.removeFirst() }
+
+        assertThat(ingestion.processPending())
+            .containsExactly(SlackDowntimeMessageStatus.ACTIVITY_CREATED, SlackDowntimeMessageStatus.ACTIVITY_UPDATED)
+        val activityId = repo.findById(announcementId).orElseThrow().activityIds.single()
+        assertThat(activities.get(activityId).end.toLocalDateTime()).isEqualTo(now())
+    }
+
+    @Test
+    fun `a recent thread update does not extend the follow-up window of an old announcement`() {
+        val (parentId, parentTs) = announce("Gosys og annen tjeneste", -36 * 3600, activity(ids = listOf(serviceId.toString(), otherServiceId.toString())))
+        val activityId = repo.findById(parentId).orElseThrow().activityIds.single()
+        storeAt("den andre tjenesten er avlyst", -13 * 3600, parentTs)
+        extractor.next = { DowntimeExtraction(listOf(ExtractedActivity(listOf(svc(otherServiceId)))), kind = MessageKind.CANCELLATION.name) }
+        assertThat(ingestion.processPending()).doesNotContain(SlackDowntimeMessageStatus.NOT_RELEVANT, SlackDowntimeMessageStatus.FAILED)
+
+        val (_, status) = followUp(MessageKind.CANCELLATION, ExtractedActivity(listOf(svc())))
+
+        assertThat(status).isEqualTo(SlackDowntimeMessageStatus.NOT_RELEVANT)
+        assertThat(activities.get(activityId).serviceIds).containsExactly(serviceId)
+    }
+
+    @Test
     fun `stores services outside the catalog by name and resolves times by the rules`() {
         val (id, _) = announce(
             "ID-porten vedlikehold", 0,

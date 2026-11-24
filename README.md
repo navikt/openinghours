@@ -55,16 +55,21 @@ tjeneste-ID eller ett navn.
 Varighet: «et par» = 2, «noen» = 3, intervaller bruker høyeste verdi (30–40 min
 → 40 min, en til to timer → 2 t), og sekunder gir 1 minutt. Vinduer der slutt
 ikke er etter start, eller som er lengre enn 14 dager, forkastes. Aktiviteter
-som allerede er over, lagres likevel. Finnes det allerede en aktivitet for samme
-tjeneste med overlappende tid, opprettes ingen ny.
+som allerede er over, lagres likevel. Tjenester som allerede har en aktivitet
+med overlappende tid, tas ut; aktiviteten opprettes bare for de øvrige
+tjenestene, og ikke i det hele tatt om alle er dekket.
 
 **Oppfølging.** Meldinger som melder at arbeidet er ferdig, avlyst eller
 utsatt, endrer aktiviteter som er opprettet fra Slack. Et trådsvar gjelder
 alle relevante aktiviteter til trådstarten; ellers brukes den sist startede
-matchende Slack-aktiviteten som er meldt innen
-`SLACK_DOWNTIME_FOLLOW_UP_WINDOW_HOURS` (standard 24).
+matchende Slack-aktiviteten der den opprinnelige meldingen ble postet innen
+`SLACK_DOWNTIME_FOLLOW_UP_WINDOW_HOURS` (standard 24). Senere oppfølginger
+forlenger ikke dette vinduet.
 Trådsvar endrer aldri aktiviteter fra andre meldinger, selv om aktivitetene til
-trådstarten er slettet eller endret manuelt.
+trådstarten er slettet eller endret manuelt. Meldinger behandles i den
+rekkefølgen de ble postet, og behandlingen stopper ved første melding som må
+prøves på nytt. En oppfølging behandles dermed aldri før kunngjøringen den
+gjelder, så et midlertidig feilet oppslag ikke gjør at oppfølgingen går tapt.
 
 | Type | Virkning |
 | --- | --- |

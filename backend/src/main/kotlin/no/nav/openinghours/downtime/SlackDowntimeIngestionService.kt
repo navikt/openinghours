@@ -23,6 +23,7 @@ import org.springframework.web.client.RestClientException
 import org.springframework.web.server.ResponseStatusException
 import java.math.BigDecimal
 import java.time.Clock
+import java.time.DateTimeException
 import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -154,15 +155,30 @@ class SlackDowntimeIngestionService(
             }
     } ?: 0
 
+    /**
+     * Processes pending messages oldest first and stops at the first one that stays pending, so a later follow-up
+     * never runs before the announcement it refers to. Each message is retried at most [maxAttempts] times, so the
+     * queue is held back only for a bounded number of polls.
+     */
     fun processPending(): List<SlackDowntimeMessageStatus> {
         val pending = repo.findByStatusOrderByPostedAtAsc(PENDING, PageRequest.of(0, batchSize))
         if (pending.isEmpty()) return emptyList()
         val services = serviceRepo.findAll()
-        return pending.map { process(it, services) }
+        val statuses = mutableListOf<SlackDowntimeMessageStatus>()
+        for (message in pending) {
+            statuses += process(message, services)
+            if (statuses.last() == PENDING) break
+        }
+        return statuses
     }
 
     private fun process(message: SlackDowntimeMessage, services: List<no.nav.openinghours.model.db.Service>): SlackDowntimeMessageStatus {
         val parent = message.threadTs?.takeIf { message.isReply }?.let { repo.findByChannelIdAndMessageTs(message.channelId, it) }
+        if (parent?.status == PENDING) {
+            // The parent may still create activities this reply refers to; try again once it has been processed.
+            log.debug("Deferring Slack reply id={} until its parent id={} has been processed", message.id, parent.id)
+            return PENDING
+        }
         val result = try {
             extractor.extract(message.rawText, message.postedAt, services, parent?.rawText)
         } catch (e: RestClientException) {
@@ -187,6 +203,10 @@ class SlackDowntimeIngestionService(
             }!!
         } catch (e: ResponseStatusException) {
             recordFailure(message.id, result.raw, "Activity creation failed: ${e.reason}")
+        } catch (e: DateTimeException) {
+            recordFailure(message.id, result.raw, "Activity creation failed: ${e.message}")
+        } catch (e: ArithmeticException) {
+            recordFailure(message.id, result.raw, "Activity creation failed: ${e.message}")
         }
     }
 
@@ -197,11 +217,7 @@ class SlackDowntimeIngestionService(
     ): DowntimeOutcome {
         val mapped = toActivityInputs(extraction, catalog, entity.rawText, entity.postedAt)
         val notes = mapped.notes.toMutableList()
-        val fresh = mapped.inputs.filter { (index, input) ->
-            val duplicate = findDuplicate(input, catalog)
-            if (duplicate != null) notes += "activities[$index]: duplicate of activity ${duplicate.id}; skipped"
-            duplicate == null
-        }.map { it.value }
+        val fresh = mapped.inputs.mapNotNull { (index, input) -> withoutCoveredServices(input, catalog, "activities[$index]", notes) }
         if (fresh.isEmpty()) return DowntimeOutcome(NOT_RELEVANT, notes)
         val created = activityService.createAll(fresh)
         entity.activityIds.addAll(created.map { it.id })
@@ -209,10 +225,33 @@ class SlackDowntimeIngestionService(
         return DowntimeOutcome(ACTIVITY_CREATED, notes)
     }
 
-    /** An existing activity for one of the same services with an overlapping window, e.g. from an edited or forwarded post. */
-    private fun findDuplicate(input: ActivityInput, catalog: Map<UUID, no.nav.openinghours.model.db.Service>) =
-        activityRepo.findOverlapping(input.start.atZone(clock.zone).toInstant(), input.end.atZone(clock.zone).toInstant())
-            .firstOrNull { ServiceTargets(input.serviceIds, input.serviceNames, emptyList()).matches(it, catalog) }
+    /**
+     * Removes services that already have an overlapping activity, e.g. from an edited or forwarded post, so only
+     * the services without one get a new activity. Returns null when every service is already covered.
+     */
+    private fun withoutCoveredServices(
+        input: ActivityInput,
+        catalog: Map<UUID, no.nav.openinghours.model.db.Service>,
+        label: String,
+        notes: MutableList<String>
+    ): ActivityInput? {
+        val targets = ServiceTargets(input.serviceIds, input.serviceNames, emptyList())
+        val existing = activityRepo.findOverlapping(input.start.atZone(clock.zone).toInstant(), input.end.atZone(clock.zone).toInstant())
+            .filter { targets.matches(it, catalog) }
+        if (existing.isEmpty()) return input
+        val coveredIds = existing.flatMap { it.serviceIds }.toSet()
+        val coveredKeys = existing.flatMap { ServiceTargets.activityKeys(it, catalog) }.toSet()
+        val ids = input.serviceIds.filterTo(linkedSetOf()) { it !in coveredIds && catalog[it]?.name?.let(ServiceTargets::key) !in coveredKeys }
+        val names = input.serviceNames.filterTo(linkedSetOf()) { ServiceTargets.key(it) !in coveredKeys }
+        val existingIds = existing.joinToString { it.id.toString() }
+        if (ids.isEmpty() && names.isEmpty()) {
+            notes += "$label: duplicate of activity $existingIds; skipped"
+            return null
+        }
+        val removed = (input.serviceNames - names).ifEmpty { input.serviceIds - ids }
+        notes += "$label: ${removed.joinToString()} already covered by activity $existingIds; created for the remaining services"
+        return input.copy(serviceIds = ids, serviceNames = names)
+    }
 
     private fun recordFailure(id: UUID, extraction: String?, error: String): SlackDowntimeMessageStatus =
         transactions.execute {

@@ -1,11 +1,13 @@
 package no.nav.openinghours.slack
 
 import org.assertj.core.api.Assertions.assertThat
+import org.hamcrest.Matchers.startsWith
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
+import org.springframework.test.web.client.ExpectedCount
 import org.springframework.test.web.client.MockRestServiceServer
 import org.springframework.test.web.client.match.MockRestRequestMatchers.header
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
@@ -60,6 +62,20 @@ class SlackClientHistoryTest {
 
         assertThat(replies.map { it.text }).containsExactly("ferdig")
         assertThat(replies.single().threadTs).isEqualTo("1700000000.000100")
+        server.verify()
+    }
+
+    @Test
+    fun `throws instead of returning a partial batch when the page limit is reached`() {
+        server.expect(ExpectedCount.times(SlackClient.MAX_HISTORY_PAGES), requestTo(startsWith(base)))
+            .andRespond(withSuccess(
+                """{"ok":true,"messages":[{"ts":"1700000300.000200","text":"newest"}],
+                   "has_more":true,"response_metadata":{"next_cursor":"more="}}""",
+                MediaType.APPLICATION_JSON
+            ))
+
+        val e = assertThrows<SlackApiException> { client.fetchChannelHistory("CDOWN", "1700000000.000000") }
+        assertThat(e.message).contains("partial batch")
         server.verify()
     }
 

@@ -27,13 +27,17 @@ interface ActivityRepository : JpaRepository<Activity, UUID> {
     @Query("select a from Activity a where a.startAt < :to and a.endAt > :from order by a.startAt, a.endAt")
     fun findOverlapping(@Param("from") from: Instant, @Param("to") to: Instant): List<Activity>
 
-    /** Slack-created activities linked to any Slack message posted within [from, to]. */
+    /**
+     * Slack-created activities whose creating announcement was posted within [from, to]. Follow-ups that later
+     * updated an activity are linked too, but must not extend how long the activity stays eligible.
+     */
     @Query(
         value = """
             SELECT DISTINCT a.* FROM activity a
             JOIN slack_downtime_message_activity l ON l.activity_id = a.id
             JOIN slack_downtime_message m ON m.id = l.message_id
-            WHERE a.source = 'SLACK' AND m.posted_at >= :from AND m.posted_at <= :to
+            WHERE a.source = 'SLACK' AND m.status = 'ACTIVITY_CREATED'
+              AND m.posted_at >= :from AND m.posted_at <= :to
         """,
         nativeQuery = true
     )

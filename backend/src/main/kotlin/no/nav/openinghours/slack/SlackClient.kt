@@ -122,6 +122,10 @@ class SlackClient(
             messages += response.messages
             cursor = response.responseMetadata?.nextCursor?.takeIf { response.hasMore && it.isNotBlank() }
         } while (cursor != null && ++pages < MAX_HISTORY_PAGES)
+        // A partial batch would let the caller advance its cursor past the unfetched pages and skip them for good.
+        if (cursor != null) {
+            throw SlackApiException("Slack $method returned more than $MAX_HISTORY_PAGES pages; refusing to return a partial batch")
+        }
         return messages.sortedBy { it.ts.toBigDecimalOrNull() }
     }
 

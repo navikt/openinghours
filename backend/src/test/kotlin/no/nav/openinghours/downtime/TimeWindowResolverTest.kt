@@ -144,4 +144,16 @@ class TimeWindowResolverTest {
         assertThat(range(TimeHints(start = at("18:00"), end = at("05:00"))))
             .isEqualTo(at("18:00") to at("05:00", day.plusDays(1)))
     }
+
+    @Test
+    fun `oversized durations are rejected before any date arithmetic`() {
+        val huge = DurationHint(1e18, DurationUnit.DAYS)
+        val rejected = ResolvedWindow.Rejected("duration is longer than 14 days")
+        assertThat(TimeWindowResolver.resolve(TimeHints(start = at("21:00"), duration = huge), posted)).isEqualTo(rejected)
+        assertThat(TimeWindowResolver.resolve(TimeHints(end = at("21:00"), duration = huge), posted)).isEqualTo(rejected)
+        assertThat(TimeWindowResolver.resolve(TimeHints(duration = DurationHint(Double.POSITIVE_INFINITY, DurationUnit.HOURS)), posted))
+            .isEqualTo(rejected)
+        // Ignored when start and end are both stated.
+        assertThat(range(TimeHints(start = at("21:00"), end = at("22:00"), duration = huge))).isEqualTo(at("21:00") to at("22:00"))
+    }
 }
