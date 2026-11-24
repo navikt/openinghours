@@ -10,7 +10,7 @@ const LINKS = [
   { to: '/admin/regler', label: 'Regler', end: false },
   { to: '/admin/grupper', label: 'Grupper', end: false },
   { to: '/admin/tjenester', label: 'Tjenester', end: false },
-  { to: '/admin/aktiviteter', label: 'Driftsmeldinger', end: false },
+  { to: '/admin/aktiviteter', label: 'Aktiviteter', end: false },
 ];
 
 /**

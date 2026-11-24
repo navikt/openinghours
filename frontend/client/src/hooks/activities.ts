@@ -55,7 +55,7 @@ export function useDeleteActivity() {
   return useMutation({
     mutationFn: async (id: string) => {
       const deleted = await apiFetch<boolean>(`${BASE}/${id}`, { method: 'DELETE' });
-      if (!deleted) throw new ApiError('Driftsmeldingen ble ikke slettet.', 404);
+      if (!deleted) throw new ApiError('Aktiviteten ble ikke slettet.', 404);
       return deleted;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activities'] }),

@@ -27,22 +27,22 @@ export function ActivityFeed({ today, services }: { today: string; services: Ser
     >
       <div className="oh-activity-feed__header">
         <Heading level="2" size="medium" id="oh-activity-feed-heading">
-          Driftsmeldinger
+          Aktiviteter
         </Heading>
         {session.data?.isAdmin && (
-          <AppLink to="/admin/aktiviteter">Administrer driftsmeldinger</AppLink>
+          <AppLink to="/admin/aktiviteter">Administrer aktiviteter</AppLink>
         )}
       </div>
 
       {activities.isPending ? (
         <div className="oh-activity-feed__loading" role="status">
-          <BodyShort>Henter driftsmeldinger</BodyShort>
+          <BodyShort>Henter aktiviteter</BodyShort>
           <Skeleton variant="text" width="100%" height="2rem" aria-hidden />
         </div>
       ) : activities.isError ? (
         <Alert variant="error" size="small" role="alert">
           <div className="oh-activity-feed__error">
-            <BodyShort>Vi klarte ikke å hente driftsmeldingene.</BodyShort>
+            <BodyShort>Vi klarte ikke å hente aktivitetene.</BodyShort>
             <Button variant="secondary" size="small" onClick={() => activities.refetch()}>
               Prøv igjen
             </Button>
@@ -57,7 +57,7 @@ export function ActivityFeed({ today, services }: { today: string; services: Ser
           ))}
         </ul>
       ) : (
-        <BodyShort>Ingen driftsmeldinger i denne perioden.</BodyShort>
+        <BodyShort>Ingen aktiviteter i denne perioden.</BodyShort>
       )}
     </Box.New>
   );

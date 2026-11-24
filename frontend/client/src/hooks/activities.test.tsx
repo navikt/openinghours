@@ -147,7 +147,7 @@ describe('activity mutations', () => {
 
     const { result } = renderHook(() => useDeleteActivity(), { wrapper });
     await expect(act(async () => result.current.mutateAsync('a1'))).rejects.toThrow(
-      'Driftsmeldingen ble ikke slettet.',
+      'Aktiviteten ble ikke slettet.',
     );
     expect(queryClient.getQueryState(['activities', 'detail', 'a1'])?.isInvalidated).toBe(false);
   });

@@ -135,7 +135,7 @@ describe('proxy-tilgang', () => {
 
   it('lar ansatte lese aktiviteter og videresender bare periodeparametrene', async () => {
     const activity = {
-      id: SERVICE_ID, serviceIds: [], header: 'Driftsmelding', message: 'Planlagt arbeid',
+      id: SERVICE_ID, serviceIds: [], header: 'Aktivitet', message: 'Planlagt arbeid',
       start: null, end: null, ongoing: false, onlyShowForNavEmployees: true,
     };
     const fetchMock = mockUpstream([activity]);
@@ -176,7 +176,7 @@ describe('proxy-tilgang', () => {
 
   it('videresender adminoppretting som JSON med valgfrie felt', async () => {
     const payload = {
-      serviceIds: [], header: 'Driftsmelding', message: 'Planlagt arbeid',
+      serviceIds: [], header: 'Aktivitet', message: 'Planlagt arbeid',
       start: null, end: null, onlyShowForNavEmployees: false,
     };
     const fetchMock = mockUpstream({ id: SERVICE_ID, ...payload, ongoing: false });

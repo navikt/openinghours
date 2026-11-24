@@ -87,7 +87,7 @@ export function ActivityFormModal({
       onClose={close}
       onBeforeClose={() => !saving}
       width="small"
-      header={{ heading: activity ? 'Rediger driftsmelding' : 'Ny driftsmelding' }}
+      header={{ heading: activity ? 'Rediger aktivitet' : 'Ny aktivitet' }}
     >
       <Modal.Body>
         <form id={FORM_ID} onSubmit={submit}>
@@ -96,7 +96,7 @@ export function ActivityFormModal({
               <Alert variant="error">
                 {mutationError instanceof ApiError
                   ? mutationError.message
-                  : 'Driftsmeldingen kunne ikke lagres. Prøv igjen.'}
+                  : 'Aktiviteten kunne ikke lagres. Prøv igjen.'}
               </Alert>
             )}
 
@@ -154,7 +154,7 @@ export function ActivityFormModal({
                 <BodyShort role="status">Ingen tjenester passer søket.</BodyShort>
               )}
               <BodyShort size="small">
-                Ingen valgte tjenester betyr at meldingen gjelder generelt.
+                Ingen valgte tjenester betyr at aktiviteten gjelder generelt.
               </BodyShort>
             </div>
 
@@ -199,7 +199,7 @@ export function ActivityFormModal({
           loading={saving}
           disabled={!servicesLoaded || saving}
         >
-          Lagre driftsmeldingen
+          Lagre aktiviteten
         </Button>
         <Button type="button" variant="tertiary" onClick={close} disabled={saving}>
           Avbryt

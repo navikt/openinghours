@@ -108,7 +108,7 @@ describe('ActivitiesPage', () => {
     expect(screen.getByText('Dagpenger')).toBeInTheDocument();
     expect(screen.getByText('Pågår')).toBeInTheDocument();
     expect(screen.getByText(/Fra 10\. apr\./)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Rediger driftsmeldingen «Planlagt vedlikehold»' }))
+    expect(screen.getByRole('button', { name: 'Rediger aktiviteten «Planlagt vedlikehold»' }))
       .toBeInTheDocument();
   });
 
@@ -116,7 +116,7 @@ describe('ActivitiesPage', () => {
     mockApi({ activities: () => jsonResponse([]) });
     renderPage();
 
-    expect(await screen.findByText('Ingen driftsmeldinger i perioden')).toBeInTheDocument();
+    expect(await screen.findByText('Ingen aktiviteter i perioden')).toBeInTheDocument();
   });
 
   it('shows an activity-list error with a retry action', async () => {
@@ -127,9 +127,9 @@ describe('ActivitiesPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(await screen.findByText(/Vi klarte ikke å hente driftsmeldingene/)).toBeInTheDocument();
+    expect(await screen.findByText(/Vi klarte ikke å hente aktivitetene/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Prøv igjen' }));
-    expect(await screen.findByText('Ingen driftsmeldinger i perioden')).toBeInTheDocument();
+    expect(await screen.findByText('Ingen aktiviteter i perioden')).toBeInTheDocument();
   });
 
   it('keeps the activity list usable when service loading fails', async () => {
@@ -175,17 +175,17 @@ describe('ActivitiesPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(await screen.findByRole('button', { name: 'Ny driftsmelding' }));
+    await user.click(await screen.findByRole('button', { name: 'Ny aktivitet' }));
     await user.type(screen.getByLabelText('Tittel'), 'Planlagt vedlikehold');
     await user.type(screen.getByLabelText('Melding'), 'Tjenesten kan være utilgjengelig.');
-    await user.click(screen.getByRole('button', { name: 'Lagre driftsmeldingen' }));
+    await user.click(screen.getByRole('button', { name: 'Lagre aktiviteten' }));
 
     expect(await screen.findByText('Forespørselen var ugyldig. Kontroller datoene og prøv igjen.'))
       .toBeInTheDocument();
     expect(screen.getByLabelText('Tittel')).toHaveValue('Planlagt vedlikehold');
     expect(screen.getByLabelText('Melding')).toHaveValue('Tjenesten kan være utilgjengelig.');
 
-    await user.click(screen.getByRole('button', { name: 'Lagre driftsmeldingen' }));
+    await user.click(screen.getByRole('button', { name: 'Lagre aktiviteten' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
     expect(JSON.parse(String(post?.[1]?.body))).toEqual({
@@ -204,7 +204,7 @@ describe('ActivitiesPage', () => {
     renderPage();
 
     await user.click(
-      await screen.findByRole('button', { name: 'Rediger driftsmeldingen «Planlagt vedlikehold»' }),
+      await screen.findByRole('button', { name: 'Rediger aktiviteten «Planlagt vedlikehold»' }),
     );
     const form = within(screen.getByRole('dialog'));
     expect(form.getByLabelText('Fra')).toHaveValue('2025-04-10T11:30');
@@ -212,7 +212,7 @@ describe('ActivitiesPage', () => {
     expect(form.getByLabelText('Dagpenger')).toBeChecked();
     expect(form.getByLabelText('Vis kun for Nav-ansatte')).toBeChecked();
 
-    await user.click(screen.getByRole('button', { name: 'Lagre driftsmeldingen' }));
+    await user.click(screen.getByRole('button', { name: 'Lagre aktiviteten' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT');
     expect(put?.[0]).toBe('/api/openinghours/activity/activity-1');
@@ -240,14 +240,14 @@ describe('ActivitiesPage', () => {
     renderPage();
 
     await user.click(
-      await screen.findByRole('button', { name: 'Slett driftsmeldingen «Planlagt vedlikehold»' }),
+      await screen.findByRole('button', { name: 'Slett aktiviteten «Planlagt vedlikehold»' }),
     );
-    expect(screen.getByText('Driftsmeldingen fjernes fra forsiden. Åpningstidene endres ikke.'))
+    expect(screen.getByText('Aktiviteten fjernes fra forsiden. Åpningstidene endres ikke.'))
       .toBeInTheDocument();
-    const confirm = screen.getByRole('button', { name: 'Slett driftsmeldingen' });
+    const confirm = screen.getByRole('button', { name: 'Slett aktiviteten' });
 
     await user.click(confirm);
-    expect(await screen.findByText('Driftsmeldingen ble ikke slettet.'))
+    expect(await screen.findByText('Aktiviteten ble ikke slettet.'))
       .toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
@@ -259,16 +259,16 @@ describe('ActivitiesPage', () => {
 
     await user.click(confirm);
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(screen.getByText('Driftsmeldingen er slettet.')).toBeInTheDocument();
+    expect(screen.getByText('Aktiviteten er slettet.')).toBeInTheDocument();
   });
 
   it('does not fetch activity or service data for non-admin users', async () => {
     const fetchMock = mockApi({ session: { loggedIn: true, isAdmin: false } });
     renderPage();
 
-    expect(await screen.findByText('Du har ikke tilgang til driftsmeldinger.')).toBeInTheDocument();
+    expect(await screen.findByText('Du har ikke tilgang til aktiviteter.')).toBeInTheDocument();
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(['/me']);
-    expect(screen.queryByRole('button', { name: 'Ny driftsmelding' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ny aktivitet' })).not.toBeInTheDocument();
   });
 
   it.each(['save', 'delete'] as const)('keeps the dialog open during %s and after an API error', async (operation) => {
@@ -279,13 +279,13 @@ describe('ActivitiesPage', () => {
     renderPage();
 
     if (operation === 'save') {
-      await user.click(await screen.findByRole('button', { name: 'Ny driftsmelding' }));
-      await user.type(screen.getByLabelText('Tittel'), 'Driftsmelding');
+      await user.click(await screen.findByRole('button', { name: 'Ny aktivitet' }));
+      await user.type(screen.getByLabelText('Tittel'), 'Aktivitet');
       await user.type(screen.getByLabelText('Melding'), 'Arbeid pågår.');
-      await user.click(screen.getByRole('button', { name: 'Lagre driftsmeldingen' }));
+      await user.click(screen.getByRole('button', { name: 'Lagre aktiviteten' }));
     } else {
-      await user.click(await screen.findByRole('button', { name: 'Slett driftsmeldingen «Planlagt vedlikehold»' }));
-      await user.click(screen.getByRole('button', { name: 'Slett driftsmeldingen' }));
+      await user.click(await screen.findByRole('button', { name: 'Slett aktiviteten «Planlagt vedlikehold»' }));
+      await user.click(screen.getByRole('button', { name: 'Slett aktiviteten' }));
     }
 
     const dialog = screen.getByRole('dialog');
@@ -298,7 +298,7 @@ describe('ActivitiesPage', () => {
     expect(await within(dialog).findByText(/Tjenesten er utilgjengelig akkurat nå/)).toBeInTheDocument();
     expect(dialog).toHaveAttribute('open');
     if (operation === 'save') {
-      expect(screen.getByLabelText('Tittel')).toHaveValue('Driftsmelding');
+      expect(screen.getByLabelText('Tittel')).toHaveValue('Aktivitet');
     }
   });
 });

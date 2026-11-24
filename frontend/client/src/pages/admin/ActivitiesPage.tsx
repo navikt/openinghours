@@ -35,7 +35,7 @@ export function ActivitiesPage() {
     return <ErrorState message="Vi klarte ikke å kontrollere tilgangen." onRetry={() => session.refetch()} />;
   }
   if (!session.data?.isAdmin) {
-    return <Alert variant="warning">Du har ikke tilgang til driftsmeldinger.</Alert>;
+    return <Alert variant="warning">Du har ikke tilgang til aktiviteter.</Alert>;
   }
 
   return <ActivitiesContent />;
@@ -73,7 +73,7 @@ function ActivitiesContent() {
 
   function finishEditing() {
     setEditing(null);
-    setSuccess(editing === 'new' ? 'Driftsmeldingen er opprettet.' : 'Driftsmeldingen er lagret.');
+    setSuccess(editing === 'new' ? 'Aktiviteten er opprettet.' : 'Aktiviteten er lagret.');
   }
 
   function confirmDelete() {
@@ -81,7 +81,7 @@ function ActivitiesContent() {
     remove.mutate(deleting.id, {
       onSuccess: () => {
         setDeleting(null);
-        setSuccess('Driftsmeldingen er slettet.');
+        setSuccess('Aktiviteten er slettet.');
       },
     });
   }
@@ -89,16 +89,16 @@ function ActivitiesContent() {
   const deleteError = remove.error
     ? remove.error instanceof ApiError
       ? remove.error.message
-      : 'Driftsmeldingen kunne ikke slettes. Prøv igjen.'
+      : 'Aktiviteten kunne ikke slettes. Prøv igjen.'
     : '';
 
   return (
     <VStack className="oh-activities" gap="5">
       <HStack align="end" justify="space-between" wrap gap="4">
         <Heading level="1" size="large">
-          Driftsmeldinger
+          Aktiviteter
         </Heading>
-        <Button onClick={() => startEditing('new')}>Ny driftsmelding</Button>
+        <Button onClick={() => startEditing('new')}>Ny aktivitet</Button>
       </HStack>
 
       {success && (
@@ -113,7 +113,7 @@ function ActivitiesContent() {
         </Alert>
       )}
 
-      <section className="oh-activities__filters" aria-label="Filtrer driftsmeldinger">
+      <section className="oh-activities__filters" aria-label="Filtrer aktiviteter">
         <label>
           Fra
           <input type="date" value={from} onChange={(event) => updateDate('fra', event.target.value)} />
@@ -133,23 +133,23 @@ function ActivitiesContent() {
         <ErrorState message="Vi klarte ikke å hente tjenestene." onRetry={() => services.refetch()} />
       )}
 
-      <section aria-label="Driftsmeldinger i valgt periode" aria-busy={activities.isPending}>
+      <section aria-label="Aktiviteter i valgt periode" aria-busy={activities.isPending}>
         {activities.isPending && (
           <BodyShort className="oh-activities__status" role="status">
-            Henter driftsmeldinger …
+            Henter aktiviteter …
           </BodyShort>
         )}
         {activities.isError && (
           <ErrorState
-            message="Vi klarte ikke å hente driftsmeldingene."
+            message="Vi klarte ikke å hente aktivitetene."
             onRetry={() => activities.refetch()}
           />
         )}
         {activities.isSuccess && activities.data.length === 0 && (
           <EmptyState
-            title="Ingen driftsmeldinger i perioden"
-            description="Prøv en annen periode, eller opprett en ny driftsmelding."
-            actionLabel="Ny driftsmelding"
+            title="Ingen aktiviteter i perioden"
+            description="Prøv en annen periode, eller opprett en ny aktivitet."
+            actionLabel="Ny aktivitet"
             onAction={() => startEditing('new')}
           />
         )}
@@ -190,7 +190,7 @@ function ActivitiesContent() {
                     <Button
                       size="small"
                       variant="secondary"
-                      aria-label={`Rediger driftsmeldingen «${activity.header}»`}
+                      aria-label={`Rediger aktiviteten «${activity.header}»`}
                       onClick={() => startEditing(activity)}
                     >
                       Rediger
@@ -198,7 +198,7 @@ function ActivitiesContent() {
                     <Button
                       size="small"
                       variant="tertiary"
-                      aria-label={`Slett driftsmeldingen «${activity.header}»`}
+                      aria-label={`Slett aktiviteten «${activity.header}»`}
                       onClick={() => startDeleting(activity)}
                     >
                       Slett
@@ -227,10 +227,10 @@ function ActivitiesContent() {
       {deleting && (
         <DeleteDialog
           open
-          noun="Driftsmeldingen"
+          noun="Aktiviteten"
           name={deleting.header}
           conflicts={[]}
-          note="Driftsmeldingen fjernes fra forsiden. Åpningstidene endres ikke."
+          note="Aktiviteten fjernes fra forsiden. Åpningstidene endres ikke."
           error={deleteError || undefined}
           deleting={remove.isPending}
           onClose={() => {
@@ -252,7 +252,7 @@ function describeServices(
   pending: boolean,
   failed: boolean,
 ): string {
-  if (activity.serviceIds.length === 0) return 'Generell driftsmelding';
+  if (activity.serviceIds.length === 0) return 'Generell aktivitet';
   if (pending) return 'Henter tjenestene …';
   if (failed) return 'Tjenestelisten er utilgjengelig';
   return activity.serviceIds.map((id) => names.get(id) ?? id).join(', ');

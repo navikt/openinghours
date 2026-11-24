@@ -212,7 +212,7 @@ describe('LandingPage', () => {
     expect(await screen.findByRole('heading', { name: 'Mai 2025' })).toBeInTheDocument();
   });
 
-  it('viser driftsmeldinger mellom dagskortet og kalenderen med uendret periode ved månedsskifte', async () => {
+  it('viser aktiviteter mellom dagskortet og kalenderen med uendret periode ved månedsskifte', async () => {
     mockApi(
       { s1: monthOfDays('s1'), s2: monthOfDays('s2') },
       { loggedIn: true, isAdmin: false },
@@ -220,7 +220,7 @@ describe('LandingPage', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const { container } = renderPage(<LandingPage />);
 
-    expect(await screen.findByRole('heading', { name: 'Driftsmeldinger' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Aktiviteter' })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Mai 2025' })).toBeInTheDocument();
     const children = Array.from(container.querySelector('.oh-landing')!.children);
     const todayIndex = children.findIndex((element) => element.classList.contains('oh-today'));

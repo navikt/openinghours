@@ -118,7 +118,7 @@ All tilstand ligger i URL-en, slik at en visning kan deles som lenke.
 | `/admin/regler/ny`, `/admin/regler/:ruleId` | `slett=1` | Regelskjema med veiviser |
 | `/admin/grupper`, `/admin/grupper/:groupId` | – | Gruppetre med prioritet og testpanel |
 | `/admin/tjenester` | – | Tjenester og gruppekobling |
-| `/admin/aktiviteter` | `fra=<ISO-dato>`, `til=<ISO-dato>` | Driftsmeldinger med oppretting, redigering og sletting |
+| `/admin/aktiviteter` | `fra=<ISO-dato>`, `til=<ISO-dato>` | Aktiviteter med oppretting, redigering og sletting |
 
 Admin krever innlogging og lastes som egen bundel — uinnloggede laster den aldri.
 
@@ -126,15 +126,15 @@ Admin krever innlogging og lastes som egen bundel — uinnloggede laster den ald
 detaljpanelet. De tre visningene deler samme range-endepunkt og skiller seg bare i
 hvilket tidsrom de spør om — logikken ligger i `lib/view.ts`.
 
-### Driftsmeldinger
+### Aktiviteter
 
 Landingssiden har en feed mellom «I dag»-kortet og kalenderen. Den henter
 aktiviteter fra `/api/openinghours/activity/range` for i dag og de neste 30 dagene,
-uavhengig av kalenderens valgte måned. Backend må også returnere meldinger uten
+uavhengig av kalenderens valgte måned. Backend må også returnere aktiviteter uten
 tidsrom. Backendens `ongoing` avgjør merket «Pågår», og feeden oppdateres hvert minutt.
 
 Tittel og melding er obligatoriske. `serviceIds: []` betyr en generell
-driftsmelding, og `start`/`end` kan være `null`. Feeden viser bare tjenester og
+aktivitet, og `start`/`end` kan være `null`. Feeden viser bare tjenester og
 tider som finnes. Tider vises i `Europe/Oslo`; admins registrerer lokale datoer og
 klokkeslett i samme tidssone. Datofeltene bruker native HTML-inputs fordi
 prosjektets Aksel 7 ikke støtter `date`/`datetime-local` i `TextField`.
@@ -146,13 +146,13 @@ eksisterende admingruppen. Aktivitetsrutene er ikke offentlige selv om
 
 **Backendavhengighet:** Denne frontendendringen bruker en avtalt kontrakt med
 valgfrie tjenester og tider. Backend på `96e4270` krever fortsatt tjeneste,
-start og slutt. Lagring uten disse feltene og visning av tidsløse meldinger
+start og slutt. Lagring uten disse feltene og visning av tidsløse aktiviteter
 forutsetter backendoppdateringen som leveres separat. Frontend viser avviste
 lagringer som feil og beholder skjemainnholdet.
 
 Etter deployment: kontroller at en innlogget ansatt ser feeden, at en admin kan
-lagre og slette en driftsmelding, og at en ansatt uten admin ikke kan endre den.
-Kontroller også generelle meldinger og tider over midnatt mot oppdatert backend.
+lagre og slette en aktivitet, og at en ansatt uten admin ikke kan endre den.
+Kontroller også generelle aktiviteter og tider over midnatt mot oppdatert backend.
 Feil i feeden skal ikke skjule kalenderen. Proxyfeil finnes i eksisterende logger;
 meldingsinnhold skal ikke logges. Rollback er forrige frontendimage og endrer
 ikke lagrede aktiviteter eller backend.

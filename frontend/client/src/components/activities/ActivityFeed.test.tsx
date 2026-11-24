@@ -70,19 +70,19 @@ beforeEach(() => {
 });
 
 describe('ActivityFeed', () => {
-  it('viser en tilgjengelig ventetilstand mens driftsmeldingene hentes', () => {
+  it('viser en tilgjengelig ventetilstand mens aktivitetene hentes', () => {
     vi.mocked(useActivitiesRange).mockReturnValue(activitiesResult({ isPending: true }));
 
     renderFeed();
 
-    expect(screen.getByRole('status')).toHaveTextContent('Henter driftsmeldinger');
-    expect(screen.getByRole('heading', { name: 'Driftsmeldinger' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Henter aktiviteter');
+    expect(screen.getByRole('heading', { name: 'Aktiviteter' })).toBeInTheDocument();
   });
 
   it('viser en kort beskjed når perioden er tom', () => {
     renderFeed();
 
-    expect(screen.getByText('Ingen driftsmeldinger i denne perioden.')).toBeInTheDocument();
+    expect(screen.getByText('Ingen aktiviteter i denne perioden.')).toBeInTheDocument();
   });
 
   it('viser en lokal feil og kan prøve henting på nytt', async () => {
@@ -94,7 +94,7 @@ describe('ActivityFeed', () => {
 
     renderFeed();
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Vi klarte ikke å hente driftsmeldingene.');
+    expect(screen.getByRole('alert')).toHaveTextContent('Vi klarte ikke å hente aktivitetene.');
     await user.click(screen.getByRole('button', { name: 'Prøv igjen' }));
     expect(refetch).toHaveBeenCalledOnce();
   });
@@ -190,7 +190,7 @@ describe('ActivityFeed', () => {
 
     renderFeed();
 
-    expect(screen.queryByRole('heading', { name: 'Driftsmeldinger' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Aktiviteter' })).not.toBeInTheDocument();
     expect(useActivitiesRange).toHaveBeenCalledWith(TODAY, '2025-06-12', false);
   });
 
@@ -206,7 +206,7 @@ describe('ActivityFeed', () => {
         </Theme>
       </MemoryRouter>,
     );
-    expect(screen.getByRole('link', { name: 'Administrer driftsmeldinger' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Administrer aktiviteter' })).toHaveAttribute(
       'href',
       '/admin/aktiviteter',
     );
@@ -219,6 +219,6 @@ describe('ActivityFeed', () => {
         </Theme>
       </MemoryRouter>,
     );
-    expect(screen.queryByRole('link', { name: 'Administrer driftsmeldinger' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Administrer aktiviteter' })).not.toBeInTheDocument();
   });
 });
