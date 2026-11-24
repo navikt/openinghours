@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "express": "^4.21.2",
+    "express": "^4.22.3",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0"
   },
@@ -21,6 +21,6 @@
     "@types/node": "^22.10.7",
     "light-my-request": "^6.6.0",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.2"
+    "vitest": "^4.1.12"
   }
 }
