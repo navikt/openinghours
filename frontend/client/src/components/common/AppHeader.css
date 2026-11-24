@@ -1,6 +1,113 @@
-/* Knappen står i en flex-rad sammen med headerens egne elementer, som fyller
-   hele høyden. Uten sentreringen strekker den seg fra topp til bunn. */
-.oh-header__login {
-  align-self: center;
-  margin-right: var(--ax-space-8);
+.oh-header {
+  background: var(--ax-bg-default);
+  border-bottom: 1px solid var(--ax-border-neutral-subtleA);
+}
+
+.oh-header__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ax-space-8);
+  padding-block: var(--ax-space-12);
+}
+
+.oh-header__brand {
+  gap: var(--ax-space-12);
+  color: var(--ax-text-neutral);
+  font-weight: var(--ax-font-weight-bold);
+  min-height: 3rem;
+}
+
+.oh-header__nav-brand {
+  color: var(--ax-text-logo);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.oh-header__navigation {
+  display: none;
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+.oh-header__navigation--open {
+  display: flex;
+  flex-direction: column;
+}
+
+.oh-header__links {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: var(--ax-space-8) 0;
+}
+
+.oh-header__link {
+  padding: var(--ax-space-12);
+  min-height: 3rem;
+  color: var(--ax-text-neutral);
+  text-decoration: none;
+}
+
+.oh-header__link[aria-current="page"] {
+  font-weight: var(--ax-font-weight-bold);
+  text-decoration: underline;
+  text-underline-offset: var(--ax-space-8);
+  text-decoration-thickness: 2px;
+}
+
+.oh-header__account {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--ax-border-neutral-subtleA);
+  padding-top: var(--ax-space-8);
+}
+
+.oh-header__user {
+  padding: var(--ax-space-12);
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 64rem) {
+  .oh-header__inner {
+    flex-wrap: nowrap;
+    gap: var(--ax-space-16);
+  }
+
+  .oh-header__brand {
+    flex-shrink: 0;
+  }
+
+  .oh-header__menu-button {
+    display: none;
+  }
+
+  .oh-header__navigation {
+    display: flex;
+    flex: 1;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--ax-space-8);
+  }
+
+  .oh-header__links,
+  .oh-header__account {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 0;
+  }
+
+  .oh-header__account {
+    margin-left: auto;
+    border-top: 0;
+  }
+
+  .oh-header__user {
+    max-width: 14rem;
+  }
 }
