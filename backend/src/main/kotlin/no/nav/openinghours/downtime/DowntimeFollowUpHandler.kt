@@ -54,18 +54,19 @@ class DowntimeFollowUpHandler(
         catalog: Map<UUID, Service>
     ): DowntimeOutcome {
         val run = Run(kind, message, catalog)
-        val threadCandidates = parent?.activityIds?.takeIf { it.isNotEmpty() }
-            ?.let(::lockSlackActivities)?.takeIf { it.isNotEmpty() }
-        val candidates = threadCandidates
-            ?: lockSlackActivities(
+        val candidates = if (message.isReply) {
+            lockSlackActivities(parent?.activityIds.orEmpty())
+        } else {
+            lockSlackActivities(
                 activityRepo.findSlackActivitiesAnnouncedBetween(message.postedAt.minus(window), message.postedAt).map { it.id }
             )
+        }
 
         extraction.activities.ifEmpty { listOf(ExtractedActivity()) }.forEachIndexed { index, entry ->
             val label = "activities[$index]"
             val targets = ServiceTargets.from(entry.services, catalog)
             targets.notes.forEach { run.notes += "$label: $it" }
-            if (targets.isEmpty && threadCandidates == null) {
+            if (targets.isEmpty && !message.isReply) {
                 run.notes += "$label: no services stated and no thread parent with activities"
                 return@forEachIndexed
             }

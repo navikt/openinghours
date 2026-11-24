@@ -1,5 +1,6 @@
 package no.nav.openinghours.downtime
 
+import jakarta.persistence.EntityManager
 import no.nav.openinghours.llm.LlmException
 import no.nav.openinghours.model.db.ActivityRepository
 import no.nav.openinghours.model.db.ActivitySource
@@ -16,6 +17,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.never
 import org.mockito.Mockito.times
@@ -97,6 +100,7 @@ class SlackDowntimeIngestionServiceTest {
     @Autowired lateinit var activityRepo: ActivityRepository
     @Autowired lateinit var clock: Clock
     @Autowired lateinit var mockMvc: MockMvc
+    @Autowired lateinit var entityManager: EntityManager
 
     @MockitoBean
     lateinit var slack: SlackClient
@@ -311,6 +315,47 @@ class SlackDowntimeIngestionServiceTest {
         assertThat(reply.threadTs).isEqualTo(parentTs)
         assertThat(reply.activityIds).containsExactly(activityId)
         assertThat(reply.reason).contains("completed")
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "DELETED, COMPLETION", "DELETED, CANCELLATION", "DELETED, POSTPONEMENT",
+        "MANUAL, COMPLETION", "MANUAL, CANCELLATION", "MANUAL, POSTPONEMENT",
+        "MISSING, COMPLETION", "MISSING, CANCELLATION", "MISSING, POSTPONEMENT"
+    )
+    fun `thread reply with no eligible parent never changes another announcement`(parentState: String, kind: MessageKind) {
+        val (parentId, parentTs) = announce("Gosys i kveld", -600, activity())
+        val parentActivityId = repo.findById(parentId).orElseThrow().activityIds.single()
+        when (parentState) {
+            "DELETED" -> activities.delete(parentActivityId)
+            "MANUAL" -> activities.update(parentActivityId, ActivityInput(
+                setOf(serviceId), "Manual notice", "Keep this notice", future.atTime(20, 0), future.atTime(22, 0)
+            ))
+            "MISSING" -> repo.deleteById(parentId)
+        }
+        entityManager.flush()
+        entityManager.clear()
+        val start = now().minusHours(1)
+        val (otherId, _) = announce(
+            "Different Gosys announcement", -300,
+            activity(start = local(start), end = local(start.plusHours(3)))
+        )
+        val otherActivityId = repo.findById(otherId).orElseThrow().activityIds.single()
+        val before = activities.get(otherActivityId)
+        val later = future.plusDays(1)
+
+        val (replyId, status) = followUp(
+            kind,
+            ExtractedActivity(listOf(svc()), start = "${later}T20:00", end = "${later}T22:00"),
+            threadTs = parentTs
+        )
+
+        assertThat(status).isEqualTo(SlackDowntimeMessageStatus.NOT_RELEVANT)
+        assertThat(activities.get(otherActivityId)).isEqualTo(before)
+        assertThat(repo.findById(replyId).orElseThrow().activityIds).isEmpty()
+        if (parentState == "MANUAL") {
+            assertThat(activities.get(parentActivityId).source).isEqualTo(ActivitySource.MANUAL)
+        }
     }
 
     @Test
