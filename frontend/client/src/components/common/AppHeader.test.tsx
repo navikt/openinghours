@@ -54,7 +54,7 @@ describe('AppHeader', () => {
     setup();
     const navigation = within(screen.getByRole('navigation', { name: 'Hovednavigasjon' }));
 
-    expect(screen.getByRole('link', { name: 'Nav Åpningstider' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Åpningstider' })).toHaveAttribute('href', '/');
     expect(navigation.getByRole('link', { name: 'Avvikskalender' })).toHaveAttribute('href', '/');
     expect(navigation.getByRole('link', { name: 'Tjenester' })).toHaveAttribute('href', '/tjenester');
     expect(navigation.getByRole('link', { name: 'Sammenlign' })).toHaveAttribute('href', '/sammenlign');
