@@ -16,8 +16,8 @@ export function useSession() {
 
 export function useServices() {
   return useQuery({
-    queryKey: ['services'],
-    queryFn: () => apiFetch<Service[]>('/api/openinghours/service'),
+    queryKey: ['services', 'TJENESTE'],
+    queryFn: () => apiFetch<Service[]>(`/api/openinghours/service${query({ type: 'TJENESTE' })}`),
     staleTime: STALE,
   });
 }
