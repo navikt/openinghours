@@ -14,11 +14,94 @@ og byggekjede. Frontend snakker med backend over HTTP, ikke gjennom delt kode.
 
 Vedlikehold og andre planlagte hendelser registreres som *aktiviteter*
 (`/api/openinghours/activity`), ikke som åpningstidsregler. En aktivitet
-gjelder én eller flere tjenester, har overskrift, melding og start/slutt
+gjelder én eller flere tjenester (med ID eller bare navn), har overskrift, melding og start/slutt
 (lokal tid, `Europe/Oslo`). Aktiviteter påvirker ikke `isOpen`, og
 en tjeneste kan ha flere aktiviteter samme dag. Spørringer finnes for i dag,
 en gitt dato og et datointervall – per tjeneste eller for alle tjenester. Se
 Swagger (`/swagger-ui.html`) for detaljer.
+
+### Aktiviteter fra #varsling-nedetid
+
+Backend henter meldinger fra Slack-kanalen #varsling-nedetid
+(`conversations.history`, hvert 5. minutt) og svar i tråder på meldinger fra
+siste døgn (`conversations.replies`), og lagrer råteksten i
+`slack_downtime_message`. En LLM (Azure OpenAI) får meldingen, tidspunktet den
+ble postet, eventuell trådstart og listen over kjente tjenester. Modellen
+*trekker bare ut* hva som står: type melding, tjenester, tidspunkter, varighet
+og en ryddet melding. Tidsreglene under brukes deretter i koden, slik at
+resultatet blir likt fra gang til gang. Modellsvaret, antagelsene som ble gjort
+og koblingen til aktivitetene lagres på meldingen (`reason`). Feilede uttrekk
+prøves på nytt inntil `SLACK_DOWNTIME_MAX_ATTEMPTS` ganger.
+
+**Tjenester.** Kjente tjenester lagres med ID og navn fra katalogen, slik at aktiviteten vises i
+tjenestens kalender. Tjenester som ikke finnes i katalogen (f.eks. ID-porten,
+Tableau eller «alle *.nav.no-tjenester») lagres med navn
+(`activity.serviceNames`) i stedet for å forkastes. En aktivitet må ha minst én
+tjeneste-ID eller ett navn.
+
+**Tid** (lokal tid, meldingstidspunktet avrundes ned til hele minutter):
+
+| Oppgitt | Tidsvindu |
+| --- | --- |
+| start og slutt | som oppgitt; slutt før/lik start samme dato flyttes til neste dag (22:00–02:00) |
+| start og varighet | slutt = start + varighet |
+| slutt og varighet | start = slutt − varighet |
+| bare slutt | start = meldingstidspunktet (samme regel for midnatt) |
+| bare start | 30 min ved «kort/kortvarig/litt nedetid/restart», ellers til midnatt |
+| bare varighet | start = meldingstidspunktet |
+| bare dato (ikke i dag) | hele dagen |
+| ingenting | start = meldingstidspunktet, slutt som for bare start |
+
+Varighet: «et par» = 2, «noen» = 3, intervaller bruker høyeste verdi (30–40 min
+→ 40 min, en til to timer → 2 t), og sekunder gir 1 minutt. Vinduer der slutt
+ikke er etter start, eller som er lengre enn 14 dager, forkastes. Aktiviteter
+som allerede er over, lagres likevel. Tjenester som allerede har en aktivitet
+med overlappende tid, tas ut; aktiviteten opprettes bare for de øvrige
+tjenestene, og ikke i det hele tatt om alle er dekket.
+
+**Oppfølging.** Meldinger som melder at arbeidet er ferdig, avlyst eller
+utsatt, endrer aktiviteter som er opprettet fra Slack. Et trådsvar gjelder
+alle relevante aktiviteter til trådstarten; ellers brukes den sist startede
+matchende Slack-aktiviteten der den opprinnelige meldingen ble postet innen
+`SLACK_DOWNTIME_FOLLOW_UP_WINDOW_HOURS` (standard 24). Senere oppfølginger
+forlenger ikke dette vinduet.
+Trådsvar endrer aldri aktiviteter fra andre meldinger, selv om aktivitetene til
+trådstarten er slettet eller endret manuelt. Meldinger behandles i den
+rekkefølgen de ble postet, og behandlingen stopper ved første melding som må
+prøves på nytt. En oppfølging behandles dermed aldri før kunngjøringen den
+gjelder, så et midlertidig feilet oppslag ikke gjør at oppfølgingen går tapt.
+
+| Type | Virkning |
+| --- | --- |
+| Ferdig | slutt settes til oppgitt tidspunkt, ellers meldingstidspunktet |
+| Avlyst før start | aktiviteten slettes |
+| Avlyst etter start | slutt settes til meldingstidspunktet |
+| Avlyst for noen tjenester | bare de tjenestene fjernes |
+| Utsatt | aktiviteten flyttes; uten nytt tidspunkt slettes den |
+
+Aktiviteter som er opprettet eller endret manuelt, endres aldri av Slack.
+
+Meldingsstatus: `PENDING`, `ACTIVITY_CREATED`, `ACTIVITY_UPDATED`,
+`ACTIVITY_CANCELLED`, `NOT_RELEVANT` og `FAILED`.
+
+Aktiviteter fra Slack vises som standard bare for Nav-ansatte
+(`SLACK_DOWNTIME_ONLY_SHOW_FOR_NAV_EMPLOYEES`). Redigerte eller slettede
+Slack-meldinger oppdaterer ikke aktiviteter som allerede er opprettet.
+
+| Endepunkt | Beskrivelse |
+| --- | --- |
+| `GET /api/openinghours/slack-downtime/messages` | Siste meldinger med status, modellsvar og aktivitet-ID-er |
+| `POST /api/openinghours/slack-downtime/poll` | Hent og behandle nye meldinger nå |
+| `POST /api/openinghours/slack-downtime/messages/{id}/retry` | Legg en feilet/ikke-relevant melding i kø igjen |
+
+Funksjonen er av til alle disse er satt: `SLACK_BOT_TOKEN` (scope
+`channels:history`, boten må være med i kanalen), `SLACK_DOWNTIME_CHANNEL_ID`,
+`AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY` og `AZURE_OPENAI_DEPLOYMENT`.
+Valgfritt: `AZURE_OPENAI_API_VERSION`, `SLACK_DOWNTIME_POLL_CRON`,
+`SLACK_DOWNTIME_LOOKBACK_HOURS` (første kjøring, standard 24),
+`SLACK_DOWNTIME_BATCH_SIZE` og `SLACK_DOWNTIME_FOLLOW_UP_WINDOW_HOURS`.
+Azure OpenAI-verten må også legges til under
+`accessPolicy.outbound.external` i `backend/.nais/nais.yaml`.
 
 ## Utvikling
 

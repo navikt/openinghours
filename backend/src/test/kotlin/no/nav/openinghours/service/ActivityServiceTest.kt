@@ -1,6 +1,7 @@
 package no.nav.openinghours.service
 
 import jakarta.persistence.EntityManager
+import no.nav.openinghours.model.db.ActivitySource
 import no.nav.openinghours.model.db.ServiceType
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -213,6 +214,46 @@ class ActivityServiceTest {
         val remaining = activities.getForAllServices(day, day)
         assertThat(remaining.map { it.id }).containsExactly(shared.id)
         assertThat(remaining.single().serviceIds).containsExactly(otherServiceId)
+    }
+
+    @Test
+    fun `deleting a catalog service preserves activities affecting named services`() {
+        val mixed = activities.create(input("08:00", "09:00").copy(serviceNames = setOf("ID-porten")))
+
+        assertThat(services.delete(serviceId)).isTrue()
+        entityManager.flush()
+        entityManager.clear()
+
+        val remaining = activities.getForAllServices(day, day)
+        assertThat(remaining.map { it.id }).containsExactly(mixed.id)
+        assertThat(remaining.single().serviceIds).isEmpty()
+        assertThat(remaining.single().serviceNames).containsExactly("ID-porten")
+    }
+
+    @Test
+    fun `activity can name services outside the catalog instead of linking them`() {
+        val created = activities.create(
+            input("08:00", "09:00", svc = emptySet()).copy(serviceNames = setOf(" ID-porten ", "id-porten", "Maskinporten"))
+        )
+
+        assertThat(created.serviceIds).isEmpty()
+        assertThat(created.serviceNames).containsExactly("ID-porten", "Maskinporten")
+        entityManager.flush()
+        entityManager.clear()
+        assertThat(activities.getForAllServices(day, day).single { it.id == created.id }.serviceNames)
+            .containsExactly("ID-porten", "Maskinporten")
+        assertThat(activities.getForAllServices(day, day).map { it.id }).contains(created.id)
+    }
+
+    @Test
+    fun `updating a Slack activity turns it into a manual one`() {
+        val created = activities.create(input("08:00", "09:00").copy(source = ActivitySource.SLACK, serviceNames = setOf("Gosys")))
+        assertThat(created.source).isEqualTo(ActivitySource.SLACK)
+
+        val updated = activities.update(created.id, input("08:00", "10:00"))
+
+        assertThat(updated.source).isEqualTo(ActivitySource.MANUAL)
+        assertThat(updated.serviceNames).isEmpty()
     }
 
     @Test

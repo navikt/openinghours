@@ -2,6 +2,7 @@ package no.nav.openinghours.service
 
 import no.nav.openinghours.model.db.Activity
 import no.nav.openinghours.model.db.ActivityRepository
+import no.nav.openinghours.model.db.ActivitySource
 import no.nav.openinghours.model.db.ServiceRepository
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -15,14 +16,19 @@ import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.util.UUID
 
-/** Input for creating or replacing an activity. [start]/[end] are local times in the configured timezone. */
+/**
+ * Input for creating or replacing an activity. [start]/[end] are local times in the configured timezone.
+ * At least one of [serviceIds] and [serviceNames] is required; names cover services outside the catalog.
+ */
 data class ActivityInput(
     val serviceIds: Set<UUID>,
     val header: String,
     val message: String,
     val start: LocalDateTime,
     val end: LocalDateTime,
-    val onlyShowForNavEmployees: Boolean = false
+    val onlyShowForNavEmployees: Boolean = false,
+    val serviceNames: Set<String> = emptySet(),
+    val source: ActivitySource = ActivitySource.MANUAL
 )
 
 data class ActivityView(
@@ -34,7 +40,9 @@ data class ActivityView(
     val end: OffsetDateTime,
     val onlyShowForNavEmployees: Boolean,
     /** True when the current time is within [start, end). */
-    val ongoing: Boolean
+    val ongoing: Boolean,
+    val serviceNames: List<String> = emptyList(),
+    val source: ActivitySource = ActivitySource.MANUAL
 )
 
 @Service
@@ -47,6 +55,12 @@ class ActivityService(
 
     companion object {
         const val HEADER_MAX = 200
+        const val SERVICE_NAME_MAX = 200
+
+        /** Trimmed, non-blank names without case-insensitive duplicates. */
+        fun normalizeNames(names: Collection<String>): Set<String> =
+            names.map { it.trim().replace(Regex("\\s+"), " ") }.filter { it.isNotEmpty() }
+                .distinctBy { it.lowercase() }.toCollection(LinkedHashSet())
     }
 
     @Transactional(readOnly = true)
@@ -67,7 +81,9 @@ class ActivityService(
                 message = input.message.trim(),
                 startAt = toInstant(input.start),
                 endAt = toInstant(input.end),
-                onlyShowForNavEmployees = input.onlyShowForNavEmployees
+                onlyShowForNavEmployees = input.onlyShowForNavEmployees,
+                serviceNames = normalizeNames(input.serviceNames),
+                source = input.source
             )
         })
         log.info("Created {} activit(y/ies)", saved.size)
@@ -81,6 +97,9 @@ class ActivityService(
         entity.apply {
             serviceIds.clear()
             serviceIds.addAll(input.serviceIds)
+            serviceNames.clear()
+            serviceNames.addAll(normalizeNames(input.serviceNames))
+            source = ActivitySource.MANUAL
             header = input.header.trim()
             message = input.message.trim()
             startAt = toInstant(input.start)
@@ -127,7 +146,9 @@ class ActivityService(
 
     private fun validate(input: ActivityInput, prefix: String = "") {
         fun bad(msg: String): Nothing = throw ResponseStatusException(HttpStatus.BAD_REQUEST, prefix + msg)
-        if (input.serviceIds.isEmpty()) bad("At least one service is required")
+        val names = normalizeNames(input.serviceNames)
+        if (input.serviceIds.isEmpty() && names.isEmpty()) bad("At least one service is required")
+        if (names.any { it.length > SERVICE_NAME_MAX }) bad("Service names must be at most $SERVICE_NAME_MAX characters")
         if (input.header.isBlank()) bad("Header must not be blank")
         if (input.header.trim().length > HEADER_MAX) bad("Header must be at most $HEADER_MAX characters")
         if (input.message.isBlank()) bad("Message must not be blank")
@@ -155,7 +176,9 @@ class ActivityService(
             start = a.startAt.atZone(clock.zone).toOffsetDateTime(),
             end = a.endAt.atZone(clock.zone).toOffsetDateTime(),
             onlyShowForNavEmployees = a.onlyShowForNavEmployees,
-            ongoing = !now.isBefore(a.startAt) && now.isBefore(a.endAt)
+            ongoing = !now.isBefore(a.startAt) && now.isBefore(a.endAt),
+            serviceNames = a.serviceNames.sortedBy { it.lowercase() },
+            source = a.source
         )
     }
 }

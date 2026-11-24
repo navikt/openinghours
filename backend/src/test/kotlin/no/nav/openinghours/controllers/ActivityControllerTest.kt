@@ -145,6 +145,24 @@ class ActivityControllerTest {
     }
 
     @Test
+    fun `POST accepts service names without service ids`() {
+        val input = ActivityInput(
+            emptySet(), "Maintenance", "Patching", LocalDateTime.of(2030, 6, 10, 8, 0), LocalDateTime.of(2030, 6, 10, 9, 0),
+            serviceNames = setOf("ID-porten")
+        )
+        `when`(service.create(input)).thenReturn(view(serviceIds = emptyList()).copy(serviceNames = listOf("ID-porten")))
+
+        mockMvc.post("/api/openinghours/activity") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"serviceNames":["ID-porten"],"header":"Maintenance","message":"Patching",
+                "start":"2030-06-10T08:00","end":"2030-06-10T09:00"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.serviceNames[0]") { value("ID-porten") }
+        }
+    }
+
+    @Test
     fun `POST batch creates several activities`() {
         val inputs = listOf(
             ActivityInput(setOf(serviceId), "A", "m", LocalDateTime.of(2030, 6, 10, 8, 0), LocalDateTime.of(2030, 6, 10, 9, 0)),
