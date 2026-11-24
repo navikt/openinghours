@@ -148,6 +148,9 @@ describe('LandingPage', () => {
 
     expect(await screen.findByText('Ingen avvik i dag')).toBeInTheDocument();
     expect(screen.getByText('Ingen avvik denne måneden')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Finn en tjeneste' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Se alle tjenester' })).not.toBeInTheDocument();
     // Helger er stengt for begge tjenestene, men det er normalen for lørdag og
     // søndag — og en kalender som roper hver helg er verdiløs.
     expect(screen.queryByText(/Stengt hele dagen/)).not.toBeInTheDocument();

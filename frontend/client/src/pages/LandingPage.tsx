@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert,
@@ -7,7 +7,6 @@ import {
   Box,
   Button,
   Heading,
-  Search,
   Skeleton,
   Tag,
 } from '@navikt/ds-react';
@@ -42,7 +41,6 @@ export function LandingPage() {
   const [params, setParams] = useSearchParams();
   const { now } = useNow();
   const today = todayIso(now);
-  const [query, setQuery] = useState('');
 
   const raw = params.get('maned');
   const month = raw && ISO_MONTH.test(raw) ? raw : monthOf(today);
@@ -231,29 +229,6 @@ export function LandingPage() {
         <DeviationLegend kinds={kinds} />
       </section>
 
-      <section className="oh-find" aria-labelledby="oh-find-heading">
-        <Heading level="2" size="small" id="oh-find-heading" spacing>
-          Finn en tjeneste
-        </Heading>
-        <form
-          className="oh-find__row"
-          onSubmit={(event) => {
-            event.preventDefault();
-            navigate(query ? `/tjenester?sok=${encodeURIComponent(query)}` : '/tjenester');
-          }}
-        >
-          <Search
-            label="Søk etter en tjeneste"
-            placeholder="F.eks. dagpenger"
-            variant="primary"
-            value={query}
-            onChange={setQuery}
-            onClear={() => setQuery('')}
-            className="oh-find__search"
-          />
-          <AppLink to="/tjenester">Se alle tjenester</AppLink>
-        </form>
-      </section>
     </div>
   );
 }

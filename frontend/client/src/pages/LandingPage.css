@@ -92,19 +92,6 @@
   gap: var(--ax-space-8);
 }
 
-/* Søk nederst — veien videre for den som leter etter én bestemt tjeneste. */
-.oh-find__row {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--ax-space-16);
-  flex-wrap: wrap;
-}
-
-.oh-find__search {
-  flex: 1 1 20rem;
-  min-width: 0;
-}
-
 @media (width <= 1024px) {
   .oh-today {
     grid-template-columns: minmax(0, 1fr);

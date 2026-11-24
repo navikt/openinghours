@@ -51,8 +51,7 @@ export function AppHeader() {
           className="oh-header__brand"
           onClick={() => setOpenLocationKey(null)}
         >
-          <span className="oh-header__nav-brand">Nav</span>
-          <span>Åpningstider</span>
+          Åpningstider
         </AkselLink>
         <Button
           ref={menuButton}

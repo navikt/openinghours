@@ -13,16 +13,9 @@
 }
 
 .oh-header__brand {
-  gap: var(--ax-space-12);
   color: var(--ax-text-neutral);
   font-weight: var(--ax-font-weight-bold);
   min-height: 3rem;
-}
-
-.oh-header__nav-brand {
-  color: var(--ax-text-logo);
-  font-size: 2rem;
-  line-height: 1;
 }
 
 .oh-header__navigation {
