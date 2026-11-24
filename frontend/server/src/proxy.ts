@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
 import type { Config } from './config.ts';
 import { isAdmin, isLoggedIn } from './auth.ts';
@@ -62,6 +63,33 @@ const SAFE_METHODS = new Set(['GET', 'HEAD']);
  */
 const FORBIDDEN_PARAMS = new Set(['confirm']);
 
+const LOG_ROUTE_SEGMENTS = new Set([
+  'openinghours', 'query', 'service', 'group', 'rule', 'activity', 'daily',
+  'range', 'associations', 'oh-group', 'oh-groups',
+]);
+
+const NETWORK_ERROR_CODES = new Set([
+  'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN',
+  'ENETUNREACH', 'EHOSTUNREACH', 'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT', 'UND_ERR_SOCKET',
+  'UND_ERR_ABORTED', 'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'DEPTH_ZERO_SELF_SIGNED_CERT', 'ERR_TLS_CERT_ALTNAME_INVALID',
+]);
+
+function proxyErrorCode(error: unknown): string {
+  let current = error;
+  for (let depth = 0; depth < 5; depth++) {
+    if (typeof current !== 'object' || current === null) break;
+    if ('code' in current && typeof current.code === 'string' && NETWORK_ERROR_CODES.has(current.code)) {
+      return current.code;
+    }
+    if ('name' in current && current.name === 'TimeoutError') return 'REQUEST_TIMEOUT';
+    if ('name' in current && current.name === 'AbortError') return 'REQUEST_ABORTED';
+    current = 'cause' in current ? current.cause : undefined;
+  }
+  return 'UNKNOWN';
+}
+
 /**
  * @param publicAccess Er kalenderen åpen for uinnloggede? Er den ikke det —
  *   som i dag, bak `ansatt.nav.no` — krever alt innlogging. Sjekken er da
@@ -104,6 +132,7 @@ export function isAllowed(
 }
 
 export function createProxy(config: Config) {
+  let activeRequests = 0;
   return async function proxy(req: Request, res: Response): Promise<void> {
     const loggedIn = isLoggedIn(req);
     const admin = isAdmin(req, config.adminGroupId);
@@ -153,6 +182,14 @@ export function createProxy(config: Config) {
       (Array.isArray(body) ||
         (typeof body === 'object' && body !== null && Object.keys(body).length > 0));
 
+    const requestId = randomUUID();
+    res.setHeader('X-Request-ID', requestId);
+    const started = performance.now();
+    const concurrentRequests = ++activeRequests;
+    let phase = 'response_headers';
+    let upstreamStatus: number | undefined;
+    let errorCode: string | undefined;
+
     try {
       const upstream = await fetch(target, {
         method: req.method,
@@ -165,7 +202,10 @@ export function createProxy(config: Config) {
         signal: AbortSignal.timeout(15_000),
       });
 
+      upstreamStatus = upstream.status;
+      phase = 'response_body';
       const text = await upstream.text();
+      phase = 'response_processing';
       if (!text) {
         res.status(upstream.status).end();
         return;
@@ -183,9 +223,29 @@ export function createProxy(config: Config) {
       // eneste som skiller interne tider fra offentlige når kalenderen åpnes.
       res.status(upstream.status).json(upstream.ok ? maskResponse(parsed, loggedIn) : parsed);
     } catch (error) {
-      // Den tekniske årsaken logges, men sendes aldri til nettleseren.
-      console.error('Proxy-kall feilet', { path, error });
+      errorCode = proxyErrorCode(error);
       res.status(502).json({ message: 'Vi fikk ikke kontakt med åpningstidstjenesten.' });
+    } finally {
+      activeRequests--;
+      const level = errorCode ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
+      // Stier og feil kan inneholde brukerdata. Logg bare rutemønster og kjente feilkoder.
+      console[level](JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level,
+        event: 'proxy_completed',
+        requestId,
+        pod: process.env.HOSTNAME,
+        method: req.method,
+        route: path.split('/').map((segment) =>
+          !segment || LOG_ROUTE_SEGMENTS.has(segment) ? segment : ':id',
+        ).join('/'),
+        upstreamOrigin: target.origin,
+        status: res.statusCode,
+        upstreamStatus,
+        durationMs: Math.round(performance.now() - started),
+        concurrentRequests,
+        ...(errorCode ? { errorCode, phase } : {}),
+      }));
     }
   };
 }
