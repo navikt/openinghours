@@ -9,6 +9,9 @@ import java.util.UUID
 
 interface ActivityRepository : JpaRepository<Activity, UUID> {
 
+    @Query(value = "SELECT * FROM activity WHERE id IN (:ids) ORDER BY id FOR UPDATE", nativeQuery = true)
+    fun findAllByIdForUpdate(@Param("ids") ids: Collection<UUID>): List<Activity>
+
     /** Activities covering [serviceId] that overlap the half-open interval [from, to). */
     @Query(
         "select a from Activity a where :serviceId member of a.serviceIds " +

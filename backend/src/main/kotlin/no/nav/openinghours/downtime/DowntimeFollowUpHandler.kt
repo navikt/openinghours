@@ -1,5 +1,6 @@
 package no.nav.openinghours.downtime
 
+import jakarta.persistence.EntityManager
 import no.nav.openinghours.model.db.Activity
 import no.nav.openinghours.model.db.ActivityRepository
 import no.nav.openinghours.model.db.ActivitySource
@@ -37,6 +38,7 @@ data class DowntimeOutcome(val status: SlackDowntimeMessageStatus, val notes: Li
 class DowntimeFollowUpHandler(
     private val activityRepo: ActivityRepository,
     private val messageRepo: SlackDowntimeMessageRepository,
+    private val entityManager: EntityManager,
     private val clock: Clock,
     @Value("\${slack.downtime.follow-up-window-hours:24}") windowHours: Long
 ) {
@@ -53,9 +55,11 @@ class DowntimeFollowUpHandler(
     ): DowntimeOutcome {
         val run = Run(kind, message, catalog)
         val threadCandidates = parent?.activityIds?.takeIf { it.isNotEmpty() }
-            ?.let { activityRepo.findAllById(it) }?.filter { it.source == ActivitySource.SLACK }?.takeIf { it.isNotEmpty() }
+            ?.let(::lockSlackActivities)?.takeIf { it.isNotEmpty() }
         val candidates = threadCandidates
-            ?: activityRepo.findSlackActivitiesAnnouncedBetween(message.postedAt.minus(window), message.postedAt)
+            ?: lockSlackActivities(
+                activityRepo.findSlackActivitiesAnnouncedBetween(message.postedAt.minus(window), message.postedAt).map { it.id }
+            )
 
         extraction.activities.ifEmpty { listOf(ExtractedActivity()) }.forEachIndexed { index, entry ->
             val label = "activities[$index]"
@@ -83,6 +87,13 @@ class DowntimeFollowUpHandler(
         }
         log.info("Applied {} follow-up from Slack message id={} status={}", kind, message.id, status)
         return DowntimeOutcome(status, run.notes)
+    }
+
+    private fun lockSlackActivities(ids: Collection<UUID>): List<Activity> {
+        if (ids.isEmpty()) return emptyList()
+        return activityRepo.findAllByIdForUpdate(ids)
+            .onEach { entityManager.refresh(it) }
+            .filter { it.source == ActivitySource.SLACK }
     }
 
     private inner class Run(val kind: MessageKind, val message: SlackDowntimeMessage, val catalog: Map<UUID, Service>) {
