@@ -80,10 +80,13 @@ function mockUpstream(body: unknown, status = 200) {
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(console, 'info').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
@@ -395,6 +398,144 @@ describe('offentlig tilgang (PUBLIC_ACCESS=true)', () => {
 });
 
 describe('feilhåndtering', () => {
+  it('logger vellykkede kalenderkall med status, varighet, pod og korrelasjons-id', async () => {
+    vi.stubEnv('HOSTNAME', 'frontend-test-pod');
+    mockUpstream([{ date: '2026-11-24', displayText: 'Ikke logg dette innholdet' }]);
+
+    const res = await call(`/api/openinghours/query/service/${SERVICE_ID}/range`, {
+      headers: authHeader('Ansatt'),
+      query: { from: '2026-11-24', to: '2026-12-24', extra: 'Ikke logg denne parameteren' },
+    });
+
+    expect(console.info).toHaveBeenCalledOnce();
+    const [line] = vi.mocked(console.info).mock.calls[0];
+    expect(typeof line).toBe('string');
+    expect(JSON.parse(line)).toEqual({
+      timestamp: expect.any(String),
+      level: 'info',
+      event: 'proxy_completed',
+      requestId: res.headers['x-request-id'],
+      pod: 'frontend-test-pod',
+      method: 'GET',
+      route: '/openinghours/query/service/:id/range',
+      upstreamOrigin: 'http://backend.test',
+      status: 200,
+      upstreamStatus: 200,
+      durationMs: expect.any(Number),
+      concurrentRequests: 1,
+    });
+    expect(line).not.toContain(SERVICE_ID);
+    expect(line).not.toContain(config.apiKey);
+    expect(line).not.toContain('Ikke logg');
+    expect(line).not.toContain('Ansatt');
+  });
+
+  it.each([
+    ['UND_ERR_CONNECT_TIMEOUT', 'response_headers'],
+    ['ENOTFOUND', 'response_headers'],
+    ['ECONNREFUSED', 'response_headers'],
+  ])('logger %s fra fetch-cause uten feilmelding eller requestinnhold', async (code, phase) => {
+    const cause = Object.assign(new Error('Ikke logg denne feilmeldingen'), { code });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed', { cause })));
+
+    const res = await call('/api/openinghours/service', { headers: authHeader('Ansatt') });
+
+    expect(res.status).toBe(502);
+    expect(console.error).toHaveBeenCalledOnce();
+    const [line] = vi.mocked(console.error).mock.calls[0];
+    expect(JSON.parse(line)).toMatchObject({
+      level: 'error',
+      requestId: res.headers['x-request-id'],
+      status: 502,
+      errorCode: code,
+      phase,
+    });
+    expect(line).not.toContain('Ikke logg');
+    expect(line).not.toContain(config.apiKey);
+    expect(res.raw).not.toContain(code);
+  });
+
+  it('skiller feil ved lesing av responsen fra tilkoblingsfeil', async () => {
+    const upstream = new Response('innhold', { status: 200 });
+    const cause = Object.assign(new Error('Ikke logg responsinnhold'), { code: 'UND_ERR_SOCKET' });
+    vi.spyOn(upstream, 'text').mockRejectedValue(new TypeError('terminated', { cause }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream));
+
+    const res = await call('/api/openinghours/service', { headers: authHeader('Ansatt') });
+
+    expect(res.status).toBe(502);
+    const [line] = vi.mocked(console.error).mock.calls[0];
+    expect(JSON.parse(line)).toMatchObject({
+      upstreamStatus: 200, status: 502, errorCode: 'UND_ERR_SOCKET', phase: 'response_body',
+    });
+    expect(line).not.toContain('Ikke logg');
+  });
+
+  it.each([
+    ['TimeoutError', 'REQUEST_TIMEOUT'],
+    ['AbortError', 'REQUEST_ABORTED'],
+  ])('logger %s uten fritekst', async (name, errorCode) => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new DOMException('Ikke logg dette', name)));
+
+    await call('/api/openinghours/service', { headers: authHeader('Ansatt') });
+
+    const [line] = vi.mocked(console.error).mock.calls[0];
+    expect(JSON.parse(line)).toMatchObject({ status: 502, errorCode });
+    expect(line).not.toContain('Ikke logg');
+  });
+
+  it('måler samtidige kall og frigir telleren etter en feil', async () => {
+    let rejectFirst: ((error: Error) => void) | undefined;
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => new Promise<Response>((_resolve, reject) => {
+        rejectFirst = reject;
+      }))
+      .mockImplementation(async () => new Response('[]'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const first = call('/api/openinghours/service', { headers: authHeader('Ansatt') });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    const second = await call('/api/openinghours/service', { headers: authHeader('Ansatt') });
+    expect(second.status).toBe(200);
+    expect(JSON.parse(vi.mocked(console.info).mock.calls[0][0])).toMatchObject({
+      concurrentRequests: 2,
+    });
+
+    if (!rejectFirst) throw new Error('Det første proxykallet har ikke startet');
+    rejectFirst(new Error('fetch failed'));
+    expect((await first).status).toBe(502);
+
+    await call('/api/openinghours/service', { headers: authHeader('Ansatt') });
+    expect(JSON.parse(vi.mocked(console.info).mock.calls[1][0])).toMatchObject({
+      concurrentRequests: 1,
+    });
+  });
+
+  it('logger backendens HTTP-feil uten å logge feilsvaret', async () => {
+    mockUpstream({ message: 'Ikke logg dette feilsvaret' }, 503);
+
+    const res = await call('/api/openinghours/service', { headers: authHeader('Ansatt') });
+
+    expect(res.status).toBe(503);
+    expect(console.warn).toHaveBeenCalledOnce();
+    const [line] = vi.mocked(console.warn).mock.calls[0];
+    expect(JSON.parse(line)).toMatchObject({ level: 'warn', status: 503, upstreamStatus: 503 });
+    expect(line).not.toContain('Ikke logg');
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it('utelater fritekst fra adminstier og ukjente feilkoder', async () => {
+    const error = Object.assign(new Error('Ikke logg feil'), { code: 'Ikke logg kode' });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error));
+
+    await call('/api/openinghours/rule/privat-innhold', { headers: authHeader('Ansatt') });
+
+    const [line] = vi.mocked(console.error).mock.calls[0];
+    expect(JSON.parse(line)).toMatchObject({ route: '/openinghours/rule/:id', errorCode: 'UNKNOWN' });
+    expect(line).not.toContain('privat-innhold');
+    expect(line).not.toContain('Ikke logg');
+  });
+
   it('gir en forståelig norsk melding når backend er nede', async () => {
     vi.stubGlobal(
       'fetch',
