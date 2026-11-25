@@ -5,15 +5,18 @@ import no.nav.openinghours.llm.LlmException
 import no.nav.openinghours.model.db.ActivityRepository
 import no.nav.openinghours.model.db.ActivitySource
 import no.nav.openinghours.model.db.Service
+import no.nav.openinghours.model.db.ServiceRepository
 import no.nav.openinghours.model.db.ServiceType
 import no.nav.openinghours.model.db.SlackDowntimeMessageRepository
 import no.nav.openinghours.model.db.SlackDowntimeMessageStatus
 import no.nav.openinghours.service.ActivityInput
 import no.nav.openinghours.service.ActivityService
 import no.nav.openinghours.service.ServiceService
+import no.nav.openinghours.slack.SlackApiException
 import no.nav.openinghours.slack.SlackClient
 import no.nav.openinghours.slack.SlackHistoryMessage
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.tuple
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -25,6 +28,7 @@ import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoMoreInteractions
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -39,6 +43,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import org.testcontainers.junit.jupiter.Container
@@ -103,6 +108,9 @@ class SlackDowntimeIngestionServiceTest {
     @Autowired lateinit var clock: Clock
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var entityManager: EntityManager
+    @Autowired lateinit var serviceRepo: ServiceRepository
+    @Autowired lateinit var followUps: DowntimeFollowUpHandler
+    @Autowired lateinit var transactionManager: PlatformTransactionManager
 
     @MockitoBean
     lateinit var slack: SlackClient
@@ -125,12 +133,94 @@ class SlackDowntimeIngestionServiceTest {
 
     private fun storeOne(text: String = "Gosys nede i kveld"): UUID {
         val ts = ts()
-        assertThat(ingestion.store(listOf(SlackHistoryMessage(ts = ts, text = text)))).isEqualTo(1)
+        assertThat(ingestion.store("CDOWN", listOf(SlackHistoryMessage(ts = ts, text = text)))).isEqualTo(1)
         return repo.findAll().single { it.messageTs == ts }.id
     }
 
     private fun activity(ids: List<String> = listOf(serviceId.toString()), start: String? = "${future}T20:00", end: String? = "${future}T22:00") =
         ExtractedActivity(ids.map { ExtractedService(null, it) }, "Gosys nede", "Planlagt oppgradering", start, end)
+
+    @Test
+    fun `reads every configured channel and a failing channel does not block the others`() {
+        val multi = SlackDowntimeIngestionService(
+            slack, extractor, repo, serviceRepo, activities, activityRepo, followUps, transactionManager, clock,
+            channelIds = " CDOWN , C0CMBT3K58Q,CDOWN,", lookbackHours = 24, maxAttempts = 3, batchSize = 20,
+            followUpWindowHours = 24, onlyShowForNavEmployees = true
+        )
+        assertThat(multi.channels).containsExactly("CDOWN", "C0CMBT3K58Q")
+        val ts = ts()
+        `when`(slack.fetchChannelHistory(anyString(), anyString())).thenAnswer {
+            if (it.getArgument<String>(0) == "CDOWN") throw SlackApiException("Slack conversations.history failed: not_in_channel")
+            listOf(SlackHistoryMessage(ts = ts, text = "Gosys nede i kveld"))
+        }
+
+        assertThat(multi.fetchNewMessages()).isEqualTo(1)
+
+        assertThat(repo.findByChannelIdAndMessageTs("C0CMBT3K58Q", ts)).isNotNull()
+        assertThat(repo.findByChannelIdAndMessageTs("CDOWN", ts)).isNull()
+    }
+
+    @Test
+    fun `polls successful channels with isolated history and reply cursors despite shared timestamps`() {
+        val fixedClock = Clock.fixed(clock.instant(), clock.zone)
+        val multi = SlackDowntimeIngestionService(
+            slack, extractor, repo, serviceRepo, activities, activityRepo, followUps, transactionManager, fixedClock,
+            channelIds = "CDOWN,COTHER", lookbackHours = 24, maxAttempts = 3, batchSize = 20,
+            followUpWindowHours = 24, onlyShowForNavEmployees = true
+        )
+        val parentTs = SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(600))
+        val historyCursors = mapOf(
+            "CDOWN" to SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(500)),
+            "COTHER" to SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(400))
+        )
+        val sharedReplyTs = SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(300))
+        val advancedReplyTs = SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(200))
+        val nextReplyTs = SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(100))
+        val initialCursor = SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(24 * 60 * 60))
+        val replyCursors = mapOf("CDOWN" to advancedReplyTs, "COTHER" to sharedReplyTs)
+        `when`(slack.hasToken).thenReturn(true)
+        for ((channel, historyCursor) in historyCursors) {
+            `when`(slack.fetchChannelHistory(channel, initialCursor)).thenReturn(listOf(
+                SlackHistoryMessage(ts = parentTs, text = "$channel announcement"),
+                SlackHistoryMessage(ts = historyCursor, text = "$channel newer announcement")
+            ))
+            `when`(slack.fetchChannelHistory(channel, historyCursor)).thenReturn(emptyList())
+            val replies = mutableListOf(SlackHistoryMessage(ts = sharedReplyTs, threadTs = parentTs, text = "$channel reply"))
+            if (channel == "CDOWN") {
+                replies += SlackHistoryMessage(ts = advancedReplyTs, threadTs = parentTs, text = "$channel later reply")
+            }
+            `when`(slack.fetchThreadReplies(channel, parentTs, parentTs)).thenReturn(replies)
+            `when`(slack.fetchThreadReplies(channel, parentTs, replyCursors.getValue(channel))).thenReturn(listOf(
+                SlackHistoryMessage(ts = nextReplyTs, threadTs = parentTs, text = "$channel next reply")
+            ))
+            `when`(slack.fetchThreadReplies(channel, historyCursor, historyCursor)).thenReturn(emptyList())
+        }
+
+        assertThat(multi.poll().fetched).isEqualTo(7)
+        assertThat(repo.findAll()).hasSize(7)
+
+        assertThat(multi.poll().fetched).isEqualTo(2)
+        assertThat(repo.findAll()).hasSize(9)
+        assertThat(repo.findAll().filter { it.threadTs == parentTs })
+            .extracting({ it.channelId }, { it.messageTs }, { it.rawText })
+            .containsExactlyInAnyOrder(
+                tuple("CDOWN", sharedReplyTs, "CDOWN reply"),
+                tuple("COTHER", sharedReplyTs, "COTHER reply"),
+                tuple("CDOWN", advancedReplyTs, "CDOWN later reply"),
+                tuple("CDOWN", nextReplyTs, "CDOWN next reply"),
+                tuple("COTHER", nextReplyTs, "COTHER next reply")
+            )
+        for ((channel, historyCursor) in historyCursors) {
+            assertThat(repo.findByChannelIdAndMessageTs(channel, parentTs)?.rawText).isEqualTo("$channel announcement")
+            verify(slack).fetchChannelHistory(channel, initialCursor)
+            verify(slack).fetchChannelHistory(channel, historyCursor)
+            verify(slack).fetchThreadReplies(channel, parentTs, parentTs)
+            verify(slack).fetchThreadReplies(channel, parentTs, replyCursors.getValue(channel))
+            verify(slack, times(2)).fetchThreadReplies(channel, historyCursor, historyCursor)
+        }
+        verify(slack, times(2)).hasToken
+        verifyNoMoreInteractions(slack)
+    }
 
     @Test
     fun `stores announcements once and skips joins and blank messages`() {
@@ -141,8 +231,8 @@ class SlackDowntimeIngestionServiceTest {
             SlackHistoryMessage(ts = ts(2), text = "  ")
         )
 
-        assertThat(ingestion.store(messages)).isEqualTo(1)
-        assertThat(ingestion.store(messages)).isEqualTo(0)
+        assertThat(ingestion.store("CDOWN", messages)).isEqualTo(1)
+        assertThat(ingestion.store("CDOWN", messages)).isEqualTo(0)
         val stored = repo.findAll().single { it.messageTs == ts }
         assertThat(stored.status).isEqualTo(SlackDowntimeMessageStatus.PENDING)
         assertThat(stored.postedAt).isEqualTo(SlackDowntimeIngestionService.tsToInstant(ts))
@@ -280,7 +370,7 @@ class SlackDowntimeIngestionServiceTest {
 
     private fun storeAt(text: String, offsetSeconds: Long, threadTs: String? = null): Pair<UUID, String> {
         val ts = ts(offsetSeconds)
-        assertThat(ingestion.store(listOf(SlackHistoryMessage(ts = ts, text = text, threadTs = threadTs)))).isEqualTo(1)
+        assertThat(ingestion.store("CDOWN", listOf(SlackHistoryMessage(ts = ts, text = text, threadTs = threadTs)))).isEqualTo(1)
         return repo.findAll().single { it.messageTs == ts }.id to ts
     }
 

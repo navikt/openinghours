@@ -63,17 +63,20 @@ class SlackDowntimeIngestionService(
     private val followUps: DowntimeFollowUpHandler,
     transactionManager: PlatformTransactionManager,
     private val clock: Clock,
-    @Value("\${slack.downtime.channel-id:}") private val channelId: String,
+    @Value("\${slack.downtime.channel-id:}") channelIds: String,
     @Value("\${slack.downtime.lookback-hours:24}") lookbackHours: Long,
-    @Value("\${slack.downtime.max-attempts:3}") private val maxAttempts: Int,
-    @Value("\${slack.downtime.batch-size:20}") private val batchSize: Int,
+    @param:Value("\${slack.downtime.max-attempts:3}") private val maxAttempts: Int,
+    @param:Value("\${slack.downtime.batch-size:20}") private val batchSize: Int,
     @Value("\${slack.downtime.follow-up-window-hours:24}") followUpWindowHours: Long,
-    @Value("\${slack.downtime.only-show-for-nav-employees:true}") private val onlyShowForNavEmployees: Boolean
+    @param:Value("\${slack.downtime.only-show-for-nav-employees:true}") private val onlyShowForNavEmployees: Boolean
 ) {
     private val log = LoggerFactory.getLogger(SlackDowntimeIngestionService::class.java)
     private val transactions = TransactionTemplate(transactionManager)
     private val lookback = Duration.ofHours(lookbackHours)
     private val threadWindow = Duration.ofHours(followUpWindowHours)
+
+    /** Channels to read, from the comma-separated `slack.downtime.channel-id`. */
+    val channels: List<String> = channelIds.split(',').map { it.trim() }.filter { it.isNotEmpty() }.distinct()
 
     companion object {
         const val DEFAULT_HEADER = "Planlagt nedetid"
@@ -90,7 +93,7 @@ class SlackDowntimeIngestionService(
         fun instantToTs(instant: Instant): String = "%d.%06d".format(instant.epochSecond, instant.nano / 1000)
     }
 
-    val enabled: Boolean get() = slack.hasToken && channelId.isNotBlank() && extractor.enabled
+    val enabled: Boolean get() = slack.hasToken && channels.isNotEmpty() && extractor.enabled
 
     @Synchronized
     fun poll(): SlackDowntimePollResult {
@@ -129,31 +132,41 @@ class SlackDowntimeIngestionService(
         return toView(repo.saveAndFlush(entity))
     }
 
-    fun fetchNewMessages(): Int {
-        val oldest = repo.findNewestTopLevel(channelId, PageRequest.of(0, 1)).firstOrNull()?.messageTs
-            ?: instantToTs(clock.instant().minus(lookback))
-        return store(slack.fetchChannelHistory(channelId, oldest)) + fetchThreadReplies()
+    /** Fetches new messages from every channel. A failing channel is logged and skipped so it cannot block the others. */
+    fun fetchNewMessages(): Int = channels.sumOf { channel ->
+        try {
+            fetchNewMessages(channel)
+        } catch (e: RestClientException) {
+            log.warn("Fetching Slack downtime messages from channel={} failed: {}", channel, e.message)
+            0
+        }
     }
 
-    /** Fetches new replies to top-level messages posted within the follow-up window. */
-    fun fetchThreadReplies(): Int =
-        repo.findTopLevelPostedSince(channelId, clock.instant().minus(threadWindow)).sumOf { parent ->
-            val oldest = repo.findLatestTsInThread(channelId, parent.messageTs) ?: parent.messageTs
+    private fun fetchNewMessages(channel: String): Int {
+        val oldest = repo.findNewestTopLevel(channel, PageRequest.of(0, 1)).firstOrNull()?.messageTs
+            ?: instantToTs(clock.instant().minus(lookback))
+        return store(channel, slack.fetchChannelHistory(channel, oldest)) + fetchThreadReplies(channel)
+    }
+
+    /** Fetches new replies to top-level messages in [channel] posted within the follow-up window. */
+    private fun fetchThreadReplies(channel: String): Int =
+        repo.findTopLevelPostedSince(channel, clock.instant().minus(threadWindow)).sumOf { parent ->
+            val oldest = repo.findLatestTsInThread(channel, parent.messageTs) ?: parent.messageTs
             try {
-                store(slack.fetchThreadReplies(channelId, parent.messageTs, oldest), parent.messageTs)
+                store(channel, slack.fetchThreadReplies(channel, parent.messageTs, oldest), parent.messageTs)
             } catch (e: RestClientException) {
-                log.warn("Fetching replies to Slack message ts={} failed: {}", parent.messageTs, e.message)
+                log.warn("Fetching replies to Slack message channel={} ts={} failed: {}", channel, parent.messageTs, e.message)
                 0
             }
         }
 
-    fun store(messages: List<SlackHistoryMessage>, threadTs: String? = null): Int = transactions.execute {
+    fun store(channel: String, messages: List<SlackHistoryMessage>, threadTs: String? = null): Int = transactions.execute {
         messages.filter { it.subtype in ANNOUNCEMENT_SUBTYPES && it.ts.toBigDecimalOrNull() != null }
             .mapNotNull { m -> m.fullText().takeIf { it.isNotBlank() }?.let { m to it } }
             .sumOf { (m, text) ->
-                repo.insertIfAbsent(UUID.randomUUID(), channelId, m.ts, m.threadTs ?: threadTs, tsToInstant(m.ts), text)
+                repo.insertIfAbsent(UUID.randomUUID(), channel, m.ts, m.threadTs ?: threadTs, tsToInstant(m.ts), text)
             }
-    } ?: 0
+    }
 
     /**
      * Processes pending messages oldest first and stops at the first one that stays pending, so a later follow-up
@@ -200,7 +213,7 @@ class SlackDowntimeIngestionService(
                 entity.status = outcome.status
                 entity.reason = describe(result.extraction.reason, outcome.notes)
                 entity.status
-            }!!
+            }
         } catch (e: ResponseStatusException) {
             recordFailure(message.id, result.raw, "Activity creation failed: ${e.reason}")
         } catch (e: DateTimeException) {
@@ -262,7 +275,7 @@ class SlackDowntimeIngestionService(
             entity.status = if (entity.attempts >= maxAttempts) FAILED else PENDING
             log.warn("Slack downtime message id={} attempt={} failed: {}", id, entity.attempts, error)
             entity.status
-        }!!
+        }
 
     internal data class MappedActivities(val inputs: List<IndexedValue<ActivityInput>>, val notes: List<String>)
 
