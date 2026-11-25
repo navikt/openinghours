@@ -4,8 +4,8 @@ Monorepo for Navs åpningstidstjeneste.
 
 | Katalog | Innhold |
 | --- | --- |
-| [`backend/`](backend/) | Kotlin/Spring Boot-API med regelmotor, Postgres og Flyway |
-| [`frontend/`](frontend/) | React-klient med åpningstidskalender og admin, servert av en BFF i Node |
+| [`backend/`](backend) | Kotlin/Spring Boot-API med regelmotor, Postgres og Flyway |
+| [`frontend/`](frontend) | React-klient med åpningstidskalender og admin, servert av en BFF i Node |
 
 De to delene er selvstendige: hver har sin egen `Dockerfile`, `.nais/nais.yaml`
 og byggekjede. Frontend snakker med backend over HTTP, ikke gjennom delt kode.
@@ -22,10 +22,12 @@ Swagger (`/swagger-ui.html`) for detaljer.
 
 ### Aktiviteter fra #varsling-nedetid
 
-Backend henter meldinger fra Slack-kanalen #varsling-nedetid
+Backend henter meldinger fra Slack-kanalen #varsling-nedetid, og eventuelt
+flere kanaler satt i `SLACK_DOWNTIME_CHANNEL_ID`
 (`conversations.history`, hvert 5. minutt) og svar i tråder på meldinger fra
 siste døgn (`conversations.replies`), og lagrer råteksten i
-`slack_downtime_message`. En LLM (Azure OpenAI) får meldingen, tidspunktet den
+`slack_downtime_message`. Feiler henting fra én kanal, hentes de andre likevel.
+Oppfølginger og duplikatsjekk gjelder på tvers av kanalene. En LLM (Azure OpenAI) får meldingen, tidspunktet den
 ble postet, eventuell trådstart og listen over kjente tjenester. Modellen
 *trekker bare ut* hva som står: type melding, tjenester, tidspunkter, varighet
 og en ryddet melding. Tidsreglene under brukes deretter i koden, slik at
@@ -95,7 +97,8 @@ Slack-meldinger oppdaterer ikke aktiviteter som allerede er opprettet.
 | `POST /api/openinghours/slack-downtime/messages/{id}/retry` | Legg en feilet/ikke-relevant melding i kø igjen |
 
 Funksjonen er av til alle disse er satt: `SLACK_BOT_TOKEN` (scope
-`channels:history`, boten må være med i kanalen), `SLACK_DOWNTIME_CHANNEL_ID`,
+`channels:history`, boten må være med i kanalene), `SLACK_DOWNTIME_CHANNEL_ID`
+(én eller flere kanal-ID-er, kommaseparert, f.eks. `C0123456789,C0CMBT3K58Q`),
 `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY` og `AZURE_OPENAI_DEPLOYMENT`.
 Valgfritt: `AZURE_OPENAI_API_VERSION`, `SLACK_DOWNTIME_POLL_CRON`,
 `SLACK_DOWNTIME_LOOKBACK_HOURS` (første kjøring, standard 24),
