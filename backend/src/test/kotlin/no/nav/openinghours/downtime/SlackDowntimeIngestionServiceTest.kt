@@ -16,6 +16,7 @@ import no.nav.openinghours.slack.SlackApiException
 import no.nav.openinghours.slack.SlackClient
 import no.nav.openinghours.slack.SlackHistoryMessage
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.tuple
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -27,6 +28,7 @@ import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoMoreInteractions
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -156,6 +158,68 @@ class SlackDowntimeIngestionServiceTest {
 
         assertThat(repo.findByChannelIdAndMessageTs("C0CMBT3K58Q", ts)).isNotNull()
         assertThat(repo.findByChannelIdAndMessageTs("CDOWN", ts)).isNull()
+    }
+
+    @Test
+    fun `polls successful channels with isolated history and reply cursors despite shared timestamps`() {
+        val fixedClock = Clock.fixed(clock.instant(), clock.zone)
+        val multi = SlackDowntimeIngestionService(
+            slack, extractor, repo, serviceRepo, activities, activityRepo, followUps, transactionManager, fixedClock,
+            channelIds = "CDOWN,COTHER", lookbackHours = 24, maxAttempts = 3, batchSize = 20,
+            followUpWindowHours = 24, onlyShowForNavEmployees = true
+        )
+        val parentTs = SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(600))
+        val historyCursors = mapOf(
+            "CDOWN" to SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(500)),
+            "COTHER" to SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(400))
+        )
+        val sharedReplyTs = SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(300))
+        val advancedReplyTs = SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(200))
+        val nextReplyTs = SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(100))
+        val initialCursor = SlackDowntimeIngestionService.instantToTs(fixedClock.instant().minusSeconds(24 * 60 * 60))
+        val replyCursors = mapOf("CDOWN" to advancedReplyTs, "COTHER" to sharedReplyTs)
+        `when`(slack.hasToken).thenReturn(true)
+        for ((channel, historyCursor) in historyCursors) {
+            `when`(slack.fetchChannelHistory(channel, initialCursor)).thenReturn(listOf(
+                SlackHistoryMessage(ts = parentTs, text = "$channel announcement"),
+                SlackHistoryMessage(ts = historyCursor, text = "$channel newer announcement")
+            ))
+            `when`(slack.fetchChannelHistory(channel, historyCursor)).thenReturn(emptyList())
+            val replies = mutableListOf(SlackHistoryMessage(ts = sharedReplyTs, threadTs = parentTs, text = "$channel reply"))
+            if (channel == "CDOWN") {
+                replies += SlackHistoryMessage(ts = advancedReplyTs, threadTs = parentTs, text = "$channel later reply")
+            }
+            `when`(slack.fetchThreadReplies(channel, parentTs, parentTs)).thenReturn(replies)
+            `when`(slack.fetchThreadReplies(channel, parentTs, replyCursors.getValue(channel))).thenReturn(listOf(
+                SlackHistoryMessage(ts = nextReplyTs, threadTs = parentTs, text = "$channel next reply")
+            ))
+            `when`(slack.fetchThreadReplies(channel, historyCursor, historyCursor)).thenReturn(emptyList())
+        }
+
+        assertThat(multi.poll().fetched).isEqualTo(7)
+        assertThat(repo.findAll()).hasSize(7)
+
+        assertThat(multi.poll().fetched).isEqualTo(2)
+        assertThat(repo.findAll()).hasSize(9)
+        assertThat(repo.findAll().filter { it.threadTs == parentTs })
+            .extracting({ it.channelId }, { it.messageTs }, { it.rawText })
+            .containsExactlyInAnyOrder(
+                tuple("CDOWN", sharedReplyTs, "CDOWN reply"),
+                tuple("COTHER", sharedReplyTs, "COTHER reply"),
+                tuple("CDOWN", advancedReplyTs, "CDOWN later reply"),
+                tuple("CDOWN", nextReplyTs, "CDOWN next reply"),
+                tuple("COTHER", nextReplyTs, "COTHER next reply")
+            )
+        for ((channel, historyCursor) in historyCursors) {
+            assertThat(repo.findByChannelIdAndMessageTs(channel, parentTs)?.rawText).isEqualTo("$channel announcement")
+            verify(slack).fetchChannelHistory(channel, initialCursor)
+            verify(slack).fetchChannelHistory(channel, historyCursor)
+            verify(slack).fetchThreadReplies(channel, parentTs, parentTs)
+            verify(slack).fetchThreadReplies(channel, parentTs, replyCursors.getValue(channel))
+            verify(slack, times(2)).fetchThreadReplies(channel, historyCursor, historyCursor)
+        }
+        verify(slack, times(2)).hasToken
+        verifyNoMoreInteractions(slack)
     }
 
     @Test
