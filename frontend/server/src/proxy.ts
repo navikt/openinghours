@@ -46,6 +46,12 @@ const MUTABLE_ROUTES: RegExp[] = [
 
 const ACTIVITY_ID = /^\/openinghours\/activity\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ACTIVITY_RANGE = '/openinghours/activity/range';
+const ACTIVITY_SERVICE_RANGE =
+  /^\/openinghours\/activity\/service\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/range$/i;
+
+function isActivityRange(path: string): boolean {
+  return path === ACTIVITY_RANGE || ACTIVITY_SERVICE_RANGE.test(path);
+}
 
 function isActivityMutation(path: string, method: string): boolean {
   return (
@@ -110,7 +116,7 @@ export function isAllowed(
   admin = false,
 ): boolean {
   // Aktiviteter er interne også dersom åpningstidskalenderen blir offentlig.
-  if (path === ACTIVITY_RANGE || ACTIVITY_ID.test(path)) {
+  if (isActivityRange(path) || ACTIVITY_ID.test(path)) {
     if (method === 'GET') return loggedIn;
     return loggedIn && admin && isActivityMutation(path, method);
   }
@@ -162,7 +168,7 @@ export function createProxy(config: Config) {
     const target = new URL(`/api${path}`, config.backendUrl);
     const activityRequest = path === '/openinghours/activity' || path.startsWith('/openinghours/activity/');
     for (const [key, value] of Object.entries(req.query)) {
-      const activityParam = path === ACTIVITY_RANGE && (key === 'from' || key === 'to');
+      const activityParam = isActivityRange(path) && (key === 'from' || key === 'to');
       if (
         typeof value === 'string' &&
         !FORBIDDEN_PARAMS.has(key) &&

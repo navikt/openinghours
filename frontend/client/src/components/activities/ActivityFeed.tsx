@@ -3,7 +3,7 @@ import type { Activity, Service } from '../../api/types';
 import { AppLink } from '../common/AppLink';
 import { useActivitiesRange } from '../../hooks/activities';
 import { useSession } from '../../hooks/queries';
-import { formatActivityDateTime } from '../../lib/activity';
+import { extraServiceNames, formatActivityDateTime } from '../../lib/activity';
 import { addDays } from '../../lib/date';
 import './ActivityFeed.css';
 
@@ -67,6 +67,7 @@ function ActivityItem({ activity, services }: { activity: Activity; services: Se
   const headingId = `oh-activity-${activity.id}`;
   const serviceById = new Map(services.map((service) => [service.id, service]));
   const hasTime = Boolean(activity.start || activity.end);
+  const extraNames = extraServiceNames(activity, serviceById);
 
   return (
     <article className="oh-activity-feed__item" aria-labelledby={headingId}>
@@ -110,7 +111,7 @@ function ActivityItem({ activity, services }: { activity: Activity; services: Se
         </div>
       )}
 
-      {activity.serviceIds.length > 0 && (
+      {(activity.serviceIds.length > 0 || extraNames.length > 0) && (
         <ul className="oh-activity-feed__services" aria-label="Berørte tjenester">
           {activity.serviceIds.map((serviceId, index) => {
             const service = serviceById.get(serviceId);
@@ -120,6 +121,9 @@ function ActivityItem({ activity, services }: { activity: Activity; services: Se
               </li>
             );
           })}
+          {extraNames.map((name) => (
+            <li key={`name-${name}`}>{name}</li>
+          ))}
         </ul>
       )}
     </article>

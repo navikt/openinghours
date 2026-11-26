@@ -15,6 +15,7 @@ const BASE = '/api/openinghours/activity';
 
 const input: ActivityInput = {
   serviceIds: [],
+  serviceNames: [],
   header: 'Planlagt vedlikehold',
   message: 'Tjenesten kan være utilgjengelig.',
   start: null,

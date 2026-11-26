@@ -130,29 +130,33 @@ hvilket tidsrom de spør om — logikken ligger i `lib/view.ts`.
 
 Landingssiden har en feed mellom «I dag»-kortet og kalenderen. Den henter
 aktiviteter fra `/api/openinghours/activity/range` for i dag og de neste 30 dagene,
-uavhengig av kalenderens valgte måned. Backend må også returnere aktiviteter uten
-tidsrom. Backendens `ongoing` avgjør merket «Pågår», og feeden oppdateres hvert minutt.
+uavhengig av kalenderens valgte måned. Backendens `ongoing` avgjør merket «Pågår»,
+og feeden oppdateres hvert minutt.
 
-Tittel og melding er obligatoriske. `serviceIds: []` betyr en generell
-aktivitet, og `start`/`end` kan være `null`. Feeden viser bare tjenester og
-tider som finnes. Tider vises i `Europe/Oslo`; admins registrerer lokale datoer og
+Tittel, melding, start og slutt er obligatoriske, og aktiviteten må gjelde minst
+én tjeneste — enten fra katalogen (`serviceIds`) eller ved navn i feltet «Andre
+tjenester» (`serviceNames`), for tjenester som ikke finnes i katalogen. Feeden
+viser begge. Tider vises i `Europe/Oslo`; admins registrerer lokale datoer og
 klokkeslett i samme tidssone. Datofeltene bruker native HTML-inputs fordi
 prosjektets Aksel 7 ikke støtter `date`/`datetime-local` i `TextField`.
 Meldinger vises som tekst, ikke HTML.
+
+Aktiviteter kommer også fra `#varsling-nedetid` i Slack (`source: SLACK`) og
+merkes «Fra Slack» i admin. Redigeres en slik aktivitet, blir den manuell, og
+senere meldinger i Slack-tråden endrer den ikke lenger — skjemaet sier fra om det.
+
+I tillegg til feeden vises aktivitetene på dagnivå: som en telling i
+månedskalenderen på forsiden, i en egen seksjon på dagsiden, og i detaljpanelet i
+tjenestekalenderen (`/activity/service/{id}/range`). En aktivitet endrer ikke
+åpningstiden og regnes aldri som et avvik. Alt dette hentes bare for innloggede.
 
 Lesing krever innlogging, og oppretting, redigering og sletting krever den
 eksisterende admingruppen. Aktivitetsrutene er ikke offentlige selv om
 `PUBLIC_ACCESS` settes til `true`. Batchoppretting er ikke tilgjengelig gjennom BFF-en.
 
-**Backendavhengighet:** Denne frontendendringen bruker en avtalt kontrakt med
-valgfrie tjenester og tider. Backend på `96e4270` krever fortsatt tjeneste,
-start og slutt. Lagring uten disse feltene og visning av tidsløse aktiviteter
-forutsetter backendoppdateringen som leveres separat. Frontend viser avviste
-lagringer som feil og beholder skjemainnholdet.
-
 Etter deployment: kontroller at en innlogget ansatt ser feeden, at en admin kan
 lagre og slette en aktivitet, og at en ansatt uten admin ikke kan endre den.
-Kontroller også generelle aktiviteter og tider over midnatt mot oppdatert backend.
+Kontroller også tider over midnatt.
 Feil i feeden skal ikke skjule kalenderen. Proxyfeil finnes i eksisterende logger;
 meldingsinnhold skal ikke logges. Rollback er forrige frontendimage og endrer
 ikke lagrede aktiviteter eller backend.

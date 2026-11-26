@@ -135,6 +135,15 @@
   color: var(--ax-text-neutral-subtle);
 }
 
+/* Aktiviteter er ikke avvik i åpningstiden, så de får sin egen, nøytrale linje. */
+.oh-devcell__activity {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding-left: 4px;
+  border-left: 3px solid var(--ax-border-meta-purple);
+  color: var(--ax-text-neutral-subtle);
+}
+
 .oh-devlegend {
   display: flex;
   flex-wrap: wrap;

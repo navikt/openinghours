@@ -13,7 +13,9 @@ import {
 import { ChevronLeftIcon, ChevronRightIcon } from '@navikt/aksel-icons';
 import type { DeviationEntry } from '../lib/deviation';
 import { DEVIATION_KINDS, DEVIATION_LABELS, buildCalendar, upcoming } from '../lib/deviation';
-import { useAllServicesRange, useServices } from '../hooks/queries';
+import { useAllServicesRange, useServices, useSession } from '../hooks/queries';
+import { useActivitiesRange } from '../hooks/activities';
+import { activityDays, isTimed } from '../lib/activity';
 import { useNow } from '../hooks/useNow';
 import { formatMonth, monthGrid, monthOf, shiftMonth, todayIso } from '../lib/date';
 import { AppLink } from '../components/common/AppLink';
@@ -58,6 +60,21 @@ export function LandingPage() {
   const from = grid[0].date;
   const to = grid[grid.length - 1].date;
   const range = useAllServicesRange(serviceIds, from, to);
+  const session = useSession();
+  // Aktiviteter er interne, også om kalenderen blir offentlig.
+  const activities = useActivitiesRange(from, to, session.data?.loggedIn === true);
+  const activityCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const activity of (activities.data ?? []).filter(isTimed)) {
+      const { first, last } = activityDays(activity);
+      for (const day of grid) {
+        if (day.inMonth && first <= day.date && day.date <= last) {
+          counts.set(day.date, (counts.get(day.date) ?? 0) + 1);
+        }
+      }
+    }
+    return counts;
+  }, [activities.data, grid]);
 
   const pending = services.isPending || range.some((r) => r.isPending);
   const failed = range.filter((r) => r.isError).length;
@@ -222,6 +239,7 @@ export function LandingPage() {
           calendar={calendar}
           today={today}
           pending={pending}
+          activityCounts={activityCounts}
           onNavigateMonth={(target) => setMonth(target)}
           onSelect={(date) => navigate(`/dag/${date}`)}
         />

@@ -4,20 +4,21 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Theme } from '@navikt/ds-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { QueryResponse, Service } from '../api/types';
+import type { Activity, QueryResponse, Service } from '../api/types';
 import { LandingPage } from './LandingPage';
 import { DayPage } from './DayPage';
 
 const activityRange = vi.hoisted(() => ({
   calls: [] as Array<{ from: string; to: string; enabled: boolean }>,
+  data: [] as Activity[],
 }));
 
 vi.mock('../hooks/activities', () => ({
   useActivitiesRange: vi.fn((from: string, to: string, enabled: boolean) => {
     activityRange.calls.push({ from, to, enabled });
     return {
-      data: [],
-      isPending: false,
+      data: enabled ? activityRange.data : undefined,
+      isPending: !enabled,
       isError: false,
       refetch: vi.fn(),
     };
@@ -134,6 +135,7 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   vi.setSystemTime(new Date(TODAY));
   activityRange.calls.length = 0;
+  activityRange.data = [];
 });
 
 afterEach(() => {
@@ -306,5 +308,52 @@ describe('DayPage', () => {
     renderPage(<DayPage />, '/dag/hva-som-helst');
 
     expect(await screen.findByText('I dag')).toBeInTheDocument();
+  });
+});
+
+const VEDLIKEHOLD: Activity = {
+  id: 'a1',
+  serviceIds: ['s1'],
+  serviceNames: ['ID-porten'],
+  header: 'Oppgradering av database',
+  message: 'Tjenestene kan være ustabile.',
+  start: '2025-05-13T18:00:00+02:00',
+  end: '2025-05-13T22:00:00+02:00',
+  onlyShowForNavEmployees: false,
+  ongoing: false,
+  source: 'SLACK',
+};
+
+describe('Vedlikehold på dagnivå', () => {
+  it('viser dagens vedlikehold på dagsiden uten å gjøre det til et avvik', async () => {
+    activityRange.data = [VEDLIKEHOLD];
+    mockApi({ s1: monthOfDays('s1'), s2: monthOfDays('s2') }, { loggedIn: true });
+    renderPage(<DayPage />, '/dag/2025-05-13');
+
+    expect(await screen.findByRole('heading', { name: 'Vedlikehold og nedetid' })).toBeInTheDocument();
+    expect(screen.getByText('Oppgradering av database')).toBeInTheDocument();
+    expect(screen.getByText('Dagpenger, ID-porten')).toBeInTheDocument();
+    expect(screen.getByText('18:00–22:00')).toBeInTheDocument();
+    expect(
+      screen.getByText('Ingen avvik denne dagen. Alle tjenester er åpne som vanlig.'),
+    ).toBeInTheDocument();
+  });
+
+  it('henter ikke vedlikehold på dagsiden for uinnloggede', async () => {
+    activityRange.data = [VEDLIKEHOLD];
+    mockApi({ s1: monthOfDays('s1'), s2: monthOfDays('s2') });
+    renderPage(<DayPage />, '/dag/2025-05-13');
+
+    expect(await screen.findByText(/Som vanlig/)).toBeInTheDocument();
+    expect(activityRange.calls.every((call) => !call.enabled)).toBe(true);
+    expect(screen.queryByText('Oppgradering av database')).not.toBeInTheDocument();
+  });
+
+  it('merker dager med vedlikehold i månedskalenderen', async () => {
+    activityRange.data = [VEDLIKEHOLD];
+    mockApi({ s1: monthOfDays('s1'), s2: monthOfDays('s2') }, { loggedIn: true });
+    renderPage(<LandingPage />);
+
+    expect(await screen.findByText('Ett vedlikehold')).toBeInTheDocument();
   });
 });

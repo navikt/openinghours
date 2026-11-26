@@ -21,6 +21,14 @@
   background: var(--ax-bg-neutral-soft);
 }
 
+.oh-panel__activities {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--ax-border-neutral-subtle);
+  padding-top: 12px;
+}
+
 .oh-panel__rule {
   display: flex;
   flex-direction: column;
