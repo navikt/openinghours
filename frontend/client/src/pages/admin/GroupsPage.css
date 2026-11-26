@@ -1,0 +1,163 @@
+.oh-groupcards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--ax-space-16);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oh-groupcard {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ax-space-12);
+  height: 100%;
+  padding: var(--ax-space-16) var(--ax-space-16) var(--ax-space-16) var(--ax-space-20);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-left: 4px solid var(--ax-border-success);
+  border-radius: 8px;
+  background: var(--ax-bg-raised);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  transition:
+    box-shadow 120ms ease,
+    transform 120ms ease,
+    border-color 120ms ease;
+}
+
+.oh-groupcard--ubrukt,
+.oh-groupcard--ukjent {
+  border-left-color: var(--ax-border-neutral);
+}
+
+.oh-groupcard--tom {
+  border-left-color: var(--ax-border-warning);
+}
+
+.oh-groupcard:hover {
+  border-color: var(--ax-border-accent);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+  transform: translateY(-1px);
+}
+
+.oh-groupcard:focus-within {
+  outline: 3px solid var(--ax-border-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oh-groupcard {
+    transition: none;
+  }
+  .oh-groupcard:hover {
+    transform: none;
+  }
+}
+
+.oh-groupcard__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 8px;
+  background: var(--ax-bg-accent-moderate);
+  color: var(--ax-text-accent);
+  font-size: 1.5rem;
+}
+
+.oh-groupcard--tom .oh-groupcard__icon {
+  background: var(--ax-bg-warning-moderate);
+  color: var(--ax-text-warning);
+}
+
+.oh-groupcard__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-8);
+  flex: 1;
+  min-width: 0;
+}
+
+.oh-groupcard__top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ax-space-8);
+}
+
+/* Hele kortet er klikkbart, men lenken er fortsatt bare navnet for skjermlesere. */
+.oh-groupcard__link {
+  color: var(--ax-text-neutral);
+  text-decoration: none;
+  outline: none;
+}
+
+.oh-groupcard__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.oh-groupcard:hover .oh-groupcard__link {
+  color: var(--ax-text-accent);
+  text-decoration: underline;
+}
+
+.oh-groupcard__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ax-space-16);
+  font-size: 0.875rem;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.oh-groupcard__stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ax-space-4);
+}
+
+.oh-groupcard__members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ax-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oh-groupcard__members li {
+  max-width: 100%;
+  padding: 2px var(--ax-space-8);
+  border-radius: 999px;
+  background: var(--ax-bg-neutral-soft);
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oh-groupcard__members .oh-groupcard__more {
+  background: transparent;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.oh-groupcard__usage {
+  margin-top: auto;
+  padding-top: var(--ax-space-8);
+  border-top: 1px solid var(--ax-border-neutral-subtleA);
+  color: var(--ax-text-neutral-subtle);
+}
+
+.oh-groupcard__chevron {
+  flex: none;
+  align-self: center;
+  font-size: 1.5rem;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.oh-groupcard:hover .oh-groupcard__chevron {
+  color: var(--ax-text-accent);
+}
