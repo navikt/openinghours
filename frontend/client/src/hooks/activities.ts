@@ -16,6 +16,24 @@ export function useActivitiesRange(from: string, to: string, enabled = true) {
   });
 }
 
+export function useServiceActivitiesRange(
+  serviceId: string | undefined,
+  from: string,
+  to: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['activities', 'service', serviceId, from, to],
+    queryFn: () =>
+      apiFetch<Activity[]>(
+        `${BASE}/service/${encodeURIComponent(serviceId ?? '')}/range${query({ from, to })}`,
+      ),
+    enabled: enabled && Boolean(serviceId),
+    staleTime: FEED_REFRESH,
+    refetchInterval: FEED_REFRESH,
+  });
+}
+
 export function useActivity(id: string | undefined) {
   return useQuery({
     queryKey: ['activities', 'detail', id],

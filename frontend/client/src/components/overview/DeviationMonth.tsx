@@ -14,6 +14,8 @@ interface Props {
   pending: boolean;
   onNavigateMonth: (month: string, focusDate: string) => void;
   onSelect: (date: string) => void;
+  /** Antall aktiviteter (vedlikehold o.l.) per dato. */
+  activityCounts?: ReadonlyMap<string, number>;
 }
 
 /** Flere enn dette i én celle, og cellen slutter å kunne leses på et blikk. */
@@ -34,6 +36,7 @@ export function DeviationMonth({
   pending,
   onNavigateMonth,
   onSelect,
+  activityCounts,
 }: Props) {
   const grid = monthGrid(month);
   const { containerRef, onKeyDown } = useGridNavigation({
@@ -64,6 +67,7 @@ export function DeviationMonth({
               key={date}
               date={date}
               entries={calendar.byDate.get(date) ?? []}
+              activities={activityCounts?.get(date) ?? 0}
               isToday={date === today}
               pending={pending}
               tabbable={date === tabbable}
@@ -87,13 +91,14 @@ export function DeviationMonth({
 interface CellProps {
   date: string;
   entries: DeviationEntry[];
+  activities: number;
   isToday: boolean;
   pending: boolean;
   tabbable: boolean;
   onKeyDown: (event: React.KeyboardEvent, date: string) => void;
 }
 
-function DayCell({ date, entries, isToday, pending, tabbable, onKeyDown }: CellProps) {
+function DayCell({ date, entries, activities, isToday, pending, tabbable, onKeyDown }: CellProps) {
   const dayNumber = Number(date.slice(8, 10));
   const shown = entries.slice(0, MAX_PER_CELL);
   const rest = entries.length - shown.length;
@@ -117,7 +122,7 @@ function DayCell({ date, entries, isToday, pending, tabbable, onKeyDown }: CellP
         className="oh-devcell__link"
         data-date={date}
         tabIndex={tabbable ? 0 : -1}
-        aria-label={cellLabel(date, entries, isToday, holiday)}
+        aria-label={cellLabel(date, entries, isToday, holiday, activities)}
         onKeyDown={(event) => onKeyDown(event, date)}
       >
         <span className="oh-devcell__num" aria-hidden>
@@ -145,6 +150,9 @@ function DayCell({ date, entries, isToday, pending, tabbable, onKeyDown }: CellP
               </span>
             ))}
             {rest > 0 && <span className="oh-devcell__more">+{rest} til</span>}
+            {activities > 0 && (
+              <span className="oh-devcell__activity">{activityText(activities)}</span>
+            )}
           </span>
         )}
       </Link>
@@ -164,6 +172,7 @@ function cellLabel(
   entries: DeviationEntry[],
   isToday: boolean,
   holiday: string | null,
+  activities = 0,
 ): string {
   const dateText = new Intl.DateTimeFormat('nb-NO', {
     weekday: 'long',
@@ -182,7 +191,12 @@ function cellLabel(
       parts.push(`${entry.serviceName}: ${entry.deviation.summary.replace('·', '')}`);
     }
   }
+  if (activities > 0) parts.push(activityText(activities));
   return parts.join('. ');
+}
+
+function activityText(count: number): string {
+  return count === 1 ? 'Ett vedlikehold' : `${count} vedlikehold`;
 }
 
 /** Tegnforklaring — fargene i cellene skal aldri bære betydningen alene. */

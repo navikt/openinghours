@@ -1,0 +1,32 @@
+.oh-dayactivities {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+}
+
+.oh-dayactivity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: var(--ax-space-8);
+  border-left: 3px solid var(--ax-border-meta-purple);
+  min-width: 0;
+}
+
+.oh-dayactivity__top {
+  display: flex;
+  align-items: center;
+  gap: var(--ax-space-8);
+  flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Slack-meldinger har linjeskift som betyr noe. */
+.oh-dayactivity__message {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

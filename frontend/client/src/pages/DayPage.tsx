@@ -15,8 +15,11 @@ import { ArrowLeftIcon, ArrowRightIcon } from '@navikt/aksel-icons';
 import type { DeviationEntry } from '../lib/deviation';
 import { DEVIATION_LABELS, buildCalendar } from '../lib/deviation';
 import { useAllServicesRange, useServices, useSession } from '../hooks/queries';
+import { useActivitiesRange } from '../hooks/activities';
 import { useNow } from '../hooks/useNow';
 import { addDays, formatDateLong, monthGrid, monthOf, todayIso, weekdayName } from '../lib/date';
+import { activitiesOn } from '../lib/activity';
+import { ActivityList } from '../components/activities/ActivityList';
 import { formatRule } from '../lib/rule';
 import { deriveStatus, statusAriaLabel } from '../lib/status';
 import type { DayStatus } from '../lib/status';
@@ -65,6 +68,13 @@ export function DayPage() {
   const serviceIds = useMemo(() => (services.data ?? []).map((s) => s.id), [services.data]);
   const grid = useMemo(() => monthGrid(monthOf(date)), [date]);
   const range = useAllServicesRange(serviceIds, grid[0].date, grid[grid.length - 1].date);
+  // Aktiviteter er interne, også om kalenderen blir offentlig.
+  const activities = useActivitiesRange(date, date, loggedIn);
+  const dayActivities = activitiesOn(activities.data ?? [], date);
+  const servicesById = useMemo(
+    () => new Map((services.data ?? []).map((s) => [s.id, s])),
+    [services.data],
+  );
 
   const pending = services.isPending || range.some((r) => r.isPending);
   const failed = range.filter((r) => r.isError).length;
@@ -210,6 +220,25 @@ export function DayPage() {
               ))}
             </Table.Body>
           </Table>
+        </section>
+      )}
+
+      {activities.isError && (
+        <Alert variant="warning" size="small">
+          Vi klarte ikke å hente planlagt vedlikehold for denne dagen.
+        </Alert>
+      )}
+
+      {dayActivities.length > 0 && (
+        <section aria-labelledby="oh-activities-heading" className="oh-day__section">
+          <Heading level="2" size="small" id="oh-activities-heading">
+            Vedlikehold og nedetid
+          </Heading>
+          <ActivityList
+            activities={dayActivities}
+            servicesById={servicesById}
+            loggedIn={loggedIn}
+          />
         </section>
       )}
 

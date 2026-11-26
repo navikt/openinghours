@@ -2,9 +2,11 @@ import { Alert, BodyLong, BodyShort, Box, CopyButton, Heading, Label } from '@na
 import { XMarkIcon } from '@navikt/aksel-icons';
 import { Button } from '@navikt/ds-react';
 import type { QueryResponse } from '../../api/types';
+import type { TimedActivity } from '../../lib/activity';
 import { formatDateLong, weekdayName } from '../../lib/date';
 import { formatRule } from '../../lib/rule';
 import { deriveStatus } from '../../lib/status';
+import { ActivityList } from '../activities/ActivityList';
 import { StatusBadge } from './StatusBadge';
 import './DayDetailPanel.css';
 
@@ -13,7 +15,11 @@ interface Props {
   loggedIn: boolean;
   onClose: () => void;
   headingRef?: React.Ref<HTMLHeadingElement>;
+  /** Vedlikehold og nedetid som berører tjenesten denne dagen. */
+  activities?: readonly TimedActivity[];
 }
+
+const NO_SERVICES = new Map<string, { name: string }>();
 
 /**
  * Detaljer for valgt dag.
@@ -21,7 +27,7 @@ interface Props {
  * Regelnavn og regeluttrykk vises kun til innloggede — de er intern informasjon
  * om hvordan åpningstiden er satt opp.
  */
-export function DayDetailPanel({ day, loggedIn, onClose, headingRef }: Props) {
+export function DayDetailPanel({ day, loggedIn, onClose, headingRef, activities = [] }: Props) {
   const status = deriveStatus(day);
 
   return (
@@ -84,6 +90,20 @@ export function DayDetailPanel({ day, loggedIn, onClose, headingRef }: Props) {
             <BodyShort weight="semibold">{day.displayHeader}</BodyShort>
           )}
           {day.displayText && <BodyLong size="small">{day.displayText}</BodyLong>}
+        </div>
+      )}
+
+      {activities.length > 0 && (
+        <div className="oh-panel__activities">
+          <Label size="small" textColor="subtle">
+            Vedlikehold og nedetid
+          </Label>
+          <ActivityList
+            activities={activities}
+            servicesById={NO_SERVICES}
+            showServices={false}
+            loggedIn={loggedIn}
+          />
         </div>
       )}
 

@@ -163,7 +163,7 @@ describe('ActivitiesPage', () => {
     });
   });
 
-  it('creates a general activity with null times and retains values after an API error', async () => {
+  it('creates an activity for a service outside the catalog and retains values after an API error', async () => {
     let postAttempts = 0;
     const fetchMock = mockApi({
       activities: () => jsonResponse([]),
@@ -178,6 +178,16 @@ describe('ActivitiesPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Ny aktivitet' }));
     await user.type(screen.getByLabelText('Tittel'), 'Planlagt vedlikehold');
     await user.type(screen.getByLabelText('Melding'), 'Tjenesten kan være utilgjengelig.');
+    const form = within(screen.getByRole('dialog'));
+    fireEvent.change(form.getByLabelText('Fra'), { target: { value: '2025-04-10T18:00' } });
+    fireEvent.change(form.getByLabelText('Til'), { target: { value: '2025-04-10T22:00' } });
+    await user.click(screen.getByRole('button', { name: 'Lagre aktiviteten' }));
+    expect(
+      form.getByText('Velg minst én tjeneste, eller skriv inn en tjeneste utenfor katalogen.'),
+    ).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+
+    await user.type(form.getByLabelText('Andre tjenester'), 'ID-porten, id-porten');
     await user.click(screen.getByRole('button', { name: 'Lagre aktiviteten' }));
 
     expect(await screen.findByText('Forespørselen var ugyldig. Kontroller datoene og prøv igjen.'))
@@ -190,10 +200,11 @@ describe('ActivitiesPage', () => {
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
     expect(JSON.parse(String(post?.[1]?.body))).toEqual({
       serviceIds: [],
+      serviceNames: ['ID-porten'],
       header: 'Planlagt vedlikehold',
       message: 'Tjenesten kan være utilgjengelig.',
-      start: null,
-      end: null,
+      start: '2025-04-10T18:00',
+      end: '2025-04-10T22:00',
       onlyShowForNavEmployees: false,
     });
   });
@@ -218,11 +229,38 @@ describe('ActivitiesPage', () => {
     expect(put?.[0]).toBe('/api/openinghours/activity/activity-1');
     expect(JSON.parse(String(put?.[1]?.body))).toEqual({
       serviceIds: ['service-1'],
+      serviceNames: [],
       header: 'Planlagt vedlikehold',
       message: 'Tjenesten kan være utilgjengelig.',
       start: '2025-04-10T11:30',
       end: '2025-04-10T12:00',
       onlyShowForNavEmployees: true,
+    });
+  });
+
+  it('warns that editing a Slack activity makes it manual and keeps its external services', async () => {
+    const fetchMock = mockApi({
+      activities: () =>
+        jsonResponse([{ ...ACTIVITY, serviceNames: ['ID-porten'], source: 'SLACK' }]),
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByText('Fra Slack')).toBeInTheDocument();
+    expect(screen.getByText('Dagpenger, ID-porten')).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: 'Rediger aktiviteten «Planlagt vedlikehold»' }),
+    );
+    const form = within(screen.getByRole('dialog'));
+    expect(form.getByText(/blir den\s+manuell/)).toBeInTheDocument();
+    expect(form.getByLabelText('Andre tjenester')).toHaveValue('ID-porten');
+
+    await user.click(screen.getByRole('button', { name: 'Lagre aktiviteten' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT');
+    expect(JSON.parse(String(put?.[1]?.body))).toMatchObject({
+      serviceIds: ['service-1'],
+      serviceNames: ['ID-porten'],
     });
   });
 
@@ -282,6 +320,10 @@ describe('ActivitiesPage', () => {
       await user.click(await screen.findByRole('button', { name: 'Ny aktivitet' }));
       await user.type(screen.getByLabelText('Tittel'), 'Aktivitet');
       await user.type(screen.getByLabelText('Melding'), 'Arbeid pågår.');
+      const form = within(screen.getByRole('dialog'));
+      await user.click(form.getByLabelText('Dagpenger'));
+      fireEvent.change(form.getByLabelText('Fra'), { target: { value: '2025-04-10T18:00' } });
+      fireEvent.change(form.getByLabelText('Til'), { target: { value: '2025-04-10T22:00' } });
       await user.click(screen.getByRole('button', { name: 'Lagre aktiviteten' }));
     } else {
       await user.click(await screen.findByRole('button', { name: 'Slett aktiviteten «Planlagt vedlikehold»' }));

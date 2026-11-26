@@ -46,10 +46,14 @@ export function ActivityFormModal({
   const [onlyShowForNavEmployees, setOnlyShowForNavEmployees] = useState(
     activity?.onlyShowForNavEmployees ?? false,
   );
+  const [otherServices, setOtherServices] = useState((activity?.serviceNames ?? []).join(', '));
   const [serviceSearch, setServiceSearch] = useState('');
+  const [submitted, setSubmitted] = useState(false);
   const saving = create.isPending || update.isPending;
   const mutationError = create.error ?? update.error;
   const servicesLoaded = services !== undefined;
+  const serviceNames = parseServiceNames(otherServices);
+  const missingService = serviceIds.length === 0 && serviceNames.length === 0;
   const visibleServices =
     services?.filter(
       (service) =>
@@ -64,9 +68,12 @@ export function ActivityFormModal({
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!servicesLoaded || saving) return;
+    setSubmitted(true);
+    if (missingService || !start || !end) return;
 
     const input: ActivityInput = {
       serviceIds,
+      serviceNames,
       header,
       message,
       start: start || null,
@@ -92,6 +99,12 @@ export function ActivityFormModal({
       <Modal.Body>
         <form id={FORM_ID} onSubmit={submit}>
           <VStack gap="4">
+            {activity?.source === 'SLACK' && (
+              <Alert variant="info" size="small">
+                Aktiviteten er hentet fra #varsling-nedetid. Lagrer du endringer her, blir den
+                manuell, og senere meldinger i Slack-tråden endrer den ikke lenger.
+              </Alert>
+            )}
             {mutationError && (
               <Alert variant="error">
                 {mutationError instanceof ApiError
@@ -136,9 +149,14 @@ export function ActivityFormModal({
               )}
               {servicesLoaded && (
                 <CheckboxGroup
-                  legend="Tjenester (valgfritt)"
+                  legend="Tjenester"
                   value={serviceIds}
                   onChange={setServiceIds}
+                  error={
+                    submitted && missingService
+                      ? 'Velg minst én tjeneste, eller skriv inn en tjeneste utenfor katalogen.'
+                      : undefined
+                  }
                 >
                   {visibleServices.map((service) => (
                     <Checkbox key={service.id} value={service.id}>
@@ -153,13 +171,16 @@ export function ActivityFormModal({
               {servicesLoaded && services.length > 0 && visibleServices.length === 0 && (
                 <BodyShort role="status">Ingen tjenester passer søket.</BodyShort>
               )}
-              <BodyShort size="small">
-                Ingen valgte tjenester betyr at aktiviteten gjelder generelt.
-              </BodyShort>
+              <TextField
+                label="Andre tjenester"
+                description="Tjenester som ikke finnes i katalogen, skilt med komma."
+                value={otherServices}
+                onChange={(event) => setOtherServices(event.target.value)}
+              />
             </div>
 
             <fieldset className="oh-activityform__times">
-              <legend>Tidsrom (valgfritt)</legend>
+              <legend>Tidsrom</legend>
               <BodyShort size="small" className="oh-activityform__timezone">
                 Klokkeslett er i norsk tid.
               </BodyShort>
@@ -170,6 +191,7 @@ export function ActivityFormModal({
                   name="start"
                   value={start}
                   onChange={(event) => setStart(event.target.value)}
+                  required
                 />
               </label>
               <label>
@@ -179,6 +201,8 @@ export function ActivityFormModal({
                   name="end"
                   value={end}
                   onChange={(event) => setEnd(event.target.value)}
+                  min={start || undefined}
+                  required
                 />
               </label>
             </fieldset>
@@ -207,4 +231,17 @@ export function ActivityFormModal({
       </Modal.Footer>
     </Modal>
   );
+}
+
+function parseServiceNames(value: string): string[] {
+  const seen = new Set<string>();
+  return value
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => {
+      const key = name.toLocaleLowerCase('nb');
+      if (!name || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 }

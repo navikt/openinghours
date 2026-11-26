@@ -16,6 +16,8 @@ import {
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon } from '@navikt/aksel-icons';
 import { useNavigate } from 'react-router-dom';
 import { useService, useServiceRange, useServices, useSession } from '../hooks/queries';
+import { useServiceActivitiesRange } from '../hooks/activities';
+import { activitiesOn } from '../lib/activity';
 import {
   dateToIso,
   firstOfMonth,
@@ -58,6 +60,13 @@ export function CalendarPage() {
   const service = useService(serviceId);
   const services = useServices();
   const range = useServiceRange(serviceId, from, to);
+  // Aktiviteter er interne, også om kalenderen blir offentlig.
+  const activities = useServiceActivitiesRange(
+    serviceId,
+    from,
+    to,
+    session.data?.loggedIn === true,
+  );
 
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [announcement, setAnnouncement] = useState('');
@@ -90,6 +99,7 @@ export function CalendarPage() {
 
   const days = new Map((range.data ?? []).map((d) => [d.date, d]));
   const selectedDay = selected ? days.get(selected) : undefined;
+  const selectedActivities = selected ? activitiesOn(activities.data ?? [], selected) : [];
   const todayEntry = days.get(today);
   const nowIsOpen = todayEntry?.isOpen ?? false;
   const loggedIn = session.data?.loggedIn ?? false;
@@ -295,6 +305,7 @@ export function CalendarPage() {
               loggedIn={loggedIn}
               onClose={closePanel}
               headingRef={headingRef}
+              activities={selectedActivities}
             />
           )}
         </div>
@@ -310,6 +321,7 @@ export function CalendarPage() {
               loggedIn={loggedIn}
               onClose={closePanel}
               headingRef={headingRef}
+              activities={selectedActivities}
             />
           </Modal.Body>
         </Modal>

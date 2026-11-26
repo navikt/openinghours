@@ -23,11 +23,18 @@ export interface Activity {
   end: string | null;
   onlyShowForNavEmployees: boolean;
   ongoing: boolean;
+  /** Berørte tjenester ved navn, også tjenester som ikke finnes i katalogen. */
+  serviceNames?: string[];
+  /** `SLACK` er hentet fra #varsling-nedetid. Redigeres den her, blir den `MANUAL`. */
+  source?: ActivitySource;
 }
+
+export type ActivitySource = 'MANUAL' | 'SLACK';
 
 /** Datetime-verdier er lokale Oslo-datetime-strenger, ikke UTC-tidspunkter. */
 export interface ActivityInput {
   serviceIds: string[];
+  serviceNames: string[];
   header: string;
   message: string;
   start: string | null;

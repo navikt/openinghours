@@ -163,6 +163,9 @@ function ActivitiesContent() {
                       {activity.header}
                     </Heading>
                     {activity.ongoing && <Tag size="small" variant="success">Pågår</Tag>}
+                    {activity.source === 'SLACK' && (
+                      <Tag size="small" variant="info">Fra Slack</Tag>
+                    )}
                   </div>
                   <BodyLong>{activity.message}</BodyLong>
                   <dl className="oh-activity-card__details">
@@ -252,8 +255,11 @@ function describeServices(
   pending: boolean,
   failed: boolean,
 ): string {
-  if (activity.serviceIds.length === 0) return 'Generell aktivitet';
-  if (pending) return 'Henter tjenestene …';
-  if (failed) return 'Tjenestelisten er utilgjengelig';
-  return activity.serviceIds.map((id) => names.get(id) ?? id).join(', ');
+  const extra = activity.serviceNames ?? [];
+  if (activity.serviceIds.length === 0 && extra.length === 0) return 'Generell aktivitet';
+  if (activity.serviceIds.length > 0 && pending) return 'Henter tjenestene …';
+  if (activity.serviceIds.length > 0 && failed) return 'Tjenestelisten er utilgjengelig';
+  const catalog = activity.serviceIds.map((id) => names.get(id) ?? id);
+  const seen = new Set(catalog.map((name) => name.toLocaleLowerCase('nb')));
+  return [...catalog, ...extra.filter((name) => !seen.has(name.toLocaleLowerCase('nb')))].join(', ');
 }

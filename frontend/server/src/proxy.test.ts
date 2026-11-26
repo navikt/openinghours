@@ -7,7 +7,11 @@ const SERVICE_ID = '11111111-2222-3333-4444-555555555555';
 
 describe('isAllowed', () => {
   it('krever innlogging for aktivitetslesing selv når kalenderen er offentlig', () => {
-    for (const path of ['/openinghours/activity/range', `/openinghours/activity/${SERVICE_ID}`]) {
+    for (const path of [
+      '/openinghours/activity/range',
+      `/openinghours/activity/${SERVICE_ID}`,
+      `/openinghours/activity/service/${SERVICE_ID}/range`,
+    ]) {
       expect(isAllowed(path, 'GET', false, true)).toBe(false);
       expect(isAllowed(path, 'GET', false, true, true)).toBe(false);
       expect(isAllowed(path, 'GET', true, true)).toBe(true);
@@ -40,6 +44,9 @@ describe('isAllowed', () => {
       ['/openinghours/activity/date', 'GET'],
       ['/openinghours/activity/------------------------------------', 'GET'],
       [`/openinghours/activity/${SERVICE_ID}/extra`, 'GET'],
+      [`/openinghours/activity/service/${SERVICE_ID}/range`, 'POST'],
+      [`/openinghours/activity/service/${SERVICE_ID}`, 'GET'],
+      [`/openinghours/activity/service/${SERVICE_ID}/today`, 'GET'],
     ];
     for (const [path, method] of requests) {
       expect(isAllowed(path, method, true, false, true)).toBe(false);
